@@ -2,9 +2,9 @@ pipeline {
   agent any
 
   parameters {
-    string(name: 'CUSTOMER_CODE', defaultValue: '')
-    string(name: 'PRODUCT', defaultValue: 'm360')
-    string(name: 'ENV', defaultValue: 'dev')
+    string(name: 'CUSTOMER_CODE', description: 'Customer code like cx11')
+    string(name: 'PRODUCT', defaultValue: 'm360', description: 'Product name')
+    string(name: 'ENV', defaultValue: 'dev', description: 'Environment')
   }
 
   environment {
@@ -16,6 +16,7 @@ pipeline {
     stage('Checkout') {
       steps {
         checkout scm
+        echo "Customer=${params.CUSTOMER_CODE}, Product=${params.PRODUCT}, Env=${params.ENV}"
       }
     }
 
@@ -23,7 +24,10 @@ pipeline {
       steps {
         sh """
         chmod +x scripts/check_or_create_json.sh
-        scripts/check_or_create_json.sh ${PRODUCT} ${CUSTOMER_CODE} ${ENV}
+        scripts/check_or_create_json.sh \
+          ${params.PRODUCT} \
+          ${params.CUSTOMER_CODE} \
+          ${params.ENV}
         """
       }
     }
@@ -41,7 +45,9 @@ pipeline {
       steps {
         sh """
         chmod +x scripts/spn_secret_to_kv.sh
-        scripts/spn_secret_to_kv.sh ${PRODUCT} ${CUSTOMER_CODE}
+        scripts/spn_secret_to_kv.sh \
+          ${params.PRODUCT} \
+          ${params.CUSTOMER_CODE}
         """
       }
     }
@@ -50,7 +56,9 @@ pipeline {
       steps {
         sh """
         chmod +x scripts/databricks_setup.sh
-        scripts/databricks_setup.sh ${PRODUCT} ${CUSTOMER_CODE}
+        scripts/databricks_setup.sh \
+          ${params.PRODUCT} \
+          ${params.CUSTOMER_CODE}
         """
       }
     }
@@ -59,7 +67,10 @@ pipeline {
       steps {
         sh """
         chmod +x scripts/fabric_setup.sh
-        scripts/fabric_setup.sh ${PRODUCT} ${CUSTOMER_CODE} ${ENV}
+        scripts/fabric_setup.sh \
+          ${params.PRODUCT} \
+          ${params.CUSTOMER_CODE} \
+          ${params.ENV}
         """
       }
     }
