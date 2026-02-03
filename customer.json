@@ -1,0 +1,69 @@
+{
+  "vinayak": {
+    "products": {
+      "edps": {
+        "groups": {
+          "adg-edps-databricks-contributor-qa": {
+            "permissions": ["USE_CATALOG", "USE_SCHEMA", "SELECT"]
+          }
+        }
+      }
+    }
+  },
+  "vishal": {
+    "products": {
+      "edps": {
+        "groups": {
+          "adg-edps-databricks-contributor-qa": {
+            "permissions": ["USE_CATALOG", "USE_SCHEMA", "SELECT"]
+          }
+        }
+      }
+    }
+  },
+  "ajinky": {
+    "products": {
+      "edps": {
+        "groups": {
+          "adg-edps-databricks-contributor-qa": {
+            "permissions": ["USE_CATALOG", "USE_SCHEMA", "SELECT"]
+          }
+        }
+      }
+    }
+  },
+  "anand": {
+    "products": {
+      "edps": {
+        "groups": {
+          "adg-edps-databricks-contributor-qa": {
+            "permissions": ["USE_CATALOG", "USE_SCHEMA", "SELECT"]
+          }
+        }
+      }
+    }
+  },
+  "amit": {
+    "products": {
+      "edps": {
+        "groups": {
+          "adg-edps-databricks-contributor-qa": {
+            "permissions": ["USE_CATALOG", "USE_SCHEMA", "SELECT"]
+          }
+        }
+      }
+    }
+  },
+  "vikas": {
+    "products": {
+      "edps": {
+        "groups": {
+          "adg-edps-databricks-contributor-qa": {
+            "permissions": ["USE_CATALOG", "USE_SCHEMA", "SELECT"]
+          }
+        }
+      }
+    }
+  }
+}
+
