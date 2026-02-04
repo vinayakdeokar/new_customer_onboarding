@@ -1,0 +1,34 @@
+{
+  "customers": [
+    {
+      "customer_code": "cx03",
+      "product": "m360",
+      "environment": "dev",
+      "group": "grp-m360-cx03-users",
+      "group_permissions": [
+        "USE_CATALOG",
+        "USE_SCHEMA",
+        "SELECT"
+      ],
+      "spn": "sp-m360-cx03",
+      "spn_permissions": [
+        "CAN_USE"
+      ]
+    },
+    {
+      "customer_code": "vinayak-001",
+      "product": "m360",
+      "environment": "dev",
+      "group": "grp-m360-vinayak-001-users",
+      "group_permissions": [
+        "USE_CATALOG",
+        "USE_SCHEMA",
+        "SELECT"
+      ],
+      "spn": "sp-m360-vinayak-001",
+      "spn_permissions": [
+        "CAN_USE"
+      ]
+    }
+  ]
+}
