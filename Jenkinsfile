@@ -49,17 +49,6 @@ pipeline {
 
     }
 
-    stage('SPN Secret to KeyVault') {
-      steps {
-        sh """
-        chmod +x scripts/spn_secret_to_kv.sh
-        scripts/spn_secret_to_kv.sh \
-          ${params.PRODUCT} \
-          ${params.CUSTOMER_CODE}
-        """
-      }
-    }
-
     stage('Databricks Setup') {
       steps {
         sh """
