@@ -28,6 +28,7 @@ pipeline {
             ${PRODUCT} \
             ${CUSTOMER_CODE}
         '''
+
         script {
           def status = readFile('customer_status.env')
           if (status.contains("CUSTOMER_EXISTS=true")) {
@@ -60,6 +61,17 @@ pipeline {
         sh '''
           chmod +x scripts/pre_databricks_identity_check.sh
           scripts/pre_databricks_identity_check.sh \
+            ${PRODUCT} \
+            ${CUSTOMER_CODE}
+        '''
+      }
+    }
+
+    stage('Add SPN to Databricks Workspace') {
+      steps {
+        sh '''
+          chmod +x scripts/add_spn_to_databricks.sh
+          scripts/add_spn_to_databricks.sh \
             ${PRODUCT} \
             ${CUSTOMER_CODE}
         '''
