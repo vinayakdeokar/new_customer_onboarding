@@ -20,18 +20,23 @@ pipeline {
       }
     }
 
-    stage('Customer Metadata') {
-      steps {
-        sh """
-        chmod +x scripts/check_or_create_json.sh
-        scripts/check_or_create_json.sh \
-          ${params.PRODUCT} \
-          ${params.CUSTOMER_CODE} \
-          ${params.ENV}
-        """
+    stage('Customer Check') {
+  steps {
+    sh '''
+      chmod +x scripts/check_customer_exists.sh
+      scripts/check_customer_exists.sh \
+        ${PRODUCT} \
+        ${CUSTOMER_CODE}
+    '''
+    script {
+      def status = readFile('customer_status.env')
+      if (status.contains("CUSTOMER_EXISTS=true")) {
+        echo "Customer already onboarded. Skipping Databricks setup."
+        currentBuild.result = 'SUCCESS'
+        error("STOP_PIPELINE")
       }
     }
-
+  
     stage('Azure Login') {
     steps {
         withCredentials([
