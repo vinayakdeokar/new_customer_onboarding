@@ -49,7 +49,6 @@ pipeline {
           string(credentialsId: 'AZURE_SUBSCRIPTION_ID', variable: 'AZURE_SUBSCRIPTION_ID')
         ]) {
           sh '''
-            echo "Jenkins SPN AppId=$AZURE_CLIENT_ID"
             chmod +x scripts/azure_login.sh
             scripts/azure_login.sh
           '''
