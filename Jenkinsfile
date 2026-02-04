@@ -21,61 +21,49 @@ pipeline {
     }
 
     stage('Customer Check') {
-  steps {
-    sh '''
-      chmod +x scripts/check_customer_exists.sh
-      scripts/check_customer_exists.sh \
-        ${PRODUCT} \
-        ${CUSTOMER_CODE}
-    '''
-    script {
-      def status = readFile('customer_status.env')
-      if (status.contains("CUSTOMER_EXISTS=true")) {
-        echo "Customer already onboarded. Skipping Databricks setup."
-        currentBuild.result = 'SUCCESS'
-        error("STOP_PIPELINE")
-      }
-    }
-  
-    stage('Azure Login') {
-    steps {
-        withCredentials([
-            string(credentialsId: 'AZURE_CLIENT_ID', variable: 'AZURE_CLIENT_ID'),
-            string(credentialsId: 'AZURE_CLIENT_SECRET', variable: 'AZURE_CLIENT_SECRET'),
-            string(credentialsId: 'AZURE_TENANT_ID', variable: 'AZURE_TENANT_ID'),
-            string(credentialsId: 'AZURE_SUBSCRIPTION_ID', variable: 'AZURE_SUBSCRIPTION_ID')
-        ]) {
-            sh '''
-              chmod +x scripts/azure_login.sh
-              scripts/azure_login.sh
-            '''
+      steps {
+        sh '''
+          chmod +x scripts/check_customer_exists.sh
+          scripts/check_customer_exists.sh \
+            ${PRODUCT} \
+            ${CUSTOMER_CODE}
+        '''
+        script {
+          def status = readFile('customer_status.env')
+          if (status.contains("CUSTOMER_EXISTS=true")) {
+            echo "Customer already onboarded. Stopping pipeline."
+            currentBuild.result = 'SUCCESS'
+            error("STOP_PIPELINE")
+          }
         }
-    }
-
-    }
-
-    stage('Databricks Setup') {
-      steps {
-        sh """
-        chmod +x scripts/databricks_setup.sh
-        scripts/databricks_setup.sh \
-          ${params.PRODUCT} \
-          ${params.CUSTOMER_CODE}
-        """
       }
     }
 
-    stage('Fabric Setup') {
+    stage('Azure Login') {
       steps {
-        sh """
-        chmod +x scripts/fabric_setup.sh
-        scripts/fabric_setup.sh \
-          ${params.PRODUCT} \
-          ${params.CUSTOMER_CODE} \
-          ${params.ENV}
-        """
+        withCredentials([
+          string(credentialsId: 'AZURE_CLIENT_ID', variable: 'AZURE_CLIENT_ID'),
+          string(credentialsId: 'AZURE_CLIENT_SECRET', variable: 'AZURE_CLIENT_SECRET'),
+          string(credentialsId: 'AZURE_TENANT_ID', variable: 'AZURE_TENANT_ID'),
+          string(credentialsId: 'AZURE_SUBSCRIPTION_ID', variable: 'AZURE_SUBSCRIPTION_ID')
+        ]) {
+          sh '''
+            chmod +x scripts/azure_login.sh
+            scripts/azure_login.sh
+          '''
+        }
       }
     }
-  }
-}
 
+    stage('Pre Databricks Identity Check') {
+      steps {
+        sh '''
+          chmod +x scripts/pre_databricks_identity_check.sh
+          scripts/pre_databricks_identity_check.sh \
+            ${PRODUCT} \
+            ${CUSTOMER_CODE}
+        '''
+      }
+    }
+
+    
