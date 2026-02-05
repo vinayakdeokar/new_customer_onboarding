@@ -87,20 +87,15 @@ pipeline {
       steps {
         withCredentials([
           string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
-          string(credentialsId: 'DATABRICKS_CLIENT_ID', variable: 'DATABRICKS_CLIENT_ID'),
-          string(credentialsId: 'DATABRICKS_CLIENT_SECRET', variable: 'DATABRICKS_CLIENT_SECRET'),
-          string(credentialsId: 'DATABRICKS_TENANT_ID', variable: 'DATABRICKS_TENANT_ID'),
-          string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_ADMIN_TOKEN'),
-          string(credentialsId: 'AZURE_CLIENT_ID', variable: 'SPN_CLIENT_ID')
+          string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_ADMIN_TOKEN')
         ]) {
           sh '''
             chmod +x scripts/databricks_login_and_add_spn.sh
-            scripts/databricks_login_and_add_spn.sh "$SPN_CLIENT_ID" "azure-spn-from-jenkins"
+            scripts/databricks_login_and_add_spn.sh "${PRODUCT}" "${CUSTOMER_CODE}"
           '''
         }
       }
     }
-
 
 
 
