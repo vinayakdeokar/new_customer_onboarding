@@ -12,18 +12,18 @@ echo "✅ Login OK"
 
 echo "🔎 Step 2: Fetching SPN ID for '$SPN_DISPLAY_NAME'..."
 
-# सर्व SPNs ची लिस्ट घेऊन JQ ने ID शोधणे
-RAW_JSON=$(databricks service-principals list --output json)
+# SPN ची माहिती मिळवणे
+RAW_LIST=$(databricks service-principals list --output json)
 
-SPN_ID=$(echo "$RAW_JSON" | jq -r --arg NAME "$SPN_DISPLAY_NAME" '
-  if type == "object" and .service_principals then
-    .service_principals[] | select(.display_name == $NAME or .displayName == $NAME) | .id
-  elif type == "array" then
-    .[] | select(.display_name == $NAME or .displayName == $NAME) | .id
-  else
-    .. | objects | select(.display_name == $NAME or .displayName == $NAME) | .id
-  end
-' | head -n 1)
+# JQ वापरून ID आणि Application ID (Client ID) दोन्ही काढणे
+SPN_DATA=$(echo "$RAW_LIST" | jq -r --arg NAME "$SPN_DISPLAY_NAME" '
+  if type == "object" and .service_principals then .service_principals[] 
+  elif type == "array" then .[] 
+  else .. | objects end | select(.display_name == $NAME or .displayName == $NAME)
+')
+
+SPN_ID=$(echo "$SPN_DATA" | jq -r '.id')
+OAUTH_CLIENT_ID=$(echo "$SPN_DATA" | jq -r '.application_id')
 
 if [ -z "$SPN_ID" ] || [ "$SPN_ID" == "null" ]; then
     echo "❌ Error: '$SPN_DISPLAY_NAME' सापडला नाही."
@@ -31,18 +31,19 @@ if [ -z "$SPN_ID" ] || [ "$SPN_ID" == "null" ]; then
 fi
 
 echo "✅ Found SPN ID: $SPN_ID"
+echo "✅ Found Client ID: $OAUTH_CLIENT_ID"
 
-echo "🔐 Step 3: Generating OAuth Secret..."
+echo "🔐 Step 3: Generating OAuth Secret via API..."
 
-# नवीन CLI नुसार कमांड बदलली आहे: service-principal-secrets
-SECRET_JSON=$(databricks service-principal-secrets create "$SPN_ID" --output json)
+# थेट API कॉल वापरणे (हा कधीच फेल होत नाही)
+# Endpoint: POST /api/2.0/servicePrincipals/{id}/secrets
+API_RESPONSE=$(databricks api post /api/2.0/servicePrincipals/$SPN_ID/secrets)
 
-# नवीन CLI मध्ये 'secret' की असते
-CLIENT_ID=$(echo "$SECRET_JSON" | jq -r '.client_id')
-CLIENT_SECRET=$(echo "$SECRET_JSON" | jq -r '.secret // .client_secret')
+# API मधून सिक्रेट काढणे
+OAUTH_CLIENT_SECRET=$(echo "$API_RESPONSE" | jq -r '.secret')
 
-if [ -z "$CLIENT_SECRET" ] || [ "$CLIENT_SECRET" == "null" ]; then
-    echo "❌ Error: Secret जनरेट होऊ शकले नाही. कदाचित परवानग्या कमी आहेत."
+if [ -z "$OAUTH_CLIENT_SECRET" ] || [ "$OAUTH_CLIENT_SECRET" == "null" ]; then
+    echo "❌ Error: Secret जनरेट झाले नाही. API Response: $API_RESPONSE"
     exit 1
 fi
 
@@ -50,11 +51,11 @@ echo "✅ OAuth secret generated successfully"
 
 echo "🚀 Step 4: Storing in Azure Key Vault: $KV_NAME"
 # Key Vault मध्ये सेव्ह करणे
-az keyvault secret set --vault-name "$KV_NAME" --name "${SPN_DISPLAY_NAME}-id" --value "$CLIENT_ID" --output none
-az keyvault secret set --vault-name "$KV_NAME" --name "${SPN_DISPLAY_NAME}-secret" --value "$CLIENT_SECRET" --output none
+az keyvault secret set --vault-name "$KV_NAME" --name "${SPN_DISPLAY_NAME}-id" --value "$OAUTH_CLIENT_ID" --output none
+az keyvault secret set --vault-name "$KV_NAME" --name "${SPN_DISPLAY_NAME}-secret" --value "$OAUTH_CLIENT_SECRET" --output none
 
 echo "----------------------------------------------------"
-echo "🎉 SUCCESS! सर्व स्टेप्स पूर्ण झाल्या आहेत."
+echo "🎉 SUCCESS! सर्व काही मॅन्युअली न करता ऑटोमॅटिक झाले आहे."
 echo "SPN: $SPN_DISPLAY_NAME"
-echo "ID: $SPN_ID"
+echo "Client ID: $OAUTH_CLIENT_ID"
 echo "----------------------------------------------------"
