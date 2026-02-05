@@ -86,10 +86,11 @@ pipeline {
     stage('Create External SPN & Assign to Workspace') {
       steps {
         withCredentials([
-          string(credentialsId: 'DATABRICKS_ACCOUNT_TOKEN', variable: 'DATABRICKS_ACCOUNT_TOKEN'),
+          string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_ACCOUNT_TOKEN'),
           string(credentialsId: 'DATABRICKS_ACCOUNT_ID', variable: 'DATABRICKS_ACCOUNT_ID'),
           string(credentialsId: 'DATABRICKS_WORKSPACE_ID', variable: 'DATABRICKS_WORKSPACE_ID')
-        ]) {
+        ])
+        {
           withEnv([
             "PRODUCT=${params.PRODUCT}",
             "CUSTOMER=${params.CUSTOMER_CODE}",
