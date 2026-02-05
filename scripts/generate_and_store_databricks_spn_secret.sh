@@ -1,28 +1,36 @@
 #!/bin/bash
 set -e
 
-# --- 1. Variables & Environment Checks ---
+# --- 1. Variables ---
 TARGET_SPN_DISPLAY_NAME=$1
-# टोकन आणि अकाउंट आयडी मिळवणे
-DB_TOKEN=${DATABRICKS_ADMIN_TOKEN}
 ACC_ID=${DATABRICKS_ACCOUNT_ID}
-
-# अकाउंट लेव्हल API साठी ग्लोबल URL वापरणे अनिवार्य आहे
 ACCOUNT_API_URL="https://accounts.azuredatabricks.net"
 
 if [ -z "$TARGET_SPN_DISPLAY_NAME" ]; then echo "❌ Error: SPN Name missing"; exit 1; fi
-if [ -z "$DB_TOKEN" ]; then echo "❌ Error: Admin Token missing"; exit 1; fi
 if [ -z "$ACC_ID" ]; then echo "❌ Error: Account ID missing"; exit 1; fi
 
 echo "🚀 Starting Automation for: $TARGET_SPN_DISPLAY_NAME"
-echo "ℹ️  Using Account API: $ACCOUNT_API_URL"
 
-# --- 2. Fetch SPN Internal ID (Account Level) ---
-echo "🔎 Step 1: Searching for SPN in Account Console..."
+# --- 2. Get Account Management Token via Azure CLI ---
+echo "🔐 Step 1: Getting Account Management Token from Azure..."
 
-# लक्षात घ्या: इथे आपण $ACCOUNT_API_URL वापरत आहोत
+# हे कमांड Azure कडून खास डेटाब्रिक्स अकाउंट कन्सोलसाठी टोकन मिळवते
+# Resource ID: 2ff814a6-3304-4ab8-85cb-cd0e6f879c1d (Databricks Resource ID)
+DB_ACCOUNT_TOKEN=$(az account get-access-token \
+  --resource 2ff814a6-3304-4ab8-85cb-cd0e6f879c1d \
+  --query "accessToken" -o tsv)
+
+if [ -z "$DB_ACCOUNT_TOKEN" ]; then
+    echo "❌ Error: Azure कडून टोकन मिळाले नाही. कृपया 'az login' तपासा."
+    exit 1
+fi
+echo "✅ Account Token obtained successfully."
+
+# --- 3. Search SPN ---
+echo "🔎 Step 2: Searching for SPN in Account Console..."
+
 SEARCH_RESPONSE=$(curl -s -G -X GET \
-  -H "Authorization: Bearer $DB_TOKEN" \
+  -H "Authorization: Bearer $DB_ACCOUNT_TOKEN" \
   --data-urlencode "filter=displayName eq \"$TARGET_SPN_DISPLAY_NAME\"" \
   "$ACCOUNT_API_URL/api/2.0/accounts/$ACC_ID/scim/v2/ServicePrincipals")
 
@@ -30,27 +38,25 @@ INTERNAL_ID=$(echo "$SEARCH_RESPONSE" | jq -r '.Resources[0].id // empty')
 APP_ID=$(echo "$SEARCH_RESPONSE" | jq -r '.Resources[0].applicationId // empty')
 
 if [ -z "$INTERNAL_ID" ] || [ "$INTERNAL_ID" == "null" ]; then
-  echo "❌ Error: SPN सापडला नाही किंवा API ला रस्ता मिळाला नाही."
+  echo "❌ Error: SPN '$TARGET_SPN_DISPLAY_NAME' सापडला नाही."
   echo "Debug Response: $SEARCH_RESPONSE"
   exit 1
 fi
-
 echo "✅ Found Internal ID: $INTERNAL_ID"
-echo "✅ Found Application ID: $APP_ID"
 
-# --- 3. Generate OAuth Secret ---
-echo "🔐 Step 2: Generating OAuth Secret..."
+# --- 4. Generate OAuth Secret ---
+echo "🔐 Step 3: Generating OAuth Secret..."
 
 JSON_PAYLOAD=$(cat <<EOF
 {
   "lifetime_seconds": 31536000,
-  "comment": "secret-for-$TARGET_SPN_DISPLAY_NAME"
+  "comment": "oauth-secret-for-$TARGET_SPN_DISPLAY_NAME"
 }
 EOF
 )
 
 SECRET_RESPONSE=$(curl -s -X POST \
-  -H "Authorization: Bearer $DB_TOKEN" \
+  -H "Authorization: Bearer $DB_ACCOUNT_TOKEN" \
   -H "Content-Type: application/json" \
   -d "$JSON_PAYLOAD" \
   "$ACCOUNT_API_URL/api/2.0/accounts/$ACC_ID/servicePrincipals/$INTERNAL_ID/credentials/secrets")
@@ -62,20 +68,14 @@ if [ -z "$OAUTH_SECRET_VALUE" ] || [ "$OAUTH_SECRET_VALUE" == "null" ]; then
   echo "Debug: $SECRET_RESPONSE"
   exit 1
 fi
-
 echo "✅ Secret Created Successfully!"
 
-# --- 4. Store in Azure Key Vault ---
-echo "🚀 Step 3: Storing in Azure Key Vault: $KV_NAME"
+# --- 5. Store in Key Vault ---
+echo "🚀 Step 4: Storing in Azure Key Vault: $KV_NAME"
 
-az keyvault secret set --vault-name "$KV_NAME" \
-    --name "${TARGET_SPN_DISPLAY_NAME}-dbx-id" \
-    --value "$APP_ID" --output none
-
-az keyvault secret set --vault-name "$KV_NAME" \
-    --name "${TARGET_SPN_DISPLAY_NAME}-dbx-secret" \
-    --value "$OAUTH_SECRET_VALUE" --output none
+az keyvault secret set --vault-name "$KV_NAME" --name "${TARGET_SPN_DISPLAY_NAME}-dbx-id" --value "$APP_ID" --output none
+az keyvault secret set --vault-name "$KV_NAME" --name "${TARGET_SPN_DISPLAY_NAME}-dbx-secret" --value "$OAUTH_SECRET_VALUE" --output none
 
 echo "----------------------------------------------------"
-echo "🎉 SUCCESS! $TARGET_SPN_DISPLAY_NAME चे काम फत्ते झाले."
+echo "🎉 SUCCESS! सर्व डिटेल्स Key Vault मध्ये सेव्ह झाले आहेत."
 echo "----------------------------------------------------"
