@@ -102,25 +102,21 @@ pipeline {
 
   
     
-    // stage('Create Databricks Account SPN & OAuth Secret') {
-    //   steps {
-    //     withCredentials([
-    //       string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_TOKEN'),
-    //       string(credentialsId: 'DATABRICKS_ACCOUNT_ID', variable: 'ACCOUNT_ID')
-    //     ]) {
-    //       withEnv([
-    //         "PRODUCT=${params.PRODUCT}",
-    //         "CUSTOMER=${params.CUSTOMER_CODE}",
-    //         "DATABRICKS_HOST=https://accounts.azuredatabricks.net"
-    //       ]) {
-    //         sh '''
-    //           chmod +x scripts/create_account_spn_and_oauth_secret.sh
-    //           scripts/create_account_spn_and_oauth_secret.sh
-    //         '''
-    //       }
-    //     }
-    //   }
-    // }
+    stage('Generate & Store Databricks SPN OAuth Secret') {
+      steps {
+        withCredentials([
+          string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
+          string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_ADMIN_TOKEN'),
+          string(credentialsId: 'kv-name', variable: 'KV_NAME')
+        ]) {
+          sh '''
+            chmod +x scripts/generate_and_store_databricks_spn_secret.sh
+            scripts/generate_and_store_databricks_spn_secret.sh "sp-m360-vinayak-002"
+          '''
+        }
+      }
+    }
+
 
 
   }
