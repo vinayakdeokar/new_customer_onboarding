@@ -99,7 +99,7 @@ pipeline {
       steps {
         withCredentials([
           string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
-          string(credentialsId: 'DATABRICKS_TOKEN', variable: 'DATABRICKS_TOKEN'),
+          string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_TOKEN'),
           string(credentialsId: 'DATABRICKS_ACCOUNT_ID', variable: 'ACCOUNT_ID')
         ]) {
           sh '''
