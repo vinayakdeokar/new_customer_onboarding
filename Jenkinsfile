@@ -92,8 +92,8 @@ pipeline {
           string(credentialsId: 'AZURE_CLIENT_ID', variable: 'AZURE_CLIENT_ID')
         ]) {
           sh '''
-            chmod +x scripts/add_external_spn_by_appid_and_assign.sh
-            scripts/add_external_spn_by_appid_and_assign.sh
+            chmod +x scripts/add_external_spn_to_databricks_workspace.sh
+            scripts/add_external_spn_to_databricks_workspace.sh
           '''
         }
       }
