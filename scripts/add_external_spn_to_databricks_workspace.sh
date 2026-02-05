@@ -2,57 +2,36 @@
 set -e
 
 # ============================================================
-# REQUIRED ENV (Jenkins / Shell)
+# REQUIRED ENV
 # ------------------------------------------------------------
-# PRODUCT
-# CUSTOMER
+# AZURE_SPN_APP_ID           <-- Azure Entra ID Application ID
 #
-# Azure:
-#   az cli logged in (azure_login.sh already ran)
-#
-# Databricks ACCOUNT:
-#   DATABRICKS_ACCOUNT_HOST=https://accounts.azuredatabricks.net
-#   DATABRICKS_ACCOUNT_ID
-#   DATABRICKS_ACCOUNT_TOKEN   (ACCOUNT ADMIN PAT)
-#
-# Databricks WORKSPACE:
-#   DATABRICKS_WORKSPACE_ID
+# DATABRICKS_ACCOUNT_HOST   = https://accounts.azuredatabricks.net
+# DATABRICKS_ACCOUNT_ID
+# DATABRICKS_ACCOUNT_TOKEN  (Account Admin PAT)
+# DATABRICKS_WORKSPACE_ID
 #
 # jq installed
 # ============================================================
 
-SPN_NAME="sp-${PRODUCT}-${CUSTOMER}"
+APP_ID="$AZURE_SPN_APP_ID"
 
 echo "============================================================"
-echo "Creating EXTERNAL Databricks SPN & assigning to workspace"
-echo "SPN Name     : $SPN_NAME"
-echo "Workspace ID : $DATABRICKS_WORKSPACE_ID"
+echo "Adding EXTERNAL SPN to Databricks using Application ID"
+echo "Application ID : $APP_ID"
+echo "Workspace ID   : $DATABRICKS_WORKSPACE_ID"
 echo "============================================================"
 
 # ------------------------------------------------------------
-# 1️⃣ Get Azure Entra ID Application (Client) ID
-# ------------------------------------------------------------
-CLIENT_ID=$(az ad sp list \
-  --display-name "$SPN_NAME" \
-  --query "[0].appId" -o tsv)
-
-if [ -z "$CLIENT_ID" ]; then
-  echo "❌ ERROR: Azure SPN '$SPN_NAME' not found in Entra ID"
-  exit 1
-fi
-
-echo "✅ Azure SPN Application ID: $CLIENT_ID"
-
-# ------------------------------------------------------------
-# 2️⃣ Check if SPN already exists in Databricks ACCOUNT
+# 1️⃣ Check if SPN already exists at ACCOUNT level
 # ------------------------------------------------------------
 ACCOUNT_SPN_ID=$(curl -s \
   -H "Authorization: Bearer $DATABRICKS_ACCOUNT_TOKEN" \
   "$DATABRICKS_ACCOUNT_HOST/api/2.0/accounts/$DATABRICKS_ACCOUNT_ID/scim/v2/ServicePrincipals" \
-  | jq -r ".Resources[] | select(.applicationId==\"$CLIENT_ID\") | .id")
+  | jq -r ".Resources[] | select(.applicationId==\"$APP_ID\") | .id")
 
 # ------------------------------------------------------------
-# 3️⃣ If not exists → CREATE ACCOUNT-LEVEL SPN (EXTERNAL)
+# 2️⃣ If not exists → create ACCOUNT-level (EXTERNAL) SPN
 # ------------------------------------------------------------
 if [ -z "$ACCOUNT_SPN_ID" ]; then
   echo "🚀 Creating ACCOUNT-level (External) SPN..."
@@ -63,8 +42,7 @@ if [ -z "$ACCOUNT_SPN_ID" ]; then
     "$DATABRICKS_ACCOUNT_HOST/api/2.0/accounts/$DATABRICKS_ACCOUNT_ID/scim/v2/ServicePrincipals" \
     -d "{
           \"schemas\": [\"urn:ietf:params:scim:schemas:core:2.0:ServicePrincipal\"],
-          \"applicationId\": \"$CLIENT_ID\",
-          \"displayName\": \"$SPN_NAME\"
+          \"applicationId\": \"$APP_ID\"
         }")
 
   ACCOUNT_SPN_ID=$(echo "$CREATE_RESP" | jq -r '.id')
@@ -83,8 +61,8 @@ fi
 echo "Account SPN ID: $ACCOUNT_SPN_ID"
 
 # ------------------------------------------------------------
-# 4️⃣ Assign ACCOUNT SPN to WORKSPACE
-#     (THIS = UI dropdown + Add)
+# 3️⃣ Assign ACCOUNT SPN to WORKSPACE
+#     (UI: Add service principal → select existing → Add)
 # ------------------------------------------------------------
 echo "🔗 Assigning SPN to workspace..."
 
@@ -94,5 +72,5 @@ curl -s -X PUT \
 
 echo "============================================================"
 echo "✅ DONE"
-echo "SPN '$SPN_NAME' added as EXTERNAL and assigned to workspace"
+echo "SPN added using Application ID and assigned as EXTERNAL"
 echo "============================================================"
