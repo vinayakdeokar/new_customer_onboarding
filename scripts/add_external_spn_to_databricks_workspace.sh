@@ -1,15 +1,6 @@
 #!/bin/bash
 set -e
 
-# ============================================================
-# REQUIRED ENV (already present in Jenkins)
-# ------------------------------------------------------------
-# AZURE_CLIENT_ID
-# DATABRICKS_ACCOUNT_ID
-# DATABRICKS_ADMIN_TOKEN
-# DATABRICKS_WORKSPACE_ID
-# ============================================================
-
 DATABRICKS_ACCOUNT_HOST="https://accounts.azuredatabricks.net"
 APP_ID="$AZURE_CLIENT_ID"
 
@@ -20,17 +11,33 @@ echo "Workspace ID   : $DATABRICKS_WORKSPACE_ID"
 echo "============================================================"
 
 # ------------------------------------------------------------
-# 1️⃣ Check / Create ACCOUNT-level SPN (External)
+# 1️⃣ List account-level SPNs
 # ------------------------------------------------------------
-ACCOUNT_SPN_ID=$(curl -s \
+RESP=$(curl -s \
   -H "Authorization: Bearer $DATABRICKS_ADMIN_TOKEN" \
-  "$DATABRICKS_ACCOUNT_HOST/api/2.0/accounts/$DATABRICKS_ACCOUNT_ID/scim/v2/ServicePrincipals" \
-  | jq -r ".Resources[] | select(.applicationId==\"$APP_ID\") | .id")
+  "$DATABRICKS_ACCOUNT_HOST/api/2.0/accounts/$DATABRICKS_ACCOUNT_ID/scim/v2/ServicePrincipals")
 
+# 🔍 Debug if response is not as expected
+if ! echo "$RESP" | jq -e '.Resources' > /dev/null 2>&1; then
+  echo "❌ ERROR: Invalid response from Databricks Account API"
+  echo "Response:"
+  echo "$RESP"
+  exit 1
+fi
+
+# ------------------------------------------------------------
+# 2️⃣ Find SPN by Application ID
+# ------------------------------------------------------------
+ACCOUNT_SPN_ID=$(echo "$RESP" | jq -r \
+  ".Resources[] | select(.applicationId==\"$APP_ID\") | .id")
+
+# ------------------------------------------------------------
+# 3️⃣ Create SPN if not exists
+# ------------------------------------------------------------
 if [ -z "$ACCOUNT_SPN_ID" ]; then
   echo "🚀 Creating ACCOUNT-level (External) SPN..."
 
-  RESP=$(curl -s -X POST \
+  CREATE_RESP=$(curl -s -X POST \
     -H "Authorization: Bearer $DATABRICKS_ADMIN_TOKEN" \
     -H "Content-Type: application/scim+json" \
     "$DATABRICKS_ACCOUNT_HOST/api/2.0/accounts/$DATABRICKS_ACCOUNT_ID/scim/v2/ServicePrincipals" \
@@ -39,14 +46,13 @@ if [ -z "$ACCOUNT_SPN_ID" ]; then
           \"applicationId\": \"$APP_ID\"
         }")
 
-  ACCOUNT_SPN_ID=$(echo "$RESP" | jq -r '.id')
-
-  if [ -z "$ACCOUNT_SPN_ID" ] || [ "$ACCOUNT_SPN_ID" == "null" ]; then
-    echo "❌ Failed to create account-level SPN"
-    echo "$RESP"
+  if ! echo "$CREATE_RESP" | jq -e '.id' > /dev/null 2>&1; then
+    echo "❌ ERROR: Failed to create account-level SPN"
+    echo "$CREATE_RESP"
     exit 1
   fi
 
+  ACCOUNT_SPN_ID=$(echo "$CREATE_RESP" | jq -r '.id')
   echo "✅ Account-level SPN created"
 else
   echo "ℹ️ Account-level SPN already exists"
@@ -55,7 +61,7 @@ fi
 echo "Account SPN ID: $ACCOUNT_SPN_ID"
 
 # ------------------------------------------------------------
-# 2️⃣ Assign SPN to Workspace (UI dropdown equivalent)
+# 4️⃣ Assign SPN to workspace
 # ------------------------------------------------------------
 echo "🔗 Assigning SPN to workspace..."
 
