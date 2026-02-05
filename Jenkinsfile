@@ -83,7 +83,7 @@ pipeline {
       }
     }
 
-    stage('assign_spn_to_workspace.sh') {
+    stage('Create External SPN & Assign to Workspace') {
       steps {
         withCredentials([
           string(credentialsId: 'DATABRICKS_ACCOUNT_TOKEN', variable: 'DATABRICKS_ACCOUNT_TOKEN'),
@@ -96,13 +96,14 @@ pipeline {
             "DATABRICKS_ACCOUNT_HOST=https://accounts.azuredatabricks.net"
           ]) {
             sh '''
-              chmod +x scripts/assign_spn_to_workspace.sh
-              scripts/assign_spn_to_workspace.sh
+              chmod +x scripts/create_external_spn_and_assign_to_workspace.sh
+              scripts/create_external_spn_and_assign_to_workspace.sh
             '''
           }
         }
       }
     }
+
   
     
     stage('Create Databricks Account SPN & OAuth Secret') {
