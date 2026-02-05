@@ -17,13 +17,25 @@ echo "🔐 Step 1: Verify Databricks CLI login"
 databricks clusters list > /dev/null
 echo "✅ Databricks CLI login OK"
 
-echo "🔎 Step 2: Resolve Databricks SPN ID"
+echo "🔎 Step 2: Resolve Databricks SPN ID (robust)"
 
-SPN_ID=$(databricks service-principals list --output json \
-  | jq -r ".service_principals[] | select(.display_name==\"$SPN_DISPLAY_NAME\") | .id")
+RAW_JSON=$(databricks service-principals list --output json)
+
+SPN_ID=$(echo "$RAW_JSON" | jq -r --arg NAME "$SPN_DISPLAY_NAME" '
+  if type=="array" then
+    .[] | select(.display_name==$NAME) | .id
+  else
+    .service_principals[] | select(.display_name==$NAME) | .id
+  end
+')
 
 if [ -z "$SPN_ID" ] || [ "$SPN_ID" == "null" ]; then
   echo "❌ SPN not found in Databricks: $SPN_DISPLAY_NAME"
+  echo "Available SPNs:"
+  echo "$RAW_JSON" | jq -r '
+    if type=="array" then .[].display_name
+    else .service_principals[].display_name end
+  '
   exit 1
 fi
 
@@ -57,4 +69,4 @@ az keyvault secret set \
   --value "$OAUTH_CLIENT_SECRET" \
   --output none
 
-echo "🎉 Secrets stored successfully in Key Vault"
+echo "🎉 DONE: OAuth secret generated & stored in Key Vault"
