@@ -99,7 +99,7 @@ pipeline {
       }
     }
     
-    stage('Get Account SPN Internal ID') {
+    stage('Create Databricks Account SPN & OAuth Secret') {
       steps {
         withCredentials([
           string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_TOKEN'),
@@ -111,27 +111,8 @@ pipeline {
             "DATABRICKS_HOST=https://accounts.azuredatabricks.net"
           ]) {
             sh '''
-              chmod +x scripts/get_account_spn_internal_id.sh
-              scripts/get_account_spn_internal_id.sh
-            '''
-          }
-        }
-      }
-    }
-
-
-    stage('Create Databricks OAuth Secret') {
-      steps {
-        withCredentials([
-          string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_TOKEN'),
-          string(credentialsId: 'DATABRICKS_ACCOUNT_ID', variable: 'ACCOUNT_ID')
-        ]) {
-          withEnv([
-            "DATABRICKS_HOST=https://accounts.azuredatabricks.net"
-          ]) {
-            sh '''
-              chmod +x scripts/create_account_oauth_secret.sh
-              scripts/create_account_oauth_secret.sh 365
+              chmod +x scripts/create_account_spn_and_oauth_secret.sh
+              scripts/create_account_spn_and_oauth_secret.sh
             '''
           }
         }
