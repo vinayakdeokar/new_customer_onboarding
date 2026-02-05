@@ -3,27 +3,32 @@ set -e
 
 # --- 1. Setup ---
 TARGET_SPN_DISPLAY_NAME=$1
-# आपण Jenkins कडून आलेले व्हेरिएबल्स वापरू
 DATABRICKS_TOKEN=${DATABRICKS_ADMIN_TOKEN}
 ACCOUNT_ID=${DATABRICKS_ACCOUNT_ID}
-# Host मधून शेवटचा स्लॅश काढणे
-DATABRICKS_HOST=${DATABRICKS_HOST%/}
+
+# 💡 महत्त्वाचा बदल: अकाउंट लेव्हल कॉलसाठी हीच URL लागते
+# तुझ्या मित्राच्या स्क्रिप्टमध्ये कदाचित ही URL बॅकएंडला सेट असेल
+ACCOUNTS_BASE_URL="https://accounts.azuredatabricks.net"
 
 if [ -z "$TARGET_SPN_DISPLAY_NAME" ]; then echo "Error: SPN Name missing"; exit 1; fi
+if [ -z "$ACCOUNT_ID" ]; then echo "Error: ACCOUNT_ID missing"; exit 1; fi
 
 echo "🚀 Starting Reference-based Automation for: $TARGET_SPN_DISPLAY_NAME"
+echo "ℹ️  Using Account ID: $ACCOUNT_ID"
 
 # --- 2. Fetch SPN Data (Step 1 from friend's script) ---
+# इथे आपण $ACCOUNTS_BASE_URL वापरत आहोत जेणेकरून SPN सापडेल
 RESPONSE=$(curl -s -G -X GET \
   -H "Authorization: Bearer $DATABRICKS_TOKEN" \
   --data-urlencode "filter=displayName eq \"$TARGET_SPN_DISPLAY_NAME\"" \
-  "$DATABRICKS_HOST/api/2.0/accounts/$ACCOUNT_ID/scim/v2/ServicePrincipals")
+  "$ACCOUNTS_BASE_URL/api/2.0/accounts/$ACCOUNT_ID/scim/v2/ServicePrincipals")
 
 INTERNAL_ID=$(echo "$RESPONSE" | jq -r '.Resources[0].id // empty')
 APP_ID=$(echo "$RESPONSE" | jq -r '.Resources[0].applicationId // empty')
 
 if [ -z "$INTERNAL_ID" ] || [ "$INTERNAL_ID" == "null" ]; then
-  echo "Error: SPN '$TARGET_SPN_DISPLAY_NAME' not found."
+  echo "Error: SPN '$TARGET_SPN_DISPLAY_NAME' not found in Account Console."
+  echo "Debug Response: $RESPONSE"
   exit 1
 fi
 
@@ -39,13 +44,11 @@ JSON_PAYLOAD=$(cat <<EOF
 EOF
 )
 
-# मित्राच्या स्क्रिप्टमधील नेमका पाथ:
-# /api/2.0/accounts/$ACCOUNT_ID/servicePrincipals/$INTERNAL_ID/credentials/secrets
 SECRET_RESPONSE=$(curl -s -X POST \
   -H "Authorization: Bearer $DATABRICKS_TOKEN" \
   -H "Content-Type: application/json" \
   -d "$JSON_PAYLOAD" \
-  "$DATABRICKS_HOST/api/2.0/accounts/$ACCOUNT_ID/servicePrincipals/$INTERNAL_ID/credentials/secrets")
+  "$ACCOUNTS_BASE_URL/api/2.0/accounts/$ACCOUNT_ID/servicePrincipals/$INTERNAL_ID/credentials/secrets")
 
 OAUTH_SECRET_VALUE=$(echo "$SECRET_RESPONSE" | jq -r '.secret // empty')
 
@@ -57,7 +60,6 @@ fi
 echo "✅ Secret Generated Successfully!"
 
 # --- 4. Storing in Azure Key Vault ---
-# (हा भाग आपण ॲड केलाय जेणेकरून व्हॅल्यू सेव्ह होईल)
 echo "🚀 Storing details in Key Vault: $KV_NAME"
 
 az keyvault secret set --vault-name "$KV_NAME" \
@@ -69,4 +71,4 @@ az keyvault secret set --vault-name "$KV_NAME" \
     --value "$OAUTH_SECRET_VALUE" --output none
 
 echo "----------------------------------------------------"
-echo "🎉 SUCCESS! $TARGET_SPN_DISPLAY_NAME automation complete."
+echo "🎉 SUCCESS! Automation complete."
