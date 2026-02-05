@@ -58,8 +58,8 @@ if [ -z "$ACCOUNT_SPN_ID" ]; then
     -d "{
       \"applicationId\": \"$CLIENT_ID\",
       \"displayName\": \"$SPN_NAME\"
-    }"
-
+    }")
+  
   ACCOUNT_SPN_ID=$(echo "$CREATE_RESPONSE" | jq -r '.id')
 
   if [ -z "$ACCOUNT_SPN_ID" ] || [ "$ACCOUNT_SPN_ID" == "null" ]; then
