@@ -2,46 +2,47 @@
 set -e
 
 SPN_DISPLAY_NAME=$1
+
 if [ -z "$SPN_DISPLAY_NAME" ]; then echo "❌ SPN name missing"; exit 1; fi
 
 echo "🔐 Step 1: Login Check"
 databricks clusters list --page-size 1 > /dev/null
 echo "✅ Login OK"
 
-echo "🔎 Step 2: Searching for SPN..."
+echo "🔎 Step 2: Directly fetching ID for '$SPN_DISPLAY_NAME'..."
 
-# १. सर्व SPNs चे फक्त नाव आणि ID प्रिंट करा (Debug साठी)
-echo "--- Current SPNs accessible by this token ---"
-databricks service-principals list --output json | jq -r 'if type=="array" then .[] | "\(.display_name) (ID: \(.id))" else .service_principals[] | "\(.display_name) (ID: \(.id))" end' || echo "No SPNs visible!"
-echo "--------------------------------------------"
-
-# २. आता तुमचा स्पेसिफिक SPN शोधण्याचा प्रयत्न करा
-RAW_JSON=$(databricks service-principals list --output json)
-
-SPN_ID=$(echo "$RAW_JSON" | jq -r --arg NAME "$SPN_DISPLAY_NAME" '
-  if type=="array" then .[] | select(.display_name==$NAME) | .id
-  else .service_principals[] | select(.display_name==$NAME) | .id end
-' | head -n 1)
+# फिल्टर वापरून थेट त्या नावाचा ID मिळवणे (ही कमांड १०० SPN असले तरी फक्त एकाचाच डेटा आणेल)
+SPN_ID=$(databricks service-principals list --filter "display_name eq '$SPN_DISPLAY_NAME'" --output json | jq -r '
+  if type=="array" then .[0].id 
+  elif .service_principals then .service_principals[0].id 
+  else empty end
+')
 
 if [ -z "$SPN_ID" ] || [ "$SPN_ID" == "null" ]; then
-  echo "❌ Error: SPN '$SPN_DISPLAY_NAME' अजूनही सापडला नाही."
-  echo "💡 उपाय: तुमच्या Databricks Admin ला सांगा की Jenkins युजरला 'Admin' ग्रुपमध्ये ॲड करा किंवा या SPN ला वर्कस्पेसमध्ये 'Manage' परमिशन द्या."
-  exit 1
+    echo "❌ Error: '$SPN_DISPLAY_NAME' नावाचा SPN सापडला नाही. कृपया नाव तपासा."
+    exit 1
 fi
 
-echo "✅ Found ID: $SPN_ID"
+echo "✅ Found SPN ID: $SPN_ID"
 
-# ३. सिक्रेट जनरेट करणे
-echo "🔐 Step 3: Generating Secret..."
+echo "🔐 Step 3: Generating OAuth Secret..."
+# ३. सिक्रेट जनरेट करणे (थेट त्या ID साठी)
 SECRET_JSON=$(databricks service-principals secrets create "$SPN_ID" --output json)
 
-# नवीन CLI मध्ये 'secret' की असू शकते, जुन्यात 'client_secret'
 CLIENT_ID=$(echo "$SECRET_JSON" | jq -r '.client_id')
 CLIENT_SECRET=$(echo "$SECRET_JSON" | jq -r '.secret // .client_secret')
 
+if [ -z "$CLIENT_SECRET" ] || [ "$CLIENT_SECRET" == "null" ]; then
+    echo "❌ Error: Secret जनरेट होऊ शकले नाही. Permissions तपासा."
+    exit 1
+fi
+
+echo "🚀 Step 4: Storing in Azure Key Vault: $KV_NAME"
 # ४. Key Vault मध्ये सेव्ह करणे
-echo "🚀 Step 4: Storing in Key Vault..."
 az keyvault secret set --vault-name "$KV_NAME" --name "${SPN_DISPLAY_NAME}-id" --value "$CLIENT_ID" --output none
 az keyvault secret set --vault-name "$KV_NAME" --name "${SPN_DISPLAY_NAME}-secret" --value "$CLIENT_SECRET" --output none
 
-echo "🎉 यशस्वीपणे पूर्ण झाले!"
+echo "----------------------------------------------------"
+echo "🎉 SUCCESS! $SPN_DISPLAY_NAME साठी काम पूर्ण झाले."
+echo "ID: $SPN_ID"
+echo "----------------------------------------------------"
