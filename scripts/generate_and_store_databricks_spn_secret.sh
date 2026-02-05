@@ -1,77 +1,55 @@
 #!/bin/bash
 set -e
 
-# --- 1. Setup ---
+# --- 1. CONFIGURATION ---
 TARGET_SPN_DISPLAY_NAME=$1
-ACCOUNT_ID=${DATABRICKS_ACCOUNT_ID}
-ACCOUNTS_BASE_URL="https://accounts.azuredatabricks.net"
+WORKSPACE_URL=${DATABRICKS_HOST%/} # e.g., https://adb-xxx.azuredatabricks.net
+TOKEN=${DATABRICKS_ADMIN_TOKEN}
 
-if [ -z "$TARGET_SPN_DISPLAY_NAME" ]; then echo "Error: SPN Name missing"; exit 1; fi
-if [ -z "$ACCOUNT_ID" ]; then echo "Error: ACCOUNT_ID missing"; exit 1; fi
+echo "🚀 Starting Workspace-level Secret Generation for: $TARGET_SPN_DISPLAY_NAME"
 
-echo "🚀 Starting Reference-based Automation for: $TARGET_SPN_DISPLAY_NAME"
+# --- 2. FIND WORKSPACE-LEVEL SPN ID ---
+# डॉक्युमेंटनुसार आधी वर्कस्पेसमध्ये तो SPN शोधणे गरजेचे आहे
+echo "🔎 Step 1: Finding Workspace-level ID..."
+SPN_DATA=$(curl -s -X GET \
+  -H "Authorization: Bearer $TOKEN" \
+  "$WORKSPACE_URL/api/2.0/preview/scim/v2/ServicePrincipals?filter=displayName+eq+%22$TARGET_SPN_DISPLAY_NAME%22")
 
-# --- 2. GET CORRECT TOKEN (ही स्टेप महत्त्वाची आहे) ---
-echo "🔐 Fetching Account Management Token from Azure..."
+# हा तो 'Internal Workspace ID' आहे जो सीक्रेट बनवण्यासाठी लागतो
+INTERNAL_WS_ID=$(echo "$SPN_DATA" | jq -r '.Resources[0].id // empty')
+APPLICATION_ID=$(echo "$SPN_DATA" | jq -r '.Resources[0].applicationId // empty')
 
-# Azure CLI कडून डेटाब्रिक्स अकाउंट मॅनेजमेंटसाठी टोकन मिळवणे
-# हे टोकन 401 एरर कायमचा घालवेल
-DB_TOKEN=$(az account get-access-token \
-  --resource 2ff814a6-3304-4ab8-85cb-cd0e6f879c1d \
-  --query "accessToken" -o tsv)
-
-if [ -z "$DB_TOKEN" ]; then
-    echo "❌ Error: Azure कडून टोकन मिळाले नाही."
+if [ -z "$INTERNAL_WS_ID" ] || [ "$INTERNAL_WS_ID" == "null" ]; then
+    echo "❌ Error: SPN '$TARGET_SPN_DISPLAY_NAME' वर्कस्पेसमध्ये सापडला नाही."
     exit 1
 fi
-echo "✅ Token obtained successfully."
+echo "✅ Found Workspace ID: $INTERNAL_WS_ID"
 
-# --- 3. Fetch SPN Data (Using Friend's logic) ---
-echo "🔎 Searching for SPN..."
-RESPONSE=$(curl -s -G -X GET \
-  -H "Authorization: Bearer $DB_TOKEN" \
-  --data-urlencode "filter=displayName eq \"$TARGET_SPN_DISPLAY_NAME\"" \
-  "$ACCOUNTS_BASE_URL/api/2.0/accounts/$ACCOUNT_ID/scim/v2/ServicePrincipals")
+# --- 3. GENERATE SECRET (As per Microsoft Documentation) ---
+# हाच तो एंडपॉइंट आहे जो तुझ्या स्क्रीनशॉटमधील टॅबमध्ये सीक्रेट दाखवेल
+echo "🔐 Step 2: Generating OAuth Secret in Workspace..."
+API_PATH="$WORKSPACE_URL/api/2.0/servicePrincipals/$INTERNAL_WS_ID/secrets"
 
-INTERNAL_ID=$(echo "$RESPONSE" | jq -r '.Resources[0].id // empty')
-APP_ID=$(echo "$RESPONSE" | jq -r '.Resources[0].applicationId // empty')
-
-if [ -z "$INTERNAL_ID" ] || [ "$INTERNAL_ID" == "null" ]; then
-  echo "❌ Error: SPN '$TARGET_SPN_DISPLAY_NAME' not found."
-  echo "Debug Response: $RESPONSE"
-  exit 1
-fi
-echo "✅ Found IDs: Internal=$INTERNAL_ID, App=$APP_ID"
-
-# --- 4. Generate Secret (Using Friend's logic) ---
-echo "🔐 Generating OAuth Secret..."
-JSON_PAYLOAD=$(cat <<EOF
-{
-  "lifetime_seconds": 31536000,
-  "comment": "oauth-secret-for-$TARGET_SPN_DISPLAY_NAME"
-}
-EOF
-)
-
-SECRET_RESPONSE=$(curl -s -X POST \
-  -H "Authorization: Bearer $DB_TOKEN" \
+RESPONSE=$(curl -s -X POST \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d "$JSON_PAYLOAD" \
-  "$ACCOUNTS_BASE_URL/api/2.0/accounts/$ACCOUNT_ID/servicePrincipals/$INTERNAL_ID/credentials/secrets")
+  -d "{\"comment\": \"Created via Automation for $TARGET_SPN_DISPLAY_NAME\"}" \
+  "$API_PATH")
 
-OAUTH_SECRET_VALUE=$(echo "$SECRET_RESPONSE" | jq -r '.secret // empty')
+SECRET_VALUE=$(echo "$RESPONSE" | jq -r '.secret // empty')
 
-if [ -z "$OAUTH_SECRET_VALUE" ] || [ "$OAUTH_SECRET_VALUE" == "null" ]; then
-  echo "❌ Failed to generate secret. Response: $SECRET_RESPONSE"
-  exit 1
+if [ -z "$SECRET_VALUE" ] || [ "$SECRET_VALUE" == "null" ]; then
+    echo "❌ Error: सीक्रेट बनवता आले नाही. रिस्पॉन्स तपासा:"
+    echo "$RESPONSE"
+    exit 1
 fi
+
 echo "✅ Secret Created Successfully!"
 
-# --- 5. Storing in Azure Key Vault ---
-echo "🚀 Storing details in Key Vault: $KV_NAME"
-
-az keyvault secret set --vault-name "$KV_NAME" --name "${TARGET_SPN_DISPLAY_NAME}-dbx-id" --value "$APP_ID" --output none
-az keyvault secret set --vault-name "$KV_NAME" --name "${TARGET_SPN_DISPLAY_NAME}-dbx-secret" --value "$OAUTH_SECRET_VALUE" --output none
+# --- 4. STORE IN KEY VAULT ---
+echo "🚀 Storing in Azure Key Vault..."
+az keyvault secret set --vault-name "$KV_NAME" --name "${TARGET_SPN_DISPLAY_NAME}-id" --value "$APPLICATION_ID" --output none
+az keyvault secret set --vault-name "$KV_NAME" --name "${TARGET_SPN_DISPLAY_NAME}-secret" --value "$SECRET_VALUE" --output none
 
 echo "----------------------------------------------------"
-echo "🎉 SUCCESS! $TARGET_SPN_DISPLAY_NAME automation complete."
+echo "🎉 SUCCESS! आता तुझ्या वर्कस्पेस UI मध्ये 'Secrets' टॅब रिफ्रेश करून बघ."
