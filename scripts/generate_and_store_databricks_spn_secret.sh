@@ -33,17 +33,17 @@ if [ -z "$SPN_ID" ] || [ "$SPN_ID" == "null" ]; then
   exit 1
 fi
 
-echo "✅ Databricks SPN ID resolved"
+echo "✅ Databricks SPN ID resolved: $SPN_ID"
 
 # -------------------------------------------------
-# 2️⃣ Generate Databricks OAuth secret
+# 2️⃣ Generate OAuth secret (✅ CORRECT ENDPOINT)
 # -------------------------------------------------
 echo "🔐 Generating Databricks OAuth secret..."
 
 SECRET_RESPONSE=$(curl -s -X POST \
   -H "Authorization: Bearer $DATABRICKS_ADMIN_TOKEN" \
   -H "Content-Type: application/json" \
-  "$DATABRICKS_HOST/api/2.0/oauth2/secrets" \
+  "$DATABRICKS_HOST/api/2.0/preview/oauth2/secrets" \
   -d "{
         \"service_principal_id\": \"$SPN_ID\"
       }")
@@ -53,6 +53,8 @@ OAUTH_CLIENT_SECRET=$(echo "$SECRET_RESPONSE" | jq -r '.client_secret')
 
 if [ -z "$OAUTH_CLIENT_SECRET" ] || [ "$OAUTH_CLIENT_SECRET" == "null" ]; then
   echo "❌ OAuth secret generation failed"
+  echo "Databricks response:"
+  echo "$SECRET_RESPONSE"
   exit 1
 fi
 
