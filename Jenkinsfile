@@ -82,22 +82,6 @@ pipeline {
         }
       }
     }
-    
-    // stage('Add External SPN to Databricks Workspace') {
-    //   steps {
-    //     withCredentials([
-    //       string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
-    //       string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_TOKEN')
-    //     ]) {
-    //       sh '''
-    //         chmod +x scripts/add_external_spn_to_databricks_workspace.sh
-    //         scripts/add_external_spn_to_databricks_workspace.sh \
-    //           ${PRODUCT} \
-    //           ${CUSTOMER_CODE}
-    //       '''
-    //     }
-    //   }
-    // }
 
     stage('assign_spn_to_workspace.sh') {
       steps {
@@ -119,8 +103,7 @@ pipeline {
         }
       }
     }
-
-
+  
     
     stage('Create Databricks Account SPN & OAuth Secret') {
       steps {
