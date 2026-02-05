@@ -56,9 +56,9 @@ if [ -z "$ACCOUNT_SPN_ID" ]; then
     -H "Content-Type: application/json" \
     "$DATABRICKS_HOST/api/2.0/accounts/$ACCOUNT_ID/servicePrincipals" \
     -d "{
-          \"application_id\": \"$CLIENT_ID\",
-          \"display_name\": \"$SPN_NAME\"
-        }")
+      \"applicationId\": \"$CLIENT_ID\",
+      \"displayName\": \"$SPN_NAME\"
+    }"
 
   ACCOUNT_SPN_ID=$(echo "$CREATE_RESPONSE" | jq -r '.id')
 
