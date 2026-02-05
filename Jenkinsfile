@@ -103,8 +103,7 @@ pipeline {
       steps {
         withCredentials([
           string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_TOKEN'),
-          string(credentialsId: 'DATABRICKS_ACCOUNT_ID', variable: 'ACCOUNT_ID'),
-          string(credentialsId: 'AZURE_CLIENT_ID', variable: 'CLIENT_ID')
+          string(credentialsId: 'DATABRICKS_ACCOUNT_ID', variable: 'ACCOUNT_ID')
         ]) {
           withEnv([
             "PRODUCT=${params.PRODUCT}",
@@ -119,6 +118,7 @@ pipeline {
         }
       }
     }
+
 
     stage('Create Databricks OAuth Secret') {
       steps {
