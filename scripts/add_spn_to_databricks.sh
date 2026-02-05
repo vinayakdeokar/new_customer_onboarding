@@ -8,28 +8,28 @@ SPN_NAME="sp-${PRODUCT}-${CUSTOMER}"
 
 echo "Adding SPN to Databricks workspace: $SPN_NAME"
 
-# 1. Get Azure SPN clientId (appId)
-CLIENT_ID=$(az ad sp show \
-  --id "$SPN_NAME" \
-  --query appId -o tsv)
 
-echo "Client ID: $CLIENT_ID"
+CLIENT_ID=$(az ad sp list \
+  --display-name "$SPN_NAME" \
+  --query "[0].appId" -o tsv)
 
-# 2. Get Databricks access token using Azure login (Jenkins SPN)
-DATABRICKS_TOKEN=$(az account get-access-token \
-  --resource 2ff814a6-3304-4ab8-85cb-cd0e6f879c1d \
-  --query accessToken -o tsv)
+if [ -z "$CLIENT_ID" ]; then
+  echo "ERROR: Azure SPN $SPN_NAME not found in Entra ID"
+  exit 1
+fi
 
-# 3. Add SPN to Databricks workspace via SCIM API
-curl -s -o /dev/null -w "%{http_code}" \
-  -X POST \
-  "${DATABRICKS_HOST}/api/2.0/preview/scim/v2/ServicePrincipals" \
-  -H "Authorization: Bearer ${DATABRICKS_TOKEN}" \
-  -H "Content-Type: application/json" \
-  -d "{
-    \"applicationId\": \"${CLIENT_ID}\",
-    \"displayName\": \"${SPN_NAME}\"
-  }"
+echo "Found Azure SPN Client ID: $CLIENT_ID"
 
-echo ""
-echo "SPN ${SPN_NAME} added to Databricks workspace (or already exists)."
+
+if databricks service-principals list | grep -q "$CLIENT_ID"; then
+  echo "SPN already exists in Databricks workspace"
+  exit 0
+fi
+
+
+echo "Creating SPN in Databricks workspace"
+databricks service-principals create \
+  --application-id "$CLIENT_ID" \
+  --display-name "$SPN_NAME"
+
+echo "SPN $SPN_NAME successfully added to Databricks workspace"
