@@ -28,11 +28,9 @@ pipeline {
             ${PRODUCT} \
             ${CUSTOMER_CODE}
         '''
-
         script {
           def status = readFile('customer_status.env')
           if (status.contains("CUSTOMER_EXISTS=true")) {
-            echo "Customer already onboarded. Stopping pipeline."
             currentBuild.result = 'SUCCESS'
             error("STOP_PIPELINE")
           }
@@ -106,7 +104,8 @@ pipeline {
         ]) {
           sh '''
             export TARGET_SPN_DISPLAY_NAME="sp-m360-vinayak-002"
-            chmod +x scripts/dbx_spn_discover.sh scripts/dbx_spn_generate_secret.sh
+            chmod +x scripts/dbx_spn_discover.sh
+            chmod +x scripts/dbx_spn_generate_secret.sh
             scripts/dbx_spn_discover.sh
             scripts/dbx_spn_generate_secret.sh
           '''
@@ -114,18 +113,12 @@ pipeline {
       }
     }
 
-
-
-
-
-  
-    
     // stage('Generate & Store Databricks SPN OAuth Secret') {
     //   steps {
     //     withCredentials([
     //       string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
     //       string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_ADMIN_TOKEN'),
-    //       string(credentialsId: 'DATABRICKS_ACCOUNT_ID', variable: 'DATABRICKS_ACCOUNT_ID'), // 👈 ही नवीन लाइन ॲड केली आहे
+    //       string(credentialsId: 'DATABRICKS_ACCOUNT_ID', variable: 'DATABRICKS_ACCOUNT_ID'),
     //       string(credentialsId: 'kv-name', variable: 'KV_NAME')
     //     ]) {
     //       sh '''
@@ -134,6 +127,7 @@ pipeline {
     //       '''
     //     }
     //   }
-    }
+    // }
+
   }
 }
