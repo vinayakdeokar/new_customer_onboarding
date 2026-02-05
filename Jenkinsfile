@@ -91,7 +91,7 @@ pipeline {
           string(credentialsId: 'DATABRICKS_CLIENT_SECRET', variable: 'DATABRICKS_CLIENT_SECRET'),
           string(credentialsId: 'DATABRICKS_TENANT_ID', variable: 'DATABRICKS_TENANT_ID'),
           string(credentialsId: 'AZURE_SPN_CLIENT_ID', variable: 'SPN_CLIENT_ID'),
-          string(credentialsId: 'AZURE_SPN_NAME', variable: 'SPN_NAME')
+          string(credentialsId: 'AZURE_CLIENT_ID', variable: 'SPN_NAME')
         ]) {
           sh '''
             chmod +x scripts/databricks_login_and_add_spn.sh
