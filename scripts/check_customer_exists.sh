@@ -1,46 +1,60 @@
-# #!/bin/bash
-# set -e
-
-# PRODUCT=$1
-# CUSTOMER=$2
-
-# FILE="metadata/customers/${PRODUCT}-${CUSTOMER}.json"
-
-# echo "Checking customer metadata: $FILE"
-
-# if [ -f "$FILE" ]; then
-#   echo "Customer already exists in metadata."
-#   echo "CUSTOMER_EXISTS=true" > customer_status.env
-# else
-#   echo "Customer NOT found in metadata."
-#   echo "CUSTOMER_EXISTS=false" > customer_status.env
-# fi
-
 #!/bin/bash
 set -e
 
-PRODUCT=$1
-CUSTOMER=$2
+PRODUCT="$1"
+CUSTOMER="$2"
 
-FILE="metadata/customers/customers.json"
+JSON_FILE="metadata/customers/customer.json"
+STATUS_FILE="customer_status.env"
 
-echo "Checking customer in JSON: product=$PRODUCT customer=$CUSTOMER"
+echo "Checking customer in JSON: product=${PRODUCT}, customer=${CUSTOMER}"
 
-if [ ! -f "$FILE" ]; then
-  echo "ERROR: customers.json not found"
+if [ ! -f "$JSON_FILE" ]; then
+  echo "ERROR: customer.json not found"
   exit 1
 fi
 
-FOUND=$(jq -r \
-  --arg product "$PRODUCT" \
-  --arg customer "$CUSTOMER" \
-  '.customers[] | select(.product==$product and .customer_code==$customer) | .customer_code' \
-  "$FILE")
+RESULT=$(jq -r --arg p "$PRODUCT" --arg c "$CUSTOMER" '
+  .customers[]
+  | select(.product == $p and .customer_code == $c)
+' "$JSON_FILE")
 
-if [ -n "$FOUND" ]; then
-  echo "Customer found in metadata JSON"
-  echo "CUSTOMER_EXISTS=true" > customer_status.env
-else
+if [ -z "$RESULT" ]; then
   echo "Customer NOT found in metadata JSON"
-  echo "CUSTOMER_EXISTS=false" > customer_status.env
+  echo "CUSTOMER_EXISTS=false" > "$STATUS_FILE"
+  exit 0
 fi
+
+# Extract fields
+CUSTOMER_CODE=$(echo "$RESULT" | jq -r '.customer_code')
+PRODUCT_NAME=$(echo "$RESULT" | jq -r '.product')
+ENVIRONMENT=$(echo "$RESULT" | jq -r '.environment')
+GROUP_NAME=$(echo "$RESULT" | jq -r '.group')
+SPN_NAME=$(echo "$RESULT" | jq -r '.spn')
+
+GROUP_PERMISSIONS=$(echo "$RESULT" | jq -r '.group_permissions | join(",")')
+SPN_PERMISSIONS=$(echo "$RESULT" | jq -r '.spn_permissions | join(",")')
+
+# Print to console (for visibility)
+echo "CUSTOMER_EXISTS=true"
+echo "CUSTOMER_CODE=$CUSTOMER_CODE"
+echo "PRODUCT=$PRODUCT_NAME"
+echo "ENVIRONMENT=$ENVIRONMENT"
+echo "GROUP_NAME=$GROUP_NAME"
+echo "GROUP_PERMISSIONS=$GROUP_PERMISSIONS"
+echo "SPN_NAME=$SPN_NAME"
+echo "SPN_PERMISSIONS=$SPN_PERMISSIONS"
+
+# Write to env file (for pipeline use)
+cat <<EOF > "$STATUS_FILE"
+CUSTOMER_EXISTS=true
+CUSTOMER_CODE=$CUSTOMER_CODE
+PRODUCT=$PRODUCT_NAME
+ENVIRONMENT=$ENVIRONMENT
+GROUP_NAME=$GROUP_NAME
+GROUP_PERMISSIONS=$GROUP_PERMISSIONS
+SPN_NAME=$SPN_NAME
+SPN_PERMISSIONS=$SPN_PERMISSIONS
+EOF
+
+echo "Details written to $STATUS_FILE"
