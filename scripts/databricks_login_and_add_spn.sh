@@ -1,42 +1,49 @@
 #!/bin/bash
 set -e
 
-echo "🔐 Step 1: Setting Databricks authentication context (CLI)"
+PRODUCT=$1
+CUSTOMER=$2
 
-# Databricks CLI context (already configured in Jenkins)
-export DATABRICKS_HOST="$DATABRICKS_HOST"
-export DATABRICKS_CLIENT_ID="$DATABRICKS_CLIENT_ID"
-export DATABRICKS_CLIENT_SECRET="$DATABRICKS_CLIENT_SECRET"
-export DATABRICKS_TENANT_ID="$DATABRICKS_TENANT_ID"
+if [ -z "$PRODUCT" ] || [ -z "$CUSTOMER" ]; then
+  echo "❌ PRODUCT or CUSTOMER missing"
+  exit 1
+fi
 
-# ---- CLI login validation (same as your old script) ----
+SPN_NAME="sp-${PRODUCT}-${CUSTOMER}"
+
+echo "🔎 Target Azure SPN name: $SPN_NAME"
+
+# --------------------------------------------------
+# Step 1️⃣ Azure login (already done earlier, but safe)
+# --------------------------------------------------
+az account show > /dev/null
+
+# --------------------------------------------------
+# Step 2️⃣ Find Azure SPN by name
+# --------------------------------------------------
+SPN_CLIENT_ID=$(az ad sp list \
+  --display-name "$SPN_NAME" \
+  --query "[0].appId" \
+  -o tsv)
+
+if [ -z "$SPN_CLIENT_ID" ]; then
+  echo "❌ Azure SPN not found: $SPN_NAME"
+  exit 1
+fi
+
+echo "✅ Azure SPN found"
+echo "   ➜ Client ID: $SPN_CLIENT_ID"
+
+# --------------------------------------------------
+# Step 3️⃣ Databricks CLI login check (same as before)
+# --------------------------------------------------
 databricks clusters list > /dev/null
 echo "✅ Databricks CLI login successful"
 
-# -------------------------------------------------------
-# Step 2: Validate Admin Token (this is REAL auth for SCIM)
-# -------------------------------------------------------
-if [ -z "$DATABRICKS_ADMIN_TOKEN" ]; then
-  echo "❌ DATABRICKS_ADMIN_TOKEN missing"
-  exit 1
-fi
-echo "✅ Databricks REST auth token available"
-
-# -------------------------------------------------------
-# Step 3: Inputs
-# -------------------------------------------------------
-SPN_CLIENT_ID=$1
-SPN_DISPLAY_NAME=$2
-
-if [ -z "$SPN_CLIENT_ID" ]; then
-  echo "❌ SPN client ID not provided"
-  exit 1
-fi
-
-# -------------------------------------------------------
-# Step 4: Check SPN exists in Databricks
-# -------------------------------------------------------
-echo "🔎 Checking if SPN already exists in Databricks workspace..."
+# --------------------------------------------------
+# Step 4️⃣ Check SPN exists in Databricks
+# --------------------------------------------------
+echo "🔎 Checking SPN in Databricks workspace..."
 
 EXISTING=$(curl -s \
   -H "Authorization: Bearer $DATABRICKS_ADMIN_TOKEN" \
@@ -45,13 +52,13 @@ EXISTING=$(curl -s \
 COUNT=$(echo "$EXISTING" | jq '.Resources | length')
 
 if [ "$COUNT" -gt 0 ]; then
-  echo "✅ SPN already exists in Databricks (External). Skipping add."
+  echo "✅ SPN already exists in Databricks (External). Skipping."
   exit 0
 fi
 
-# -------------------------------------------------------
-# Step 5: Add SPN to Databricks
-# -------------------------------------------------------
+# --------------------------------------------------
+# Step 5️⃣ Add SPN to Databricks
+# --------------------------------------------------
 echo "➕ Adding Azure SPN to Databricks workspace..."
 
 curl -s -X POST \
@@ -60,7 +67,7 @@ curl -s -X POST \
   -H "Content-Type: application/json" \
   -d "{
         \"applicationId\": \"$SPN_CLIENT_ID\",
-        \"displayName\": \"$SPN_DISPLAY_NAME\"
+        \"displayName\": \"$SPN_NAME\"
       }"
 
-echo "🎉 SPN successfully added to Databricks (Source = External)"
+echo "🎉 SPN added to Databricks (Source = External)"
