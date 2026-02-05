@@ -98,9 +98,20 @@ pipeline {
         }
       }
     }
-
-
-
     
+    stage('Create Databricks OAuth Secret') {
+      steps {
+        withCredentials([
+          string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
+          string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_ADMIN_TOKEN')
+        ]) {
+          sh '''
+            chmod +x scripts/create_databricks_oauth_secret.sh
+            scripts/create_databricks_oauth_secret.sh sp-m360-vinayak-002 90
+          '''
+        }
+      }
+    }
+
   }
 }
