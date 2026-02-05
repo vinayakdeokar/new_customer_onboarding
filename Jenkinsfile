@@ -67,33 +67,35 @@ pipeline {
       }
     }
 
-    stage('Databricks Login') {
+    // stage('Databricks Login') {
+    //   steps {
+    //     withCredentials([
+    //       string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
+    //       string(credentialsId: 'DATABRICKS_CLIENT_ID', variable: 'DATABRICKS_CLIENT_ID'),
+    //       string(credentialsId: 'DATABRICKS_CLIENT_SECRET', variable: 'DATABRICKS_CLIENT_SECRET'),
+    //       string(credentialsId: 'DATABRICKS_TENANT_ID', variable: 'DATABRICKS_TENANT_ID')
+    //     ]) {
+    //       sh '''
+    //         chmod +x scripts/databricks_login.sh
+    //         scripts/databricks_login.sh
+    //       '''
+    //     }
+    //   }
+    // }
+
+    stage('Databricks SPN Setup') {
       steps {
         withCredentials([
           string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
           string(credentialsId: 'DATABRICKS_CLIENT_ID', variable: 'DATABRICKS_CLIENT_ID'),
           string(credentialsId: 'DATABRICKS_CLIENT_SECRET', variable: 'DATABRICKS_CLIENT_SECRET'),
-          string(credentialsId: 'DATABRICKS_TENANT_ID', variable: 'DATABRICKS_TENANT_ID')
+          string(credentialsId: 'DATABRICKS_TENANT_ID', variable: 'DATABRICKS_TENANT_ID'),
+          string(credentialsId: 'AZURE_SPN_CLIENT_ID', variable: 'SPN_CLIENT_ID'),
+          string(credentialsId: 'AZURE_SPN_NAME', variable: 'SPN_NAME')
         ]) {
           sh '''
-            chmod +x scripts/databricks_login.sh
-            scripts/databricks_login.sh
-          '''
-        }
-      }
-    }
-
-    stage('Add External SPN by Application ID') {
-      steps {
-        withCredentials([
-          string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_ADMIN_TOKEN'),
-          string(credentialsId: 'DATABRICKS_ACCOUNT_ID', variable: 'DATABRICKS_ACCOUNT_ID'),
-          string(credentialsId: 'DATABRICKS_WORKSPACE_ID', variable: 'DATABRICKS_WORKSPACE_ID'),
-          string(credentialsId: 'AZURE_CLIENT_ID', variable: 'AZURE_CLIENT_ID')
-        ]) {
-          sh '''
-            chmod +x scripts/add_external_spn_to_databricks_workspace.sh
-            scripts/add_external_spn_to_databricks_workspace.sh
+            chmod +x scripts/databricks_login_and_add_spn.sh
+            scripts/databricks_login_and_add_spn.sh "$SPN_CLIENT_ID" "$SPN_NAME"
           '''
         }
       }
@@ -104,25 +106,25 @@ pipeline {
 
   
     
-    stage('Create Databricks Account SPN & OAuth Secret') {
-      steps {
-        withCredentials([
-          string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_TOKEN'),
-          string(credentialsId: 'DATABRICKS_ACCOUNT_ID', variable: 'ACCOUNT_ID')
-        ]) {
-          withEnv([
-            "PRODUCT=${params.PRODUCT}",
-            "CUSTOMER=${params.CUSTOMER_CODE}",
-            "DATABRICKS_HOST=https://accounts.azuredatabricks.net"
-          ]) {
-            sh '''
-              chmod +x scripts/create_account_spn_and_oauth_secret.sh
-              scripts/create_account_spn_and_oauth_secret.sh
-            '''
-          }
-        }
-      }
-    }
+    // stage('Create Databricks Account SPN & OAuth Secret') {
+    //   steps {
+    //     withCredentials([
+    //       string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_TOKEN'),
+    //       string(credentialsId: 'DATABRICKS_ACCOUNT_ID', variable: 'ACCOUNT_ID')
+    //     ]) {
+    //       withEnv([
+    //         "PRODUCT=${params.PRODUCT}",
+    //         "CUSTOMER=${params.CUSTOMER_CODE}",
+    //         "DATABRICKS_HOST=https://accounts.azuredatabricks.net"
+    //       ]) {
+    //         sh '''
+    //           chmod +x scripts/create_account_spn_and_oauth_secret.sh
+    //           scripts/create_account_spn_and_oauth_secret.sh
+    //         '''
+    //       }
+    //     }
+    //   }
+    // }
 
 
   }
