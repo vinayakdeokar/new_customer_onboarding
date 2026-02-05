@@ -83,27 +83,26 @@ pipeline {
       }
     }
 
-    stage('Create External SPN & Assign to Workspace') {
+    stage('Add External SPN by Application ID') {
       steps {
         withCredentials([
           string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_ACCOUNT_TOKEN'),
           string(credentialsId: 'DATABRICKS_ACCOUNT_ID', variable: 'DATABRICKS_ACCOUNT_ID'),
-          string(credentialsId: 'DATABRICKS_WORKSPACE_ID', variable: 'DATABRICKS_WORKSPACE_ID')
-        ])
-        {
+          string(credentialsId: 'DATABRICKS_WORKSPACE_ID', variable: 'DATABRICKS_WORKSPACE_ID'),
+          string(credentialsId: 'AZURE_SPN_APP_ID', variable: 'AZURE_SPN_APP_ID')
+        ]) {
           withEnv([
-            "PRODUCT=${params.PRODUCT}",
-            "CUSTOMER=${params.CUSTOMER_CODE}",
             "DATABRICKS_ACCOUNT_HOST=https://accounts.azuredatabricks.net"
           ]) {
             sh '''
-              chmod +x scripts/create_external_spn_and_assign_to_workspace.sh
-              scripts/create_external_spn_and_assign_to_workspace.sh
+              chmod +x scripts/add_external_spn_by_appid_and_assign.sh
+              scripts/add_external_spn_by_appid_and_assign.sh
             '''
           }
         }
       }
     }
+
 
   
     
