@@ -2,13 +2,10 @@
 set -e
 
 # ----------------------------
-# Databricks CLI Authentication
+# Databricks CLI Authentication (PAT)
 # ----------------------------
-export DATABRICKS_AUTH_TYPE=azure-client-secret
 export DATABRICKS_HOST
-export DATABRICKS_CLIENT_ID
-export DATABRICKS_CLIENT_SECRET
-export DATABRICKS_TENANT_ID
+export DATABRICKS_TOKEN="${DATABRICKS_ADMIN_TOKEN}"
 
 # ----------------------------
 # Inputs
@@ -37,7 +34,7 @@ fi
 echo "✅ Found Azure SPN Client ID: $CLIENT_ID"
 
 # ----------------------------
-# 2️⃣ Check Databricks workspace
+# 2️⃣ Check if SPN already exists in Databricks workspace
 # ----------------------------
 if databricks service-principals list --output json | jq -e \
   ".[] | select(.applicationId==\"$CLIENT_ID\")" > /dev/null; then
@@ -46,7 +43,7 @@ if databricks service-principals list --output json | jq -e \
 fi
 
 # ----------------------------
-# 3️⃣ Create SPN in workspace
+# 3️⃣ Create SPN in Databricks workspace
 # ----------------------------
 echo "🚀 Creating SPN in Databricks workspace..."
 
@@ -54,4 +51,4 @@ databricks service-principals create \
   --application-id "$CLIENT_ID" \
   --display-name "$SPN_NAME"
 
-echo "✅ SPN '$SPN_NAME' added to Databricks workspace"
+echo "✅ SPN '$SPN_NAME' successfully added to Databricks workspace"
