@@ -102,18 +102,24 @@ pipeline {
     stage('assign_spn_to_workspace.sh') {
       steps {
         withCredentials([
-          string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
-          string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_TOKEN')
+          string(credentialsId: 'DATABRICKS_ACCOUNT_TOKEN', variable: 'DATABRICKS_ACCOUNT_TOKEN'),
+          string(credentialsId: 'DATABRICKS_ACCOUNT_ID', variable: 'DATABRICKS_ACCOUNT_ID'),
+          string(credentialsId: 'DATABRICKS_WORKSPACE_ID', variable: 'DATABRICKS_WORKSPACE_ID')
         ]) {
-          sh '''
-            chmod +x scripts/assign_spn_to_workspace.sh
-            scripts/assign_spn_to_workspace.sh \
-              ${PRODUCT} \
-              ${CUSTOMER_CODE}
-          '''
+          withEnv([
+            "PRODUCT=${params.PRODUCT}",
+            "CUSTOMER=${params.CUSTOMER_CODE}",
+            "DATABRICKS_ACCOUNT_HOST=https://accounts.azuredatabricks.net"
+          ]) {
+            sh '''
+              chmod +x scripts/assign_spn_to_workspace.sh
+              scripts/assign_spn_to_workspace.sh
+            '''
+          }
         }
       }
     }
+
 
     
     stage('Create Databricks Account SPN & OAuth Secret') {
