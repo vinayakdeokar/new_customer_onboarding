@@ -3,40 +3,45 @@ set -e
 
 [ -f db_env.sh ] && . db_env.sh
 
-# PRODUCT & CUSTOMER must be present
-if [ -z "$PRODUCT" ] || [ -z "$CUSTOMER" ]; then
-  echo "❌ ERROR: PRODUCT or CUSTOMER not set"
+# REQUIRED:
+# DATABRICKS_HOST=https://accounts.azuredatabricks.net
+# DATABRICKS_TOKEN (Account Admin PAT)
+# ACCOUNT_ID
+# PRODUCT
+# CUSTOMER
+# CLIENT_ID  (Azure SPN Application ID)
+
+if [ -z "$CLIENT_ID" ]; then
+  echo "❌ ERROR: CLIENT_ID (Azure App ID) not set"
   exit 1
 fi
 
-# 🔥 Dynamic SPN name
 TARGET_SPN_DISPLAY_NAME="sp-${PRODUCT}-${CUSTOMER}"
 
 echo "=========================================="
 echo "Fetching ACCOUNT-level SPN"
-echo "SPN Name: $TARGET_SPN_DISPLAY_NAME"
+echo "SPN Name      : $TARGET_SPN_DISPLAY_NAME"
+echo "ApplicationID : $CLIENT_ID"
 echo "=========================================="
 
-RESPONSE=$(curl -s -X GET \
+RESPONSE=$(curl -s \
   -H "Authorization: Bearer $DATABRICKS_TOKEN" \
-  --data-urlencode "filter=displayName eq \"$TARGET_SPN_DISPLAY_NAME\"" \
-  "$DATABRICKS_HOST/api/2.0/accounts/$ACCOUNT_ID/scim/v2/ServicePrincipals")
+  "$DATABRICKS_HOST/api/2.0/accounts/$ACCOUNT_ID/servicePrincipals")
 
-INTERNAL_ID=$(echo "$RESPONSE" | jq -r '.Resources[0].id // empty')
-APP_ID=$(echo "$RESPONSE" | jq -r '.Resources[0].applicationId // empty')
+SPN_INTERNAL_ID=$(echo "$RESPONSE" | jq -r ".[] | select(.application_id==\"$CLIENT_ID\") | .id")
+APP_ID=$(echo "$RESPONSE" | jq -r ".[] | select(.application_id==\"$CLIENT_ID\") | .application_id")
 
-if [ -z "$INTERNAL_ID" ]; then
-  echo "❌ ERROR: SPN '$TARGET_SPN_DISPLAY_NAME' not found in Databricks ACCOUNT"
+if [ -z "$SPN_INTERNAL_ID" ] || [ "$SPN_INTERNAL_ID" == "null" ]; then
+  echo "❌ ERROR: SPN with application_id $CLIENT_ID not found in Databricks ACCOUNT"
   exit 1
 fi
 
 echo "✅ Found account-level SPN"
-echo "   Internal ID    : $INTERNAL_ID"
+echo "   Internal ID    : $SPN_INTERNAL_ID"
 echo "   Application ID : $APP_ID"
 
-# Persist for next step
 {
-  echo "export DATABRICKS_INTERNAL_ID=$INTERNAL_ID"
+  echo "export DATABRICKS_INTERNAL_ID=$SPN_INTERNAL_ID"
   echo "export TARGET_APPLICATION_ID=$APP_ID"
   echo "export TARGET_SPN_DISPLAY_NAME=$TARGET_SPN_DISPLAY_NAME"
 } >> db_env.sh
