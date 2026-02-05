@@ -84,15 +84,19 @@ pipeline {
     }
     
     stage('Add SPN to Databricks Workspace') {
-      steps {
-        sh '''
-          chmod +x scripts/add_spn_to_databricks.sh
-          scripts/add_spn_to_databricks.sh \
-            ${PRODUCT} \
-            ${CUSTOMER_CODE}
-        '''
-      }
+  steps {
+    withCredentials([
+      string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
+      string(credentialsId: 'DATABRICKS_CLIENT_ID', variable: 'DATABRICKS_CLIENT_ID'),
+      string(credentialsId: 'DATABRICKS_CLIENT_SECRET', variable: 'DATABRICKS_CLIENT_SECRET'),
+      string(credentialsId: 'DATABRICKS_TENANT_ID', variable: 'DATABRICKS_TENANT_ID')
+    ]) {
+      sh '''
+        chmod +x scripts/add_spn_to_databricks.sh
+        scripts/add_spn_to_databricks.sh \
+          ${PRODUCT} \
+          ${CUSTOMER_CODE}
+      '''
     }
-
   }
 }
