@@ -97,25 +97,43 @@ pipeline {
       }
     }
 
+    stage('Databricks SPN OAuth Secret (Account Level)') {
+      steps {
+        withCredentials([
+          string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
+          string(credentialsId: 'DATABRICKS_TOKEN', variable: 'DATABRICKS_TOKEN'),
+          string(credentialsId: 'DATABRICKS_ACCOUNT_ID', variable: 'ACCOUNT_ID')
+        ]) {
+          sh '''
+            export TARGET_SPN_DISPLAY_NAME="sp-m360-vinayak-002"
+            chmod +x scripts/dbx_spn_discover.sh scripts/dbx_spn_generate_secret.sh
+            scripts/dbx_spn_discover.sh
+            scripts/dbx_spn_generate_secret.sh
+          '''
+        }
+      }
+    }
+
+
 
 
 
   
     
-    stage('Generate & Store Databricks SPN OAuth Secret') {
-      steps {
-        withCredentials([
-          string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
-          string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_ADMIN_TOKEN'),
-          string(credentialsId: 'DATABRICKS_ACCOUNT_ID', variable: 'DATABRICKS_ACCOUNT_ID'), // 👈 ही नवीन लाइन ॲड केली आहे
-          string(credentialsId: 'kv-name', variable: 'KV_NAME')
-        ]) {
-          sh '''
-            chmod +x scripts/generate_and_store_databricks_spn_secret.sh
-            ./scripts/generate_and_store_databricks_spn_secret.sh "sp-m360-vinayak-002"
-          '''
-        }
-      }
+    // stage('Generate & Store Databricks SPN OAuth Secret') {
+    //   steps {
+    //     withCredentials([
+    //       string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
+    //       string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_ADMIN_TOKEN'),
+    //       string(credentialsId: 'DATABRICKS_ACCOUNT_ID', variable: 'DATABRICKS_ACCOUNT_ID'), // 👈 ही नवीन लाइन ॲड केली आहे
+    //       string(credentialsId: 'kv-name', variable: 'KV_NAME')
+    //     ]) {
+    //       sh '''
+    //         chmod +x scripts/generate_and_store_databricks_spn_secret.sh
+    //         ./scripts/generate_and_store_databricks_spn_secret.sh "sp-m360-vinayak-002"
+    //       '''
+    //     }
+    //   }
     }
   }
 }
