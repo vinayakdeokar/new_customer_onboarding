@@ -107,17 +107,15 @@ pipeline {
         withCredentials([
           string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
           string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_ADMIN_TOKEN'),
+          string(credentialsId: 'DATABRICKS_ACCOUNT_ID', variable: 'DATABRICKS_ACCOUNT_ID'), // 👈 ही नवीन लाइन ॲड केली आहे
           string(credentialsId: 'kv-name', variable: 'KV_NAME')
         ]) {
           sh '''
             chmod +x scripts/generate_and_store_databricks_spn_secret.sh
-            scripts/generate_and_store_databricks_spn_secret.sh "sp-m360-vinayak-002"
+            ./scripts/generate_and_store_databricks_spn_secret.sh "sp-m360-vinayak-002"
           '''
         }
       }
     }
-
-
-
   }
 }
