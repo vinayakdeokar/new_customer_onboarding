@@ -7,7 +7,7 @@ CUSTOMER="$2"
 # Always resolve repo root correctly (Jenkins + local safe)
 BASE_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 
-JSON_FILE="$BASE_DIR/metadata/customers/customer.json"
+JSON_FILE="$BASE_DIR/metadata/customers/customers.json"
 STATUS_FILE="$BASE_DIR/customer_status.env"
 
 echo "Checking customer in JSON"
