@@ -19,16 +19,15 @@ echo "✅ Databricks CLI login OK"
 
 echo "🔎 Step 2: Resolve Databricks SPN ID"
 
-SPN_ID=$(databricks service-principals list \
-  --output json \
-  | jq -r ".[] | select(.display_name==\"$SPN_DISPLAY_NAME\") | .id")
+SPN_ID=$(databricks service-principals list --output json \
+  | jq -r ".service_principals[] | select(.display_name==\"$SPN_DISPLAY_NAME\") | .id")
 
-if [ -z "$SPN_ID" ]; then
-  echo "❌ SPN not found in Databricks"
+if [ -z "$SPN_ID" ] || [ "$SPN_ID" == "null" ]; then
+  echo "❌ SPN not found in Databricks: $SPN_DISPLAY_NAME"
   exit 1
 fi
 
-echo "✅ SPN ID: $SPN_ID"
+echo "✅ SPN ID resolved: $SPN_ID"
 
 echo "🔐 Step 3: Generate OAuth secret using Databricks CLI"
 
