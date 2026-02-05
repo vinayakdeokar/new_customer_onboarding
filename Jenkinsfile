@@ -99,18 +99,37 @@ pipeline {
       }
     }
     
-   stage('Create Databricks OAuth Secret') {
+    stage('Get Account SPN Internal ID') {
       steps {
         withCredentials([
-          string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_ADMIN_TOKEN'),
-          string(credentialsId: 'DATABRICKS_ACCOUNT_ID', variable: 'DATABRICKS_ACCOUNT_ID')
+          string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_TOKEN'),
+          string(credentialsId: 'DATABRICKS_ACCOUNT_ID', variable: 'ACCOUNT_ID')
         ]) {
           withEnv([
-            'DATABRICKS_HOST=https://accounts.azuredatabricks.net'
+            "PRODUCT=${params.PRODUCT}",
+            "CUSTOMER=${params.CUSTOMER_CODE}",
+            "DATABRICKS_HOST=https://accounts.azuredatabricks.net"
           ]) {
             sh '''
-              chmod +x scripts/create_databricks_oauth_secret.sh
-              scripts/create_databricks_oauth_secret.sh sp-m360-vinayak-002 365
+              chmod +x scripts/get_account_spn_internal_id.sh
+              scripts/get_account_spn_internal_id.sh
+            '''
+          }
+        }
+      }
+    }
+    stage('Create Databricks OAuth Secret') {
+      steps {
+        withCredentials([
+          string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_TOKEN'),
+          string(credentialsId: 'DATABRICKS_ACCOUNT_ID', variable: 'ACCOUNT_ID')
+        ]) {
+          withEnv([
+            "DATABRICKS_HOST=https://accounts.azuredatabricks.net"
+          ]) {
+            sh '''
+              chmod +x scripts/create_account_oauth_secret.sh
+              scripts/create_account_oauth_secret.sh 365
             '''
           }
         }
