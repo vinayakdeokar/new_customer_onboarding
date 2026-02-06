@@ -64,8 +64,8 @@ pipeline {
             scripts/pre_databricks_identity_check.sh "${PRODUCT}" "${CUSTOMER_CODE}"
           '''
         }
-
-
+      }
+    }
 
     stage('Databricks SPN Setup') {
       steps {
@@ -80,23 +80,19 @@ pipeline {
         }
       }
     }
-        
 
     // stage('Databricks SPN OAuth Secret (Account Level)') {
     //   steps {
     //     withCredentials([
-    //       // ✅ MUST match script variable name
     //       string(credentialsId: 'DATABRICKS_ACCOUNT_ID', variable: 'DATABRICKS_ACCOUNT_ID'),
-    
-    //       // optional – script uses Azure CLI login, not this token
     //       string(credentialsId: 'AZURE_TENANT_ID', variable: 'AZURE_TENANT_ID')
     //     ]) {
     //       sh '''
     //         export TARGET_SPN_DISPLAY_NAME="sp-m360-vinayak-002"
-    
+    //
     //         chmod +x scripts/dbx_spn_discover.sh
     //         chmod +x scripts/dbx_spn_generate_secret.sh
-    
+    //
     //         scripts/dbx_spn_discover.sh
     //         scripts/dbx_spn_generate_secret.sh
     //       '''
@@ -104,19 +100,18 @@ pipeline {
     //   }
     // }
 
-        stage('Create Schemas & Apply Grants') {
-          steps {
-            withCredentials([
-              string(credentialsId: 'DATABRICKS_SQL_WAREHOUSE_ID', variable: 'DATABRICKS_SQL_WAREHOUSE_ID')
-            ]) {
-              sh '''
-                chmod +x scripts/create_schemas_and_grants.sh
-                scripts/create_schemas_and_grants.sh
-              '''
-            }
-          }
+    stage('Create Schemas & Apply Grants') {
+      steps {
+        withCredentials([
+          string(credentialsId: 'DATABRICKS_SQL_WAREHOUSE_ID', variable: 'DATABRICKS_SQL_WAREHOUSE_ID')
+        ]) {
+          sh '''
+            chmod +x scripts/create_schemas_and_grants.sh
+            scripts/create_schemas_and_grants.sh
+          '''
         }
-
+      }
+    }
 
   }
 }
