@@ -137,9 +137,6 @@ pipeline {
     //   }
     // }
 
-
-    
-    
     stage('Create Schemas & Grants') {
       steps {
         withCredentials([
@@ -158,6 +155,29 @@ pipeline {
         }
       }
     }
+
+
+
+    
+    
+    // stage('Create Schemas & Grants') {
+    //   steps {
+    //     withCredentials([
+    //       string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
+    //       string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_ADMIN_TOKEN'),
+    //       string(credentialsId: 'DATABRICKS_SQL_WAREHOUSE_ID', variable: 'DATABRICKS_SQL_WAREHOUSE_ID'),
+    //       string(credentialsId: 'DATABRICKS_CATALOG_NAME', variable: 'CATALOG_NAME')
+    //     ]) {
+    //       sh '''
+    //         export PRODUCT=${PRODUCT}
+    //         export CUSTOMER_CODE=${CUSTOMER_CODE}
+    
+    //         chmod +x scripts/create_schemas_and_grants.sh
+    //         ./scripts/create_schemas_and_grants.sh
+    //       '''
+    //     }
+    //   }
+    // }
 
 
     
