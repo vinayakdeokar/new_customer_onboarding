@@ -1,38 +1,74 @@
 #!/bin/bash
-set -euo pipefail
-source db_env.sh
+set -e
 
-: "${DATABRICKS_INTERNAL_ID:?Missing INTERNAL ID}"
-: "${HAS_SECRETS:?Missing secret count}"
-: "${DATABRICKS_HOST:?Missing host}"
-: "${DATABRICKS_TOKEN:?Missing token}"
-: "${ACCOUNT_ID:?Missing account id}"
-: "${TARGET_SPN_DISPLAY_NAME:?Missing SPN name}"
-
-if [[ "$HAS_SECRETS" -gt 0 ]]; then
-  echo "ℹ️ OAuth secret already exists. Skipping creation."
-  exit 0
+# --------------------------------------------------
+# 1. Load env
+# --------------------------------------------------
+if [ -f db_env.sh ]; then
+  . ./db_env.sh
+else
+  echo "ERROR: db_env.sh not found"
+  exit 1
 fi
 
-echo "🔐 Generating OAuth secret (Account-level API)"
+: "${TARGET_SPN_DISPLAY_NAME:?missing}"
+: "${DATABRICKS_INTERNAL_ID:?missing}"
+: "${DATABRICKS_ACCOUNT_ID:?missing}"
 
-PAYLOAD=$(jq -n \
-  --arg comment "oauth-secret-for-$TARGET_SPN_DISPLAY_NAME" \
-  '{ lifetime_seconds: 31536000, comment: $comment }')
+ACCOUNTS_BASE_URL="https://accounts.azuredatabricks.net"
+
+echo "-------------------------------------------------------"
+echo "Target SPN        : $TARGET_SPN_DISPLAY_NAME"
+echo "Internal SPN ID   : $DATABRICKS_INTERNAL_ID"
+echo "Account ID        : $DATABRICKS_ACCOUNT_ID"
+echo "-------------------------------------------------------"
+
+# --------------------------------------------------
+# 2. Get TEMP Databricks Account token (IMPORTANT)
+# --------------------------------------------------
+echo "🔐 Generating temporary Databricks Account token via Azure AD..."
+
+DB_TOKEN=$(az account get-access-token \
+  --resource 2ff814a6-3304-4ab8-85cb-cd0e6f879c1d \
+  --query accessToken -o tsv)
+
+if [ -z "$DB_TOKEN" ]; then
+  echo "❌ Failed to obtain Databricks account token"
+  exit 1
+fi
+
+echo "✅ Temporary account token obtained"
+
+# --------------------------------------------------
+# 3. Create OAuth secret (Account-level API)
+# --------------------------------------------------
+echo "🔐 Creating OAuth secret at Databricks Account level..."
 
 RESPONSE=$(curl -sf -X POST \
-  -H "Authorization: Bearer $DATABRICKS_TOKEN" \
+  -H "Authorization: Bearer $DB_TOKEN" \
   -H "Content-Type: application/json" \
-  -d "$PAYLOAD" \
-  "$DATABRICKS_HOST/api/2.0/accounts/$ACCOUNT_ID/servicePrincipals/$DATABRICKS_INTERNAL_ID/credentials/secrets")
+  -d "{
+        \"lifetime_seconds\": 31536000,
+        \"comment\": \"Rotated via Jenkins for $TARGET_SPN_DISPLAY_NAME\"
+      }" \
+  "$ACCOUNTS_BASE_URL/api/2.0/accounts/$DATABRICKS_ACCOUNT_ID/servicePrincipals/$DATABRICKS_INTERNAL_ID/credentials/secrets")
 
 OAUTH_SECRET_VALUE=$(echo "$RESPONSE" | jq -r '.secret // empty')
 
-if [[ -z "$OAUTH_SECRET_VALUE" ]]; then
-  echo "❌ Secret generation failed"
+# --------------------------------------------------
+# 4. Validation (Gatekeeper)
+# --------------------------------------------------
+if [ -z "$OAUTH_SECRET_VALUE" ]; then
+  echo "❌ Databricks did not return a valid secret"
   echo "Response: $RESPONSE"
   exit 1
 fi
 
-echo "export FINAL_OAUTH_SECRET=\"$OAUTH_SECRET_VALUE\"" >> db_env.sh
-echo "✅ OAuth secret generated (one-time)"
+# --------------------------------------------------
+# 5. Persist for next stages
+# --------------------------------------------------
+echo "export FINAL_OAUTH_SECRET=$OAUTH_SECRET_VALUE" >> db_env.sh
+
+echo "-------------------------------------------------------"
+echo "✅ SUCCESS: OAuth secret generated using TEMP token"
+echo "-------------------------------------------------------"
