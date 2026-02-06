@@ -1,31 +1,28 @@
-[Pipeline] }
-[Pipeline] // withCredentials
-[Pipeline] }
-[Pipeline] // stage
-[Pipeline] stage
-[Pipeline] { (Create Schemas & Grants)
-[Pipeline] withCredentials
-Masking supported pattern matches of $DATABRICKS_HOST or $DATABRICKS_ADMIN_TOKEN or $DATABRICKS_SQL_WAREHOUSE_ID or $CATALOG_NAME
-[Pipeline] {
-[Pipeline] sh
-+ export PRODUCT=m360
-+ export CUSTOMER_CODE=vinayak-002
-+ chmod +x scripts/create_schemas_and_grants.sh
-+ ./scripts/create_schemas_and_grants.sh
-------------------------------------------------
-Catalog   : ****
-Schemas   : m360-vinayak-002_bronze | m360-vinayak-002_silver | m360-vinayak-002_gold
-------------------------------------------------
-[Pipeline] }
-[Pipeline] // withCredentials
-[Pipeline] }
-[Pipeline] // stage
-[Pipeline] }
-[Pipeline] // withEnv
-[Pipeline] }
-[Pipeline] // withEnv
-[Pipeline] }
-[Pipeline] // node
-[Pipeline] End of Pipeline
-ERROR: script returned exit code 1
-Finished: FAILURE
+#!/usr/bin/env bash
+set -euo pipefail
+
+# ===== REQUIRED ENV =====
+: "${PRODUCT:?}"
+: "${CUSTOMER_CODE:?}"
+: "${CATALOG_NAME:?}"
+: "${DATABRICKS_HOST:?}"
+: "${DATABRICKS_ADMIN_TOKEN:?}"
+: "${DATABRICKS_SQL_WAREHOUSE_ID:?}"
+
+BRONZE="${PRODUCT}-${CUSTOMER_CODE}_bronze"
+SILVER="${PRODUCT}-${CUSTOMER_CODE}_silver"
+GOLD="${PRODUCT}-${CUSTOMER_CODE}_gold"
+
+echo "------------------------------------------------"
+echo "Catalog : ${CATALOG_NAME}"
+echo "Schemas : ${BRONZE} | ${SILVER} | ${GOLD}"
+echo "------------------------------------------------"
+
+SQL=$(cat <<EOF
+USE CATALOG \`${CATALOG_NAME}\`;
+
+-- BRONZE
+CREATE SCHEMA IF NOT EXISTS \`${BRONZE}\`;
+
+-- SILVER
+CREATE SCHEMA IF NOT EXISTS \`${SILVER}\`;
