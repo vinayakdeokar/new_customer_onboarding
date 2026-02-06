@@ -100,6 +100,25 @@ pipeline {
     //   }
     // }
 
+    stage('Ensure Databricks Group') {
+      steps {
+        withCredentials([
+          string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
+          string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_ADMIN_TOKEN')
+        ]) {
+          sh '''
+            export PRODUCT=m360
+            export CUSTOMER_CODE=vinayak-002
+    
+            chmod +x scripts/databricks_add_group.sh
+            ./scripts/databricks_add_group.sh
+          '''
+        }
+      }
+    }
+
+    
+    
     stage('Create Schemas & Grants') {
       steps {
         withCredentials([
