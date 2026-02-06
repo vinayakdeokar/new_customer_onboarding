@@ -42,3 +42,24 @@ echo ""
 echo "MANUAL ACTION REQUIRED (ONE TIME):"
 echo ""
 exit 1
+
+# --------------------------------------------------
+# Persist Databricks context for next stages
+# --------------------------------------------------
+
+if [ -z "$CATALOG_NAME" ]; then
+  echo "ERROR: CATALOG_NAME not provided"
+  exit 1
+fi
+
+echo "export DATA_GROUP=${GROUP_NAME}" > db_env.sh
+echo "export CATALOG_NAME=${CATALOG_NAME}" >> db_env.sh
+echo "export CUSTOMER_CODE=${CUSTOMER}" >> db_env.sh
+
+echo "--------------------------------------------------"
+echo "Databricks context saved:"
+echo "  CATALOG_NAME = $CATALOG_NAME"
+echo "  DATA_GROUP   = $GROUP_NAME"
+echo "  CUSTOMER     = $CUSTOMER"
+echo "--------------------------------------------------"
+
