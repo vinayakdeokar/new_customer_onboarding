@@ -41,19 +41,24 @@ EOF
 
 echo "🚀 Submitting SQL to Databricks..."
 
+# Encode SQL safely
+SQL_B64=$(echo "$SQL" | base64 | tr -d '\n')
+
 RESPONSE=$(curl -s -X POST \
   "$DATABRICKS_HOST/api/2.0/sql/statements" \
   -H "Authorization: Bearer $DATABRICKS_ADMIN_TOKEN" \
   -H "Content-Type: application/json" \
   -d "{
-    \"statement\": $(jq -Rs <<< \"$SQL\"),
+    \"statement\": \"$(echo $SQL_B64 | base64 -d | sed 's/\"/\\\\\"/g')\",
     \"warehouse_id\": \"$DATABRICKS_SQL_WAREHOUSE_ID\"
   }")
 
-STATEMENT_ID=$(echo "$RESPONSE" | jq -r '.statement_id')
+# Extract statement_id WITHOUT jq
+STATEMENT_ID=$(echo "$RESPONSE" | sed -n 's/.*"statement_id":"\\([^"]*\\)".*/\\1/p')
 
-if [ -z "$STATEMENT_ID" ] || [ "$STATEMENT_ID" == "null" ]; then
+if [ -z "$STATEMENT_ID" ]; then
   echo "❌ Failed to submit SQL"
+  echo "Response:"
   echo "$RESPONSE"
   exit 1
 fi
@@ -61,22 +66,22 @@ fi
 echo "🕒 Statement ID: $STATEMENT_ID"
 echo "⏳ Waiting for execution to complete..."
 
-# ---- POLLING LOOP ----
+# ---- Polling loop ----
 while true; do
   STATUS_RESP=$(curl -s \
     "$DATABRICKS_HOST/api/2.0/sql/statements/$STATEMENT_ID" \
     -H "Authorization: Bearer $DATABRICKS_ADMIN_TOKEN")
 
-  STATE=$(echo "$STATUS_RESP" | jq -r '.status.state')
+  STATE=$(echo "$STATUS_RESP" | sed -n 's/.*"state":"\\([^"]*\\)".*/\\1/p')
 
   echo "   ➜ Status: $STATE"
 
-  if [ "$STATE" == "SUCCEEDED" ]; then
+  if [ "$STATE" = "SUCCEEDED" ]; then
     echo "✅ Schemas + external location + grants created successfully"
     break
   fi
 
-  if [ "$STATE" == "FAILED" ]; then
+  if [ "$STATE" = "FAILED" ]; then
     echo "❌ SQL execution failed"
     echo "$STATUS_RESP"
     exit 1
