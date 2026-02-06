@@ -72,3 +72,24 @@ echo "export FINAL_OAUTH_SECRET=$OAUTH_SECRET_VALUE" >> db_env.sh
 echo "-------------------------------------------------------"
 echo "✅ SUCCESS: OAuth secret generated using TEMP token"
 echo "-------------------------------------------------------"
+
+# --------------------------------------------------
+# 6. Store OAuth secret securely in Azure Key Vault
+# --------------------------------------------------
+
+: "${KV_NAME:?missing Key Vault name}"
+
+SECRET_NAME="${TARGET_SPN_DISPLAY_NAME}-oauth-secret"
+
+echo "🔐 Storing OAuth secret in Azure Key Vault"
+echo "   Vault : $KV_NAME"
+echo "   Name  : $SECRET_NAME"
+
+az keyvault secret set \
+  --vault-name "$KV_NAME" \
+  --name "$SECRET_NAME" \
+  --value "$OAUTH_SECRET_VALUE" \
+  --output none
+
+echo "✅ OAuth secret stored securely in Key Vault"
+
