@@ -74,22 +74,49 @@ echo "✅ SUCCESS: OAuth secret generated using TEMP token"
 echo "-------------------------------------------------------"
 
 # --------------------------------------------------
-# 6. Store OAuth secret securely in Azure Key Vault
+# 6. Store OAuth secret in Azure Key Vault (ROTATION)
 # --------------------------------------------------
 
 : "${KV_NAME:?missing Key Vault name}"
 
 SECRET_NAME="${TARGET_SPN_DISPLAY_NAME}-oauth-secret"
 
-echo "🔐 Storing OAuth secret in Azure Key Vault"
+echo "🔐 Rotating secret in Azure Key Vault"
 echo "   Vault : $KV_NAME"
 echo "   Name  : $SECRET_NAME"
 
-az keyvault secret set \
+# --- A. Create NEW secret version (enabled by default)
+NEW_VERSION_ID=$(az keyvault secret set \
   --vault-name "$KV_NAME" \
   --name "$SECRET_NAME" \
   --value "$OAUTH_SECRET_VALUE" \
-  --output none
+  --query "id" -o tsv)
 
-echo "✅ OAuth secret stored securely in Key Vault"
+echo "✅ New secret version created"
+echo "   New Version ID: $NEW_VERSION_ID"
+
+# --- B. Disable ALL older enabled versions
+OLD_VERSIONS=$(az keyvault secret list-versions \
+  --vault-name "$KV_NAME" \
+  --name "$SECRET_NAME" \
+  --query "[?attributes.enabled==\`true\` && id!='$NEW_VERSION_ID'].id" \
+  -o tsv)
+
+if [ -n "$OLD_VERSIONS" ]; then
+  echo "🛑 Disabling old secret versions..."
+  for VERSION_ID in $OLD_VERSIONS; do
+    az keyvault secret set-attributes \
+      --id "$VERSION_ID" \
+      --enabled false \
+      --output none
+    echo "   Disabled: ...${VERSION_ID: -8}"
+  done
+else
+  echo "ℹ️ No old versions found to disable"
+fi
+
+echo "-------------------------------------------------------"
+echo "✅ Key Vault rotation complete"
+echo "   Only latest secret version is ENABLED"
+echo "-------------------------------------------------------"
 
