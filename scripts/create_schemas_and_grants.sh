@@ -39,15 +39,48 @@ TO \`${GROUP_NAME}\`;
 EOF
 )
 
-echo "🚀 Executing SQL via Databricks REST API"
+echo "🚀 Submitting SQL to Databricks..."
 
-curl -s -X POST \
+RESPONSE=$(curl -s -X POST \
   "$DATABRICKS_HOST/api/2.0/sql/statements" \
   -H "Authorization: Bearer $DATABRICKS_ADMIN_TOKEN" \
   -H "Content-Type: application/json" \
   -d "{
     \"statement\": $(jq -Rs <<< \"$SQL\"),
     \"warehouse_id\": \"$DATABRICKS_SQL_WAREHOUSE_ID\"
-  }"
+  }")
 
-echo "✅ Schemas + external location + grants created"
+STATEMENT_ID=$(echo "$RESPONSE" | jq -r '.statement_id')
+
+if [ -z "$STATEMENT_ID" ] || [ "$STATEMENT_ID" == "null" ]; then
+  echo "❌ Failed to submit SQL"
+  echo "$RESPONSE"
+  exit 1
+fi
+
+echo "🕒 Statement ID: $STATEMENT_ID"
+echo "⏳ Waiting for execution to complete..."
+
+# ---- POLLING LOOP ----
+while true; do
+  STATUS_RESP=$(curl -s \
+    "$DATABRICKS_HOST/api/2.0/sql/statements/$STATEMENT_ID" \
+    -H "Authorization: Bearer $DATABRICKS_ADMIN_TOKEN")
+
+  STATE=$(echo "$STATUS_RESP" | jq -r '.status.state')
+
+  echo "   ➜ Status: $STATE"
+
+  if [ "$STATE" == "SUCCEEDED" ]; then
+    echo "✅ Schemas + external location + grants created successfully"
+    break
+  fi
+
+  if [ "$STATE" == "FAILED" ]; then
+    echo "❌ SQL execution failed"
+    echo "$STATUS_RESP"
+    exit 1
+  fi
+
+  sleep 3
+done
