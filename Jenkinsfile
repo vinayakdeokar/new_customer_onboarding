@@ -66,21 +66,6 @@ pipeline {
         }
 
 
-    // stage('Databricks Login') {
-    //   steps {
-    //     withCredentials([
-    //       string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
-    //       string(credentialsId: 'DATABRICKS_CLIENT_ID', variable: 'DATABRICKS_CLIENT_ID'),
-    //       string(credentialsId: 'DATABRICKS_CLIENT_SECRET', variable: 'DATABRICKS_CLIENT_SECRET'),
-    //       string(credentialsId: 'DATABRICKS_TENANT_ID', variable: 'DATABRICKS_TENANT_ID')
-    //     ]) {
-    //       sh '''
-    //         chmod +x scripts/databricks_login.sh
-    //         scripts/databricks_login.sh
-    //       '''
-    //     }
-    //   }
-    // }
 
     stage('Databricks SPN Setup') {
       steps {
@@ -95,41 +80,25 @@ pipeline {
         }
       }
     }
+        
 
-    stage('Databricks SPN OAuth Secret (Account Level)') {
-      steps {
-        withCredentials([
-          // ✅ MUST match script variable name
-          string(credentialsId: 'DATABRICKS_ACCOUNT_ID', variable: 'DATABRICKS_ACCOUNT_ID'),
-    
-          // optional – script uses Azure CLI login, not this token
-          string(credentialsId: 'AZURE_TENANT_ID', variable: 'AZURE_TENANT_ID')
-        ]) {
-          sh '''
-            export TARGET_SPN_DISPLAY_NAME="sp-m360-vinayak-002"
-    
-            chmod +x scripts/dbx_spn_discover.sh
-            chmod +x scripts/dbx_spn_generate_secret.sh
-    
-            scripts/dbx_spn_discover.sh
-            scripts/dbx_spn_generate_secret.sh
-          '''
-        }
-      }
-    }
-
-
-    // stage('Generate & Store Databricks SPN OAuth Secret') {
+    // stage('Databricks SPN OAuth Secret (Account Level)') {
     //   steps {
     //     withCredentials([
-    //       string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
-    //       string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_ADMIN_TOKEN'),
+    //       // ✅ MUST match script variable name
     //       string(credentialsId: 'DATABRICKS_ACCOUNT_ID', variable: 'DATABRICKS_ACCOUNT_ID'),
-    //       string(credentialsId: 'kv-name', variable: 'KV_NAME')
+    
+    //       // optional – script uses Azure CLI login, not this token
+    //       string(credentialsId: 'AZURE_TENANT_ID', variable: 'AZURE_TENANT_ID')
     //     ]) {
     //       sh '''
-    //         chmod +x scripts/generate_and_store_databricks_spn_secret.sh
-    //         ./scripts/generate_and_store_databricks_spn_secret.sh "sp-m360-vinayak-002"
+    //         export TARGET_SPN_DISPLAY_NAME="sp-m360-vinayak-002"
+    
+    //         chmod +x scripts/dbx_spn_discover.sh
+    //         chmod +x scripts/dbx_spn_generate_secret.sh
+    
+    //         scripts/dbx_spn_discover.sh
+    //         scripts/dbx_spn_generate_secret.sh
     //       '''
     //     }
     //   }
