@@ -48,18 +48,20 @@ exit 1
 # --------------------------------------------------
 
 if [ -z "$CATALOG_NAME" ]; then
-  echo "ERROR: CATALOG_NAME not provided"
+  echo "❌ CATALOG_NAME not provided from Jenkins"
   exit 1
 fi
 
-echo "export DATA_GROUP=${GROUP_NAME}" > db_env.sh
-echo "export CATALOG_NAME=${CATALOG_NAME}" >> db_env.sh
+echo "export CATALOG_NAME=${CATALOG_NAME}" > db_env.sh
 echo "export CUSTOMER_CODE=${CUSTOMER}" >> db_env.sh
+echo "export DATA_GROUP=${GROUP_NAME}" >> db_env.sh
+
+# Bronze external storage (example – adjust storage name if needed)
+echo "export BRONZE_STORAGE_ROOT=abfss://bronze@<storage-account>.dfs.core.windows.net/${CUSTOMER}" >> db_env.sh
 
 echo "--------------------------------------------------"
 echo "Databricks context saved:"
 echo "  CATALOG_NAME = $CATALOG_NAME"
-echo "  DATA_GROUP   = $GROUP_NAME"
 echo "  CUSTOMER     = $CUSTOMER"
+echo "  DATA_GROUP   = $GROUP_NAME"
 echo "--------------------------------------------------"
-
