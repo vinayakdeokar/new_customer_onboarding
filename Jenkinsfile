@@ -135,5 +135,19 @@ pipeline {
     //   }
     // }
 
+        stage('Create Schemas & Apply Grants') {
+          steps {
+            withCredentials([
+              string(credentialsId: 'DATABRICKS_SQL_WAREHOUSE_ID', variable: 'DATABRICKS_SQL_WAREHOUSE_ID')
+            ]) {
+              sh '''
+                chmod +x scripts/create_schemas_and_grants.sh
+                scripts/create_schemas_and_grants.sh
+              '''
+            }
+          }
+        }
+
+
   }
 }
