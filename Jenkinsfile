@@ -56,14 +56,15 @@ pipeline {
 
     stage('Pre Databricks Identity Check') {
       steps {
-        sh '''
-          chmod +x scripts/pre_databricks_identity_check.sh
-          scripts/pre_databricks_identity_check.sh \
-            ${PRODUCT} \
-            ${CUSTOMER_CODE}
-        '''
-      }
-    }
+        withCredentials([
+          string(credentialsId: 'DATABRICKS_CATALOG_NAME', variable: 'CATALOG_NAME')
+        ]) {
+          sh '''
+            chmod +x scripts/pre_databricks_identity_check.sh
+            scripts/pre_databricks_identity_check.sh "${PRODUCT}" "${CUSTOMER_CODE}"
+          '''
+        }
+
 
     // stage('Databricks Login') {
     //   steps {
