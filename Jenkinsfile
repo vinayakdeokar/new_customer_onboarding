@@ -109,12 +109,16 @@ pipeline {
           string(credentialsId: 'DATABRICKS_CATALOG_NAME', variable: 'CATALOG_NAME')
         ]) {
           sh '''
+            export PRODUCT=${PRODUCT}
+            export CUSTOMER_CODE=${CUSTOMER_CODE}
+    
             chmod +x scripts/create_schemas_and_grants.sh
             ./scripts/create_schemas_and_grants.sh
           '''
         }
       }
     }
+
 
     
 
