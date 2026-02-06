@@ -1,61 +1,79 @@
-#!/usr/bin/env bash
+#!/bin/bash
 set -e
 
-# -----------------------------
-# REQUIRED ENV
-# -----------------------------
-: "${DATABRICKS_HOST:?missing}"
-: "${DATABRICKS_ADMIN_TOKEN:?missing}"
-: "${DATABRICKS_SQL_WAREHOUSE_ID:?missing}"
-: "${CATALOG_NAME:?missing}"
-: "${PRODUCT:?missing}"
-: "${CUSTOMER_CODE:?missing}"
+# -------------------------------
+# REQUIRED ENV VARIABLES (Jenkins)
+# -------------------------------
+: "${PRODUCT:?PRODUCT missing}"
+: "${CUSTOMER_CODE:?CUSTOMER_CODE missing}"
+: "${CATALOG_NAME:?CATALOG_NAME missing}"
+: "${DATABRICKS_HOST:?DATABRICKS_HOST missing}"
+: "${DATABRICKS_ADMIN_TOKEN:?DATABRICKS_ADMIN_TOKEN missing}"
+: "${DATABRICKS_SQL_WAREHOUSE_ID:?DATABRICKS_SQL_WAREHOUSE_ID missing}"
 
-GROUP="grp-${PRODUCT}-${CUSTOMER_CODE}-users"
+# -------------------------------
+# DERIVED VALUES
+# -------------------------------
+GROUP_NAME="grp-${PRODUCT}-${CUSTOMER_CODE}-users"
 
-BRONZE_SCHEMA="${PRODUCT}-${CUSTOMER_CODE}_bronze"
-SILVER_SCHEMA="${PRODUCT}-${CUSTOMER_CODE}_silver"
-GOLD_SCHEMA="${PRODUCT}-${CUSTOMER_CODE}_gold"
+SCHEMA_BRONZE="${PRODUCT}-${CUSTOMER_CODE}_bronze"
+SCHEMA_SILVER="${PRODUCT}-${CUSTOMER_CODE}_silver"
+SCHEMA_GOLD="${PRODUCT}-${CUSTOMER_CODE}_gold"
 
-CAT="\`${CATALOG_NAME}\`"
-GRP="\`${GROUP}\`"
-
+# -------------------------------
+# LOG HEADER
+# -------------------------------
 echo "------------------------------------------------"
 echo "Catalog   : ${CATALOG_NAME}"
-echo "Schemas   : ${BRONZE_SCHEMA} | ${SILVER_SCHEMA} | ${GOLD_SCHEMA}"
-echo "Group     : ${GROUP}"
+echo "Schemas   : ${SCHEMA_BRONZE} | ${SCHEMA_SILVER} | ${SCHEMA_GOLD}"
+echo "Group     : ${GROUP_NAME}"
 echo "------------------------------------------------"
 
-SQL_STATEMENTS=(
-  "CREATE SCHEMA IF NOT EXISTS ${CAT}.\`${BRONZE_SCHEMA}\`"
-  "CREATE SCHEMA IF NOT EXISTS ${CAT}.\`${SILVER_SCHEMA}\`"
-  "CREATE SCHEMA IF NOT EXISTS ${CAT}.\`${GOLD_SCHEMA}\`"
-  "GRANT USE CATALOG ON CATALOG ${CAT} TO ${GRP}"
-  "GRANT USE SCHEMA, SELECT ON SCHEMA ${CAT}.\`${BRONZE_SCHEMA}\` TO ${GRP}"
-  "GRANT USE SCHEMA, SELECT ON SCHEMA ${CAT}.\`${SILVER_SCHEMA}\` TO ${GRP}"
-  "GRANT USE SCHEMA, SELECT ON SCHEMA ${CAT}.\`${GOLD_SCHEMA}\` TO ${GRP}"
-)
-
-for SQL in "${SQL_STATEMENTS[@]}"; do
-  echo "Executing SQL: $SQL"
+# -------------------------------
+# FUNCTION: EXECUTE SQL SAFELY
+# -------------------------------
+run_sql () {
+  local SQL="$1"
 
   RESPONSE=$(curl -s -X POST \
-    "${DATABRICKS_HOST}/api/2.0/sql/statements" \
+    "${DATABRICKS_HOST}/api/2.0/sql/statements/" \
     -H "Authorization: Bearer ${DATABRICKS_ADMIN_TOKEN}" \
     -H "Content-Type: application/json" \
     -d "{
-      \"statement\": \"$SQL\",
       \"warehouse_id\": \"${DATABRICKS_SQL_WAREHOUSE_ID}\",
-      \"wait_timeout\": \"30s\"
-    }")
+      \"statement\": \"${SQL}\"
+    }"
+  )
 
-  STATE=$(echo "$RESPONSE" | sed -n 's/.*"state":"\\([^"]*\\)".*/\\1/p')
+  STATE=$(echo "$RESPONSE" | jq -r '.status.state // empty')
 
   if [ "$STATE" != "SUCCEEDED" ]; then
-    echo "SQL failed:"
+    echo "❌ SQL FAILED"
     echo "$RESPONSE"
     exit 1
   fi
-done
+}
 
-echo "Schemas and grants created successfully"
+# -------------------------------
+# 1️⃣ CREATE SCHEMAS
+# -------------------------------
+echo "➡️ Creating schemas..."
+
+run_sql "CREATE SCHEMA IF NOT EXISTS \`${CATALOG_NAME}\`.\`${SCHEMA_BRONZE}\`"
+run_sql "CREATE SCHEMA IF NOT EXISTS \`${CATALOG_NAME}\`.\`${SCHEMA_SILVER}\`"
+run_sql "CREATE SCHEMA IF NOT EXISTS \`${CATALOG_NAME}\`.\`${SCHEMA_GOLD}\`"
+
+# -------------------------------
+# 2️⃣ GRANTS
+# -------------------------------
+echo "➡️ Applying grants..."
+
+run_sql "GRANT USE CATALOG ON CATALOG \`${CATALOG_NAME}\` TO \`${GROUP_NAME}\`"
+
+run_sql "GRANT USE SCHEMA, SELECT ON SCHEMA \`${CATALOG_NAME}\`.\`${SCHEMA_BRONZE}\` TO \`${GROUP_NAME}\`"
+run_sql "GRANT USE SCHEMA, SELECT ON SCHEMA \`${CATALOG_NAME}\`.\`${SCHEMA_SILVER}\` TO \`${GROUP_NAME}\`"
+run_sql "GRANT USE SCHEMA, SELECT ON SCHEMA \`${CATALOG_NAME}\`.\`${SCHEMA_GOLD}\` TO \`${GROUP_NAME}\`"
+
+echo "------------------------------------------------"
+echo "✅ Schemas and grants created successfully"
+echo "------------------------------------------------"
