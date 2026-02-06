@@ -8,7 +8,7 @@ SPN_NAME="sp-${PRODUCT}-${CUSTOMER}"
 GROUP_NAME="grp-${PRODUCT}-${CUSTOMER}-users"
 
 KV_NAME="kv-databricks-fab"
-KV_SECRET_NAME="sp-${PRODUCT}-${CUSTOMER}-dbx-secret"
+KV_SECRET_NAME="sp-${PRODUCT}-${CUSTOMER}-oauth-secret"
 
 echo "----- PRE-DATABRICKS IDENTITY CHECK -----"
 
