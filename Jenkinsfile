@@ -98,20 +98,25 @@ pipeline {
     stage('Databricks SPN OAuth Secret (Account Level)') {
       steps {
         withCredentials([
-          string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
-          string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_TOKEN'),
-          string(credentialsId: 'DATABRICKS_ACCOUNT_ID', variable: 'ACCOUNT_ID')
+          // ✅ MUST match script variable name
+          string(credentialsId: 'DATABRICKS_ACCOUNT_ID', variable: 'DATABRICKS_ACCOUNT_ID'),
+    
+          // optional – script uses Azure CLI login, not this token
+          string(credentialsId: 'AZURE_TENANT_ID', variable: 'AZURE_TENANT_ID')
         ]) {
           sh '''
             export TARGET_SPN_DISPLAY_NAME="sp-m360-vinayak-002"
+    
             chmod +x scripts/dbx_spn_discover.sh
             chmod +x scripts/dbx_spn_generate_secret.sh
+    
             scripts/dbx_spn_discover.sh
             scripts/dbx_spn_generate_secret.sh
           '''
         }
       }
     }
+
 
     // stage('Generate & Store Databricks SPN OAuth Secret') {
     //   steps {
