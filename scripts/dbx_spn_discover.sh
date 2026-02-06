@@ -1,45 +1,40 @@
 #!/bin/bash
-set -euo pipefail
+set -e
 
-ENV_FILE="db_env.sh"
-> "$ENV_FILE"   # overwrite safely
+: "${TARGET_SPN_DISPLAY_NAME:?missing}"
+: "${DATABRICKS_ACCOUNT_ID:?missing}"
 
-[ -f "$ENV_FILE" ] && source "$ENV_FILE"
+ACCOUNT_ID="$DATABRICKS_ACCOUNT_ID"
+ACCOUNTS_BASE_URL="https://accounts.azuredatabricks.net"
 
-: "${TARGET_SPN_DISPLAY_NAME:?Missing TARGET_SPN_DISPLAY_NAME}"
-: "${DATABRICKS_HOST:?Missing DATABRICKS_HOST}"
-: "${DATABRICKS_TOKEN:?Missing DATABRICKS_TOKEN}"
-: "${ACCOUNT_ID:?Missing ACCOUNT_ID}"
+echo "🔐 Getting Databricks Account token via Azure AD..."
+
+DB_TOKEN=$(az account get-access-token \
+  --resource 2ff814a6-3304-4ab8-85cb-cd0e6f879c1d \
+  --query accessToken -o tsv)
+
+if [ -z "$DB_TOKEN" ]; then
+  echo "❌ Failed to get account token"
+  exit 1
+fi
 
 echo "🔎 Discovering SPN at Account level: $TARGET_SPN_DISPLAY_NAME"
 
-SPN_RESPONSE=$(curl -sf -G \
-  -H "Authorization: Bearer $DATABRICKS_TOKEN" \
+RESPONSE=$(curl -sf -G \
+  -H "Authorization: Bearer $DB_TOKEN" \
   --data-urlencode "filter=displayName eq \"$TARGET_SPN_DISPLAY_NAME\"" \
-  "$DATABRICKS_HOST/api/2.0/accounts/$ACCOUNT_ID/scim/v2/ServicePrincipals")
+  "$ACCOUNTS_BASE_URL/api/2.0/accounts/$ACCOUNT_ID/scim/v2/ServicePrincipals")
 
-INTERNAL_ID=$(echo "$SPN_RESPONSE" | jq -r '.Resources[0].id // empty')
-APP_ID=$(echo "$SPN_RESPONSE" | jq -r '.Resources[0].applicationId // empty')
+echo "$RESPONSE" > spn_response.json
 
-if [[ -z "$INTERNAL_ID" ]]; then
+INTERNAL_ID=$(jq -r '.Resources[0].id // empty' spn_response.json)
+APP_ID=$(jq -r '.Resources[0].applicationId // empty' spn_response.json)
+
+if [ -z "$INTERNAL_ID" ]; then
   echo "❌ SPN not found at account level"
   exit 1
 fi
 
-echo "✅ SPN Found"
-echo "   Internal ID : $INTERNAL_ID"
-echo "   App ID      : $APP_ID"
-
-SECRET_LIST=$(curl -sf \
-  -H "Authorization: Bearer $DATABRICKS_TOKEN" \
-  "$DATABRICKS_HOST/api/2.0/accounts/$ACCOUNT_ID/servicePrincipals/$INTERNAL_ID/credentials/secrets")
-
-SECRET_COUNT=$(echo "$SECRET_LIST" | jq '.secrets | length // 0')
-
-cat <<EOF >> "$ENV_FILE"
-export DATABRICKS_INTERNAL_ID="$INTERNAL_ID"
-export TARGET_APPLICATION_ID="$APP_ID"
-export HAS_SECRETS="$SECRET_COUNT"
-EOF
-
-echo "🔐 Existing secrets count: $SECRET_COUNT"
+echo "✅ Found SPN"
+echo "   Internal ID: $INTERNAL_ID"
+echo "   App ID     : $APP_ID"
