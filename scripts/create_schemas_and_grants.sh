@@ -1,66 +1,63 @@
 #!/bin/bash
 set -e
 
-# --------------------------------------------
-# Load context from pre-check
-# --------------------------------------------
-if [ -f db_env.sh ]; then
-  . ./db_env.sh
-else
-  echo "❌ db_env.sh not found"
-  exit 1
-fi
+# ---- INPUT FROM ENV ----
+CATALOG_NAME="medicareadv"
+CUSTOMER="vinayak-002"
+GROUP="grp-m360-vinayak-002-users"
 
-: "${CATALOG_NAME:?missing CATALOG_NAME}"
-: "${CUSTOMER_CODE:?missing CUSTOMER_CODE}"
-: "${DATA_GROUP:?missing DATA_GROUP}"
-: "${BRONZE_STORAGE_ROOT:?missing BRONZE_STORAGE_ROOT}"
-: "${DATABRICKS_SQL_WAREHOUSE_ID:?missing SQL warehouse id}"
+STORAGE_ACCOUNT="stcrmmedicareadv"
+CONTAINER="bronz"
+
+EXT_LOC_NAME="ext_bronze_${CUSTOMER//-/_}"
+BRONZE_PATH="abfss://${CONTAINER}@${STORAGE_ACCOUNT}.dfs.core.windows.net/${CUSTOMER}"
 
 echo "------------------------------------------------"
 echo "Catalog   : $CATALOG_NAME"
-echo "Customer  : $CUSTOMER_CODE"
-echo "Group     : $DATA_GROUP"
-echo "Bronze FS : $BRONZE_STORAGE_ROOT"
+echo "Customer  : $CUSTOMER"
+echo "Group     : $GROUP"
+echo "Bronze FS : $BRONZE_PATH"
 echo "------------------------------------------------"
 
-# --------------------------------------------
-# Unity Catalog SQL
-# --------------------------------------------
-read -r -d '' SQL <<EOF
--- Create schemas
-CREATE SCHEMA IF NOT EXISTS ${CATALOG_NAME}.${CUSTOMER_CODE}_bronze
-MANAGED LOCATION '${BRONZE_STORAGE_ROOT}';
+# ---------- SQL ----------
+SQL=$(cat <<EOF
+-- 1. External location
+CREATE EXTERNAL LOCATION IF NOT EXISTS ${EXT_LOC_NAME}
+URL '${BRONZE_PATH}'
+WITH (STORAGE CREDENTIAL new_db_test);
 
-CREATE SCHEMA IF NOT EXISTS ${CATALOG_NAME}.${CUSTOMER_CODE}_silver;
-CREATE SCHEMA IF NOT EXISTS ${CATALOG_NAME}.${CUSTOMER_CODE}_gold;
+GRANT READ FILES, WRITE FILES
+ON EXTERNAL LOCATION ${EXT_LOC_NAME}
+TO \`${GROUP}\`;
 
--- GRANTS : BRONZE
-GRANT USE_SCHEMA, CREATE TABLE
-ON SCHEMA ${CATALOG_NAME}.${CUSTOMER_CODE}_bronze
-TO \`${DATA_GROUP}\`;
+-- 2. Schemas
+CREATE SCHEMA IF NOT EXISTS ${CATALOG_NAME}.${CUSTOMER//-/_}_bronze
+MANAGED LOCATION '${BRONZE_PATH}';
 
--- GRANTS : SILVER
-GRANT USE_SCHEMA, CREATE TABLE
-ON SCHEMA ${CATALOG_NAME}.${CUSTOMER_CODE}_silver
-TO \`${DATA_GROUP}\`;
+CREATE SCHEMA IF NOT EXISTS ${CATALOG_NAME}.${CUSTOMER//-/_}_silver;
+CREATE SCHEMA IF NOT EXISTS ${CATALOG_NAME}.${CUSTOMER//-/_}_gold;
 
--- GRANTS : GOLD (consumption layer)
-GRANT USE_SCHEMA, CREATE TABLE, SELECT
-ON SCHEMA ${CATALOG_NAME}.${CUSTOMER_CODE}_gold
-TO \`${DATA_GROUP}\`;
+-- 3. Grants
+GRANT USE CATALOG ON CATALOG ${CATALOG_NAME} TO \`${GROUP}\`;
+
+GRANT USE SCHEMA, SELECT
+ON SCHEMA ${CATALOG_NAME}.${CUSTOMER//-/_}_bronze
+TO \`${GROUP}\`;
+
+GRANT USE SCHEMA, SELECT
+ON SCHEMA ${CATALOG_NAME}.${CUSTOMER//-/_}_silver
+TO \`${GROUP}\`;
+
+GRANT USE SCHEMA, SELECT
+ON SCHEMA ${CATALOG_NAME}.${CUSTOMER//-/_}_gold
+TO \`${GROUP}\`;
 EOF
+)
 
-# --------------------------------------------
-# Execute SQL
-# --------------------------------------------
-echo "🚀 Creating schemas & applying grants..."
+echo "$SQL" > /tmp/schema.sql
 
-databricks sql execute \
+databricks sql warehouses execute \
   --warehouse-id "$DATABRICKS_SQL_WAREHOUSE_ID" \
-  --sql "$SQL"
+  --file /tmp/schema.sql
 
-echo "------------------------------------------------"
-echo "✅ Schemas created successfully"
-echo "✅ Grants applied to group"
-echo "------------------------------------------------"
+echo "✅ Schemas & grants created successfully"
