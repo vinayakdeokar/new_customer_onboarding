@@ -1,91 +1,86 @@
 #!/bin/bash
 set -e
-source db_env.sh
 
-EXT_LOC="ext_bronze_${CUSTOMER//-/_}"
-BRONZE_SCHEMA="${CUSTOMER//-/_}_bronze"
-SILVER_SCHEMA="${CUSTOMER//-/_}_silver"
-GOLD_SCHEMA="${CUSTOMER//-/_}_gold"
+# -----------------------------
+# INPUTS (from Jenkins params)
+# -----------------------------
+PRODUCT="${PRODUCT}"
+CUSTOMER_CODE="${CUSTOMER_CODE}"
 
+CATALOG_NAME="${CATALOG_NAME}"
+WAREHOUSE_ID="${DATABRICKS_SQL_WAREHOUSE_ID}"
+HOST="${DATABRICKS_HOST}"
+TOKEN="${DATABRICKS_ADMIN_TOKEN}"
+
+# -----------------------------
+# DERIVED NAMES
+# -----------------------------
+BASE_SCHEMA="${PRODUCT}-${CUSTOMER_CODE}"
+
+BRONZE_SCHEMA="${BASE_SCHEMA}_bronze"
+SILVER_SCHEMA="${BASE_SCHEMA}_silver"
+GOLD_SCHEMA="${BASE_SCHEMA}_gold"
+
+DATA_GROUP="grp-${PRODUCT}-${CUSTOMER_CODE}-users"
+
+BRONZE_FS="abfss://bronz@stcrmmedicareadv.dfs.core.windows.net/${CUSTOMER_CODE}"
+EXTERNAL_LOCATION="ext_bronze_${BASE_SCHEMA}"
+
+echo "------------------------------------------------"
+echo "Catalog   : $CATALOG_NAME"
+echo "Schemas   : $BRONZE_SCHEMA | $SILVER_SCHEMA | $GOLD_SCHEMA"
+echo "Group     : $DATA_GROUP"
+echo "Bronze FS : $BRONZE_FS"
+echo "------------------------------------------------"
+
+# -----------------------------
+# SQL STATEMENTS
+# -----------------------------
 SQL=$(cat <<EOF
-CREATE EXTERNAL LOCATION IF NOT EXISTS ${EXT_LOC}
-URL '${STORAGE_PATH}'
+-- External location (idempotent)
+CREATE EXTERNAL LOCATION IF NOT EXISTS $EXTERNAL_LOCATION
+URL '$BRONZE_FS'
 WITH (STORAGE CREDENTIAL new_db_test);
 
 GRANT READ FILES, WRITE FILES
-ON EXTERNAL LOCATION ${EXT_LOC}
-TO \`${GROUP_NAME}\`;
+ON EXTERNAL LOCATION $EXTERNAL_LOCATION
+TO \`$DATA_GROUP\`;
 
-CREATE SCHEMA IF NOT EXISTS ${CATALOG_NAME}.${BRONZE_SCHEMA}
-MANAGED LOCATION '${STORAGE_PATH}';
+-- Schemas
+CREATE SCHEMA IF NOT EXISTS $CATALOG_NAME.$BRONZE_SCHEMA;
+CREATE SCHEMA IF NOT EXISTS $CATALOG_NAME.$SILVER_SCHEMA;
+CREATE SCHEMA IF NOT EXISTS $CATALOG_NAME.$GOLD_SCHEMA;
 
-CREATE SCHEMA IF NOT EXISTS ${CATALOG_NAME}.${SILVER_SCHEMA};
-CREATE SCHEMA IF NOT EXISTS ${CATALOG_NAME}.${GOLD_SCHEMA};
+-- Catalog access
+GRANT USE CATALOG ON CATALOG $CATALOG_NAME TO \`$DATA_GROUP\`;
 
-GRANT USE CATALOG ON CATALOG ${CATALOG_NAME}
-TO \`${GROUP_NAME}\`;
+-- Schema access
+GRANT USE SCHEMA, SELECT
+ON SCHEMA $CATALOG_NAME.$BRONZE_SCHEMA
+TO \`$DATA_GROUP\`;
 
 GRANT USE SCHEMA, SELECT
-ON SCHEMA ${CATALOG_NAME}.${BRONZE_SCHEMA}
-TO \`${GROUP_NAME}\`;
+ON SCHEMA $CATALOG_NAME.$SILVER_SCHEMA
+TO \`$DATA_GROUP\`;
 
 GRANT USE SCHEMA, SELECT
-ON SCHEMA ${CATALOG_NAME}.${SILVER_SCHEMA}
-TO \`${GROUP_NAME}\`;
-
-GRANT USE SCHEMA, SELECT
-ON SCHEMA ${CATALOG_NAME}.${GOLD_SCHEMA}
-TO \`${GROUP_NAME}\`;
+ON SCHEMA $CATALOG_NAME.$GOLD_SCHEMA
+TO \`$DATA_GROUP\`;
 EOF
 )
 
-echo "🚀 Submitting SQL to Databricks..."
+# -----------------------------
+# Execute SQL via REST API
+# -----------------------------
+echo "🚀 Executing SQL in Databricks..."
 
-# Encode SQL safely
-SQL_B64=$(echo "$SQL" | base64 | tr -d '\n')
-
-RESPONSE=$(curl -s -X POST \
-  "$DATABRICKS_HOST/api/2.0/sql/statements" \
-  -H "Authorization: Bearer $DATABRICKS_ADMIN_TOKEN" \
+curl -s -X POST \
+  "$HOST/api/2.0/sql/statements" \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d "{
-    \"statement\": \"$(echo $SQL_B64 | base64 -d | sed 's/\"/\\\\\"/g')\",
-    \"warehouse_id\": \"$DATABRICKS_SQL_WAREHOUSE_ID\"
-  }")
+        \"statement\": $(jq -Rs . <<< \"$SQL\"),
+        \"warehouse_id\": \"$WAREHOUSE_ID\"
+      }" >/dev/null
 
-# Extract statement_id WITHOUT jq
-STATEMENT_ID=$(echo "$RESPONSE" | sed -n 's/.*"statement_id":"\\([^"]*\\)".*/\\1/p')
-
-if [ -z "$STATEMENT_ID" ]; then
-  echo "❌ Failed to submit SQL"
-  echo "Response:"
-  echo "$RESPONSE"
-  exit 1
-fi
-
-echo "🕒 Statement ID: $STATEMENT_ID"
-echo "⏳ Waiting for execution to complete..."
-
-# ---- Polling loop ----
-while true; do
-  STATUS_RESP=$(curl -s \
-    "$DATABRICKS_HOST/api/2.0/sql/statements/$STATEMENT_ID" \
-    -H "Authorization: Bearer $DATABRICKS_ADMIN_TOKEN")
-
-  STATE=$(echo "$STATUS_RESP" | sed -n 's/.*"state":"\\([^"]*\\)".*/\\1/p')
-
-  echo "   ➜ Status: $STATE"
-
-  if [ "$STATE" = "SUCCEEDED" ]; then
-    echo "✅ Schemas + external location + grants created successfully"
-    break
-  fi
-
-  if [ "$STATE" = "FAILED" ]; then
-    echo "❌ SQL execution failed"
-    echo "$STATUS_RESP"
-    exit 1
-  fi
-
-  sleep 3
-done
+echo "✅ Schemas + Grants created successfully"
