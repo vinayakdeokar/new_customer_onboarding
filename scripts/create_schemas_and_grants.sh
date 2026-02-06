@@ -1,24 +1,61 @@
- export CUSTOMER_CODE=vinayak-002
-+ chmod +x scripts/create_schemas_and_grants.sh
-+ ./scripts/create_schemas_and_grants.sh
-------------------------------------------------
-Catalog   : ****
-Schemas   : m360-vinayak-002_bronze | m360-vinayak-002_silver | m360-vinayak-002_gold
-Group     : grp-m360-vinayak-002-users
-------------------------------------------------
-➡️ Executing: CREATE SCHEMA IF NOT EXISTS ****.m360-vinayak-002_bronze
-❌ Failed SQL: CREATE SCHEMA IF NOT EXISTS ****.m360-vinayak-002_bronze
-{"statement_id":"01f10352-bc12-178c-89ed-46e3bfe85160","status":{"state":"FAILED","error":{"error_code":"BAD_REQUEST","message":"\n[INVALID_IDENTIFIER] The unquoted identifier m360-vinayak-002_bronze is invalid and must be back quoted as: `m360-vinayak-002_bronze`.\nUnquoted identifiers can only contain ASCII letters ('a' - 'z', 'A' - 'Z'), digits ('0' - '9'), and underbar ('_').\nUnquoted identifiers must also not start with a digit.\nDifferent data sources and meta stores may impose additional restrictions on valid identifiers. SQLSTATE: 42602 (line 1, pos 44)\n\n== SQL ==\nCREATE SCHEMA IF NOT EXISTS ****.m360-vinayak-002_bronze\n--------------------------------------------^^^\n"},"sql_state":"42602"}}
-[Pipeline] }
-[Pipeline] // withCredentials
-[Pipeline] }
-[Pipeline] // stage
-[Pipeline] }
-[Pipeline] // withEnv
-[Pipeline] }
-[Pipeline] // withEnv
-[Pipeline] }
-[Pipeline] // node
-[Pipeline] End of Pipeline
-ERROR: script returned exit code 1
-Finished: FAILURE
+#!/usr/bin/env bash
+set -e
+
+# -----------------------------
+# REQUIRED ENV
+# -----------------------------
+: "${DATABRICKS_HOST:?missing}"
+: "${DATABRICKS_ADMIN_TOKEN:?missing}"
+: "${DATABRICKS_SQL_WAREHOUSE_ID:?missing}"
+: "${CATALOG_NAME:?missing}"
+: "${PRODUCT:?missing}"
+: "${CUSTOMER_CODE:?missing}"
+
+GROUP="grp-${PRODUCT}-${CUSTOMER_CODE}-users"
+
+BRONZE_SCHEMA="${PRODUCT}-${CUSTOMER_CODE}_bronze"
+SILVER_SCHEMA="${PRODUCT}-${CUSTOMER_CODE}_silver"
+GOLD_SCHEMA="${PRODUCT}-${CUSTOMER_CODE}_gold"
+
+CAT="\`${CATALOG_NAME}\`"
+GRP="\`${GROUP}\`"
+
+echo "------------------------------------------------"
+echo "Catalog   : ${CATALOG_NAME}"
+echo "Schemas   : ${BRONZE_SCHEMA} | ${SILVER_SCHEMA} | ${GOLD_SCHEMA}"
+echo "Group     : ${GROUP}"
+echo "------------------------------------------------"
+
+SQL_STATEMENTS=(
+  "CREATE SCHEMA IF NOT EXISTS ${CAT}.\`${BRONZE_SCHEMA}\`"
+  "CREATE SCHEMA IF NOT EXISTS ${CAT}.\`${SILVER_SCHEMA}\`"
+  "CREATE SCHEMA IF NOT EXISTS ${CAT}.\`${GOLD_SCHEMA}\`"
+  "GRANT USE CATALOG ON CATALOG ${CAT} TO ${GRP}"
+  "GRANT USE SCHEMA, SELECT ON SCHEMA ${CAT}.\`${BRONZE_SCHEMA}\` TO ${GRP}"
+  "GRANT USE SCHEMA, SELECT ON SCHEMA ${CAT}.\`${SILVER_SCHEMA}\` TO ${GRP}"
+  "GRANT USE SCHEMA, SELECT ON SCHEMA ${CAT}.\`${GOLD_SCHEMA}\` TO ${GRP}"
+)
+
+for SQL in "${SQL_STATEMENTS[@]}"; do
+  echo "Executing SQL: $SQL"
+
+  RESPONSE=$(curl -s -X POST \
+    "${DATABRICKS_HOST}/api/2.0/sql/statements" \
+    -H "Authorization: Bearer ${DATABRICKS_ADMIN_TOKEN}" \
+    -H "Content-Type: application/json" \
+    -d "{
+      \"statement\": \"$SQL\",
+      \"warehouse_id\": \"${DATABRICKS_SQL_WAREHOUSE_ID}\",
+      \"wait_timeout\": \"30s\"
+    }")
+
+  STATE=$(echo "$RESPONSE" | sed -n 's/.*"state":"\\([^"]*\\)".*/\\1/p')
+
+  if [ "$STATE" != "SUCCEEDED" ]; then
+    echo "SQL failed:"
+    echo "$RESPONSE"
+    exit 1
+  fi
+done
+
+echo "Schemas and grants created successfully"
