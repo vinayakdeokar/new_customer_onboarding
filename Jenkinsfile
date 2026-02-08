@@ -121,14 +121,10 @@ pipeline {
       steps {
         withCredentials([
           string(credentialsId: 'DATABRICKS_ACCOUNT_ID', variable: 'DATABRICKS_ACCOUNT_ID'),
-          string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_TOKEN')
+          string(credentialsId: 'DATABRICKS_SCIM_TOKEN', variable: 'DATABRICKS_SCIM_TOKEN')
         ]) {
           sh '''
             set -e
-    
-            export DATABRICKS_HOST="https://accounts.azuredatabricks.net"
-            export DATABRICKS_ACCOUNT_ID=${DATABRICKS_ACCOUNT_ID}
-            export DATABRICKS_TOKEN=${DATABRICKS_TOKEN}
     
             export GROUP_NAME="grp-${PRODUCT}-${CUSTOMER_CODE}-users"
             export WORKSPACE_NAME="medicareadv"
@@ -139,6 +135,7 @@ pipeline {
         }
       }
     }
+
 
 
     // stage('Grant Catalog Access') {
