@@ -121,11 +121,11 @@ pipeline {
       steps {
         withCredentials([
           string(credentialsId: 'DATABRICKS_ACCOUNT_ID', variable: 'DATABRICKS_ACCOUNT_ID'),
-          string(credentialsId: 'DATABRICKS_SCIM_TOKEN', variable: 'DATABRICKS_SCIM_TOKEN')
+          string(credentialsId: 'DATABRICKS_CLIENT_ID', variable: 'DATABRICKS_CLIENT_ID'),
+          string(credentialsId: 'DATABRICKS_CLIENT_SECRET', variable: 'DATABRICKS_CLIENT_SECRET'),
+          string(credentialsId: 'DATABRICKS_TENANT_ID', variable: 'DATABRICKS_TENANT_ID')
         ]) {
           sh '''
-            set -e
-    
             export GROUP_NAME="grp-${PRODUCT}-${CUSTOMER_CODE}-users"
             export WORKSPACE_NAME="medicareadv"
     
@@ -135,8 +135,7 @@ pipeline {
         }
       }
     }
-
-
+    
 
     // stage('Grant Catalog Access') {
     //   steps {
