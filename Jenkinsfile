@@ -100,22 +100,46 @@ pipeline {
     //   }
     // }
 
-    stage('Ensure Databricks Group') {
+    // stage('Ensure Databricks Group') {
+    //   steps {
+    //     withCredentials([
+    //       string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
+    //       string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_ADMIN_TOKEN')
+    //     ]) {
+    //       sh '''
+    //         export PRODUCT=${PRODUCT}
+    //         export CUSTOMER_CODE=${CUSTOMER_CODE}
+    
+    //         chmod +x scripts/databricks_add_group.sh
+    //         ./scripts/databricks_add_group.sh
+    //       '''
+    //     }
+    //   }
+    // }
+
+    stage('Sync Entra ID Group to Databricks') {
       steps {
         withCredentials([
-          string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
-          string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_ADMIN_TOKEN')
+          string(credentialsId: 'DATABRICKS_ACCOUNT_ID', variable: 'DATABRICKS_ACCOUNT_ID'),
+          string(credentialsId: 'DATABRICKS_ACCOUNT_ADMIN_TOKEN', variable: 'DATABRICKS_TOKEN')
         ]) {
           sh '''
-            export PRODUCT=${PRODUCT}
-            export CUSTOMER_CODE=${CUSTOMER_CODE}
+            set -e
     
-            chmod +x scripts/databricks_add_group.sh
-            ./scripts/databricks_add_group.sh
+            export DATABRICKS_HOST="https://accounts.azuredatabricks.net"
+            export DATABRICKS_ACCOUNT_ID=${DATABRICKS_ACCOUNT_ID}
+            export DATABRICKS_TOKEN=${DATABRICKS_TOKEN}
+    
+            export GROUP_NAME="grp-${PRODUCT}-${CUSTOMER_CODE}-users"
+            export WORKSPACE_NAME="medicareadv"
+    
+            chmod +x scripts/sync_group_to_databricks.sh
+            ./scripts/sync_group_to_databricks.sh
           '''
         }
       }
     }
+
 
 
     // stage('Grant Catalog Access') {
