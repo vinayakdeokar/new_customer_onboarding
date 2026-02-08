@@ -86,55 +86,54 @@ else
 fi
 
 # -------------------------------
-# 2️⃣ GRANTS (With Auto-Retry Fix)
+# 2️⃣ GRANTS (Ultimate Retry Logic)
 # -------------------------------
-echo "➡️ Applying grants..."
+echo "➡️ Starting Grant Process with Deep Retry..."
 
-# --- FIX START: Wait for SQL Warehouse to see the Group ---
-echo "⏳ Waiting for Group '$GROUP_NAME' to be visible in SQL Warehouse..."
-
-MAX_RETRIES=20
-SLEEP_SECONDS=5
-FOUND_GROUP=false
+# १. पहिल्यांदा CATALOG वर एक्सेस देण्याचा प्रयत्न (हा यशस्वी झाला की बाकीचे होतातच)
+MAX_RETRIES=15
+SLEEP_SECONDS=10
+SUCCESS=false
 
 for ((i=1; i<=MAX_RETRIES; i++)); do
-  # आपण इथे मुद्दाम run_sql वापरत नाही आहोत कारण ते Error आल्यावर Script बंद करते.
-  # त्याऐवजी आपण direct curl वापरून चेक करू.
+  echo "📡 Attempting GRANT on Catalog (Try $i/$MAX_RETRIES)..."
   
-  CHECK_RESPONSE=$(curl -s -X POST "${DATABRICKS_HOST}/api/2.0/sql/statements/" \
+  # आपण मुद्दाम run_sql ऐवजी थेट curl वापरून चेक करतोय जेणेकरून exit 1 होणार नाही
+  GRANT_RES=$(curl -s -X POST "${DATABRICKS_HOST}/api/2.0/sql/statements/" \
     -H "Authorization: Bearer ${DATABRICKS_ADMIN_TOKEN}" \
     -H "Content-Type: application/json" \
     -d "{
       \"warehouse_id\": \"${DATABRICKS_SQL_WAREHOUSE_ID}\",
-      \"statement\": \"SHOW GROUPS\"
+      \"statement\": \"GRANT USE CATALOG ON CATALOG \`${CATALOG_NAME}\` TO \`${GROUP_NAME}\`\"
     }")
-  
-  # रिस्पॉन्समध्ये ग्रुपचे नाव शोधणे
-  if echo "$CHECK_RESPONSE" | grep -q "$GROUP_NAME"; then
-    echo "✅ Group found in SQL Warehouse! Proceeding..."
-    FOUND_GROUP=true
+
+  STATE=$(echo "$GRANT_RES" | jq -r '.status.state // empty')
+  ERR_MSG=$(echo "$GRANT_RES" | jq -r '.status.error.message // empty')
+
+  if [ "$STATE" == "SUCCEEDED" ]; then
+    echo "✅ SUCCESS: Catalog grant applied!"
+    SUCCESS=true
     break
-  else
-    echo "⚠️ Group not yet visible to SQL Engine. Retrying in $SLEEP_SECONDS seconds... ($i/$MAX_RETRIES)"
+  elif [[ "$ERR_MSG" == *"PRINCIPAL_DOES_NOT_EXIST"* ]]; then
+    echo "⚠️ Identity not yet ready in Unity Catalog. Retrying in $SLEEP_SECONDS seconds..."
     sleep $SLEEP_SECONDS
+  else
+    echo "❌ Unexpected SQL Error: $ERR_MSG"
+    exit 1
   fi
 done
 
-if [ "$FOUND_GROUP" = false ]; then
-  echo "❌ CRITICAL: Group '$GROUP_NAME' sync timed out. SQL Warehouse cannot see it."
+if [ "$SUCCESS" = false ]; then
+  echo "❌ CRITICAL: Even after retries, Unity Catalog cannot see '$GROUP_NAME'."
   exit 1
 fi
-# --- FIX END ---
 
-# आता तुझे नॉर्मल GRANTS कमांड्स (हे आता फेल होणार नाहीत)
-echo "➡️ Granting permissions..."
-
-run_sql "GRANT USE CATALOG ON CATALOG \`${CATALOG_NAME}\` TO \`${GROUP_NAME}\`"
-
+# जर पहिली कमांड यशस्वी झाली, तर बाकीच्या कमांड्स आता चालतीलच
+echo "➡️ Applying Schema Grants..."
 run_sql "GRANT USE SCHEMA, SELECT ON SCHEMA \`${CATALOG_NAME}\`.\`${SCHEMA_BRONZE}\` TO \`${GROUP_NAME}\`"
 run_sql "GRANT USE SCHEMA, SELECT ON SCHEMA \`${CATALOG_NAME}\`.\`${SCHEMA_SILVER}\` TO \`${GROUP_NAME}\`"
 run_sql "GRANT USE SCHEMA, SELECT ON SCHEMA \`${CATALOG_NAME}\`.\`${SCHEMA_GOLD}\` TO \`${GROUP_NAME}\`"
 
 echo "------------------------------------------------"
-echo "✅ Schemas and grants created successfully"
+echo "🎉 FINALLY! Schemas and grants are done."
 echo "------------------------------------------------"
