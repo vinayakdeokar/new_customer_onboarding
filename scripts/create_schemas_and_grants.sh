@@ -86,54 +86,50 @@ else
 fi
 
 # -------------------------------
-# 2️⃣ GRANTS (Ultimate Retry Logic)
+# 2️⃣ GRANTS (Dynamic Principal Discovery Fix)
 # -------------------------------
-echo "➡️ Starting Grant Process with Deep Retry..."
+echo "➡️ Discovering Exact Principal Name from SQL Engine..."
 
-# १. पहिल्यांदा CATALOG वर एक्सेस देण्याचा प्रयत्न (हा यशस्वी झाला की बाकीचे होतातच)
-MAX_RETRIES=15
-SLEEP_SECONDS=10
-SUCCESS=false
+# SQL Warehouse कडून ग्रुपची लिस्ट मागवून आपल्या ग्रुपचे 'Exact' नाव शोधणे
+# यामुळे Case Sensitivity (Capital/Small) चा प्रॉब्लेम कायमचा सुटतो.
+EXACT_SQL_GROUP=$(curl -s -X POST "${DATABRICKS_HOST}/api/2.0/sql/statements/" \
+  -H "Authorization: Bearer ${DATABRICKS_ADMIN_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d "{\"warehouse_id\": \"$DATABRICKS_SQL_WAREHOUSE_ID\", \"statement\": \"SHOW GROUPS\"}" \
+  | jq -r '.result.data_array[][]' | grep -i "^${GROUP_NAME}$" | head -n 1)
 
-for ((i=1; i<=MAX_RETRIES; i++)); do
-  echo "📡 Attempting GRANT on Catalog (Try $i/$MAX_RETRIES)..."
-  
-  # आपण मुद्दाम run_sql ऐवजी थेट curl वापरून चेक करतोय जेणेकरून exit 1 होणार नाही
-  GRANT_RES=$(curl -s -X POST "${DATABRICKS_HOST}/api/2.0/sql/statements/" \
-    -H "Authorization: Bearer ${DATABRICKS_ADMIN_TOKEN}" \
-    -H "Content-Type: application/json" \
-    -d "{
-      \"warehouse_id\": \"${DATABRICKS_SQL_WAREHOUSE_ID}\",
-      \"statement\": \"GRANT USE CATALOG ON CATALOG \`${CATALOG_NAME}\` TO \`${GROUP_NAME}\`\"
-    }")
-
-  STATE=$(echo "$GRANT_RES" | jq -r '.status.state // empty')
-  ERR_MSG=$(echo "$GRANT_RES" | jq -r '.status.error.message // empty')
-
-  if [ "$STATE" == "SUCCEEDED" ]; then
-    echo "✅ SUCCESS: Catalog grant applied!"
-    SUCCESS=true
-    break
-  elif [[ "$ERR_MSG" == *"PRINCIPAL_DOES_NOT_EXIST"* ]]; then
-    echo "⚠️ Identity not yet ready in Unity Catalog. Retrying in $SLEEP_SECONDS seconds..."
-    sleep $SLEEP_SECONDS
-  else
-    echo "❌ Unexpected SQL Error: $ERR_MSG"
+if [ -z "$EXACT_SQL_GROUP" ] || [ "$EXACT_SQL_GROUP" == "null" ]; then
+    echo "❌ ERROR: Group '$GROUP_NAME' SQL Warehouse ला अजिबात दिसत नाहीये."
+    echo "कृपया Azure Portal मध्ये ग्रुपचे स्पेलिंग नीट तपासा."
     exit 1
-  fi
-done
-
-if [ "$SUCCESS" = false ]; then
-  echo "❌ CRITICAL: Even after retries, Unity Catalog cannot see '$GROUP_NAME'."
-  exit 1
 fi
 
-# जर पहिली कमांड यशस्वी झाली, तर बाकीच्या कमांड्स आता चालतीलच
-echo "➡️ Applying Schema Grants..."
-run_sql "GRANT USE SCHEMA, SELECT ON SCHEMA \`${CATALOG_NAME}\`.\`${SCHEMA_BRONZE}\` TO \`${GROUP_NAME}\`"
-run_sql "GRANT USE SCHEMA, SELECT ON SCHEMA \`${CATALOG_NAME}\`.\`${SCHEMA_SILVER}\` TO \`${GROUP_NAME}\`"
-run_sql "GRANT USE SCHEMA, SELECT ON SCHEMA \`${CATALOG_NAME}\`.\`${SCHEMA_GOLD}\` TO \`${GROUP_NAME}\`"
+echo "✅ Found Exact Principal Name: '$EXACT_SQL_GROUP'"
 
-echo "------------------------------------------------"
-echo "🎉 FINALLY! Schemas and grants are done."
-echo "------------------------------------------------"
+# आता मिळालेल्या 'Exact' नावाचा वापर करून GRANT देणे
+run_sql_with_retry () {
+  local SQL_CMD="$1"
+  for ((i=1; i<=10; i++)); do
+    echo "📡 Attempting: $SQL_CMD (Try $i/10)..."
+    RES=$(curl -s -X POST "${DATABRICKS_HOST}/api/2.0/sql/statements/" \
+      -H "Authorization: Bearer ${DATABRICKS_ADMIN_TOKEN}" \
+      -H "Content-Type: application/json" \
+      -d "{\"warehouse_id\": \"$DATABRICKS_SQL_WAREHOUSE_ID\", \"statement\": \"$SQL_CMD\"}")
+    
+    STATE=$(echo "$RES" | jq -r '.status.state // empty')
+    if [ "$STATE" == "SUCCEEDED" ]; then
+      echo "✅ SUCCESS!"
+      return 0
+    fi
+    echo "⚠️ Still waiting for sync... (10s)"
+    sleep 10
+  done
+  echo "❌ Failed after 10 retries."
+  exit 1
+}
+
+echo "➡️ Applying grants using discovered name..."
+run_sql_with_retry "GRANT USE CATALOG ON CATALOG \`${CATALOG_NAME}\` TO \`${EXACT_SQL_GROUP}\`"
+run_sql_with_retry "GRANT USE SCHEMA, SELECT ON SCHEMA \`${CATALOG_NAME}\`.\`${SCHEMA_BRONZE}\` TO \`${EXACT_SQL_GROUP}\`"
+run_sql_with_retry "GRANT USE SCHEMA, SELECT ON SCHEMA \`${CATALOG_NAME}\`.\`${SCHEMA_SILVER}\` TO \`${EXACT_SQL_GROUP}\`"
+run_sql_with_retry "GRANT USE SCHEMA, SELECT ON SCHEMA \`${CATALOG_NAME}\`.\`${SCHEMA_GOLD}\` TO \`${EXACT_SQL_GROUP}\`"
