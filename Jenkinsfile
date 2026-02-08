@@ -81,64 +81,10 @@ pipeline {
       }
     }
 
-    // stage('Databricks SPN OAuth Secret (Account Level)') {
-    //   steps {
-    //     withCredentials([
-    //       string(credentialsId: 'DATABRICKS_ACCOUNT_ID', variable: 'DATABRICKS_ACCOUNT_ID'),
-    //       string(credentialsId: 'AZURE_TENANT_ID', variable: 'AZURE_TENANT_ID')
-    //     ]) {
-    //       sh '''
-    //         export TARGET_SPN_DISPLAY_NAME="sp-m360-vinayak-002"
-    //
-    //         chmod +x scripts/dbx_spn_discover.sh
-    //         chmod +x scripts/dbx_spn_generate_secret.sh
-    //
-    //         scripts/dbx_spn_discover.sh
-    //         scripts/dbx_spn_generate_secret.sh
-    //       '''
-    //     }
-    //   }
-    // }
-
-    // stage('Ensure Databricks Group') {
-    //   steps {
-    //     withCredentials([
-    //       string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
-    //       string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_ADMIN_TOKEN')
-    //     ]) {
-    //       sh '''
-    //         export PRODUCT=${PRODUCT}
-    //         export CUSTOMER_CODE=${CUSTOMER_CODE}
-    
-    //         chmod +x scripts/databricks_add_group.sh
-    //         ./scripts/databricks_add_group.sh
-    //       '''
-    //     }
-    //   }
-    // }
-
-    
-
-    // stage('Grant Catalog Access') {
-    //   steps {
-    //     withCredentials([
-    //       string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
-    //       string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_ADMIN_TOKEN'),
-    //       string(credentialsId: 'DATABRICKS_SQL_WAREHOUSE_ID', variable: 'DATABRICKS_SQL_WAREHOUSE_ID'),
-    //       string(credentialsId: 'DATABRICKS_CATALOG_NAME', variable: 'CATALOG_NAME')
-    //     ]) {
-    //       sh '''
-    //         export PRODUCT=m360
-    //         export CUSTOMER_CODE=vinayak-002
-    
-    //         chmod +x scripts/databricks_grant_catalog_access.sh
-    //         ./scripts/databricks_grant_catalog_access.sh
-    //       '''
-    //     }
-    //   }
-    // }
-
-    stage('Create Schemas & Grants') {
+    // =========================================================
+    // FINAL ACCESS MANAGEMENT STAGE (SHARED / DEDICATED)
+    // =========================================================
+    stage('Databricks Access Manager') {
       steps {
         withCredentials([
           string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
@@ -147,41 +93,26 @@ pipeline {
           string(credentialsId: 'DATABRICKS_CATALOG_NAME', variable: 'CATALOG_NAME')
         ]) {
           sh '''
+            chmod +x scripts/databricks_access_manager.sh
+
+            # =================================================
+            # MODE SELECTION
+            # MODE=DEDICATED -> 1 customer = 1 warehouse + 1 group
+            # MODE=SHARED    -> 1 schema + multiple groups auto-attach
+            # =================================================
+
+            export MODE=DEDICATED
+            # export MODE=SHARED
+
             export PRODUCT=${PRODUCT}
             export CUSTOMER_CODE=${CUSTOMER_CODE}
-    
-            chmod +x scripts/create_schemas_and_grants.sh
-            ./scripts/create_schemas_and_grants.sh
+            export CATALOG_NAME=${CATALOG_NAME}
+
+            ./scripts/databricks_access_manager.sh
           '''
         }
       }
     }
-
-
-
-    
-    
-    // stage('Create Schemas & Grants') {
-    //   steps {
-    //     withCredentials([
-    //       string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
-    //       string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_ADMIN_TOKEN'),
-    //       string(credentialsId: 'DATABRICKS_SQL_WAREHOUSE_ID', variable: 'DATABRICKS_SQL_WAREHOUSE_ID'),
-    //       string(credentialsId: 'DATABRICKS_CATALOG_NAME', variable: 'CATALOG_NAME')
-    //     ]) {
-    //       sh '''
-    //         export PRODUCT=${PRODUCT}
-    //         export CUSTOMER_CODE=${CUSTOMER_CODE}
-    
-    //         chmod +x scripts/create_schemas_and_grants.sh
-    //         ./scripts/create_schemas_and_grants.sh
-    //       '''
-    //     }
-    //   }
-    // }
-
-
-    
 
   }
 }
