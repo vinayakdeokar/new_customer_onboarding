@@ -89,17 +89,17 @@ fi
 echo "➡️ Applying grants..."
 # (तुझ्या स्क्रिप्टमधील बाकी GRANT चा भाग इथे खाली येईल)
 
-# -------------------------------
-# 2️⃣ GRANTS
-# -------------------------------
+# ... (Sync वाला भाग तसाच ठेव)
+
+echo "⏳ Waiting for Identity sync to propagate..."
+sleep 10  # ५-१० सेकंद थांबल्याने SQL Warehouse ला ग्रुप सापडण्यास मदत होते
+
 echo "➡️ Applying grants..."
 
+# १. आधी कॅटलॉगवर एक्सेस
 run_sql "GRANT USE CATALOG ON CATALOG \`${CATALOG_NAME}\` TO \`${GROUP_NAME}\`"
 
+# २. मग स्कीमावर एक्सेस
 run_sql "GRANT USE SCHEMA, SELECT ON SCHEMA \`${CATALOG_NAME}\`.\`${SCHEMA_BRONZE}\` TO \`${GROUP_NAME}\`"
 run_sql "GRANT USE SCHEMA, SELECT ON SCHEMA \`${CATALOG_NAME}\`.\`${SCHEMA_SILVER}\` TO \`${GROUP_NAME}\`"
 run_sql "GRANT USE SCHEMA, SELECT ON SCHEMA \`${CATALOG_NAME}\`.\`${SCHEMA_GOLD}\` TO \`${GROUP_NAME}\`"
-
-echo "------------------------------------------------"
-echo "✅ Schemas and grants created successfully"
-echo "------------------------------------------------"
