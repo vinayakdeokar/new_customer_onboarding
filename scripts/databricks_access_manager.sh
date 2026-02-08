@@ -58,33 +58,30 @@ if [ "$MODE" = "DEDICATED" ]; then
   run_sql "CREATE SCHEMA IF NOT EXISTS \`${CATALOG_NAME}\`.\`${SCHEMA_NAME}\`"
 
   # -------------------------------
-  # 2️⃣ CREATE SQL WAREHOUSE
-  # -------------------------------
-  echo "➡️ Creating SQL Warehouse ${WAREHOUSE_NAME}"
+# 2️⃣ CREATE SQL WAREHOUSE (CAPTURE ID)
+# -------------------------------
+echo "➡️ Creating SQL Warehouse ${WAREHOUSE_NAME}"
 
-  curl -s -X POST \
-    "${DATABRICKS_HOST}/api/2.0/sql/warehouses" \
-    -H "Authorization: Bearer ${DATABRICKS_ADMIN_TOKEN}" \
-    -H "Content-Type: application/json" \
-    -d "{
-      \"name\": \"${WAREHOUSE_NAME}\",
-      \"cluster_size\": \"Small\",
-      \"auto_stop_mins\": 10,
-      \"enable_serverless_compute\": true
-    }" > /dev/null
+CREATE_RESP=$(curl -s -X POST \
+  "${DATABRICKS_HOST}/api/2.0/sql/warehouses" \
+  -H "Authorization: Bearer ${DATABRICKS_ADMIN_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"name\": \"${WAREHOUSE_NAME}\",
+    \"cluster_size\": \"Small\",
+    \"auto_stop_mins\": 10,
+    \"enable_serverless_compute\": true
+  }")
 
-  # -------------------------------
-  # 3️⃣ GET WAREHOUSE ID
-  # -------------------------------
-  WAREHOUSE_ID=$(curl -s \
-    -H "Authorization: Bearer ${DATABRICKS_ADMIN_TOKEN}" \
-    "${DATABRICKS_HOST}/api/2.0/sql/warehouses" \
-    | jq -r ".warehouses[] | select(.name==\"${WAREHOUSE_NAME}\") | .id")
+WAREHOUSE_ID=$(echo "$CREATE_RESP" | jq -r '.id')
 
-  if [ -z "$WAREHOUSE_ID" ] || [ "$WAREHOUSE_ID" = "null" ]; then
-    echo "❌ Failed to fetch warehouse ID"
-    exit 1
-  fi
+if [ -z "$WAREHOUSE_ID" ] || [ "$WAREHOUSE_ID" = "null" ]; then
+  echo "❌ Warehouse creation failed"
+  echo "$CREATE_RESP"
+  exit 1
+fi
+
+echo "✅ Warehouse created. ID: $WAREHOUSE_ID"
 
   # -------------------------------
   # 4️⃣ GRANT WAREHOUSE ACCESS (API)
