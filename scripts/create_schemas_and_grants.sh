@@ -126,31 +126,14 @@ if [ -z "$EXACT_SQL_GROUP" ] || [ "$EXACT_SQL_GROUP" == "null" ]; then
     exit 1
 fi
 
-echo "✅ Found Exact Principal Name: '$EXACT_SQL_GROUP'"
-
-# आता मिळालेल्या 'Exact' नावाचा वापर करून GRANT देणे
-run_sql_with_retry () {
-  local SQL_CMD="$1"
-  for ((i=1; i<=10; i++)); do
-    echo "📡 Attempting: $SQL_CMD (Try $i/10)..."
-    RES=$(curl -s -X POST "${DATABRICKS_HOST}/api/2.0/sql/statements/" \
-      -H "Authorization: Bearer ${DATABRICKS_ADMIN_TOKEN}" \
-      -H "Content-Type: application/json" \
-      -d "{\"warehouse_id\": \"$DATABRICKS_SQL_WAREHOUSE_ID\", \"statement\": \"$SQL_CMD\"}")
-    
-    STATE=$(echo "$RES" | jq -r '.status.state // empty')
-    if [ "$STATE" == "SUCCEEDED" ]; then
-      echo "✅ SUCCESS!"
-      return 0
-    fi
-    echo "⚠️ Still waiting for sync... (10s)"
-    sleep 10
-  done
-  echo "❌ Failed after 10 retries."
-  exit 1
-}
-
 echo "➡️ Applying grants using discovered name..."
-run_sql_with_retry "GRANT USE SCHEMA, SELECT ON SCHEMA \`${CATALOG_NAME}\`.\`${SCHEMA_BRONZE}\` TO \`${EXACT_SQL_GROUP}\`"
-run_sql_with_retry "GRANT USE SCHEMA, SELECT ON SCHEMA \`${CATALOG_NAME}\`.\`${SCHEMA_SILVER}\` TO \`${EXACT_SQL_GROUP}\`"
-run_sql_with_retry "GRANT USE SCHEMA, SELECT ON SCHEMA \`${CATALOG_NAME}\`.\`${SCHEMA_GOLD}\` TO \`${EXACT_SQL_GROUP}\`"
+
+# 1️⃣ USE_CATALOG
+run_sql "GRANT USAGE ON CATALOG \`${CATALOG_NAME}\` TO \`${EXACT_SQL_GROUP}\`"
+
+# 2️⃣ USE_SCHEMA + SELECT
+run_sql "GRANT USAGE, SELECT ON SCHEMA \`${CATALOG_NAME}\`.\`${SCHEMA_BRONZE}\` TO \`${EXACT_SQL_GROUP}\`"
+run_sql "GRANT USAGE, SELECT ON SCHEMA \`${CATALOG_NAME}\`.\`${SCHEMA_SILVER}\` TO \`${EXACT_SQL_GROUP}\`"
+run_sql "GRANT USAGE, SELECT ON SCHEMA \`${CATALOG_NAME}\`.\`${SCHEMA_GOLD}\` TO \`${EXACT_SQL_GROUP}\`"
+
+echo "✅ All grants applied successfully."
