@@ -88,8 +88,18 @@ if [ "$MODE" = "DEDICATED" ]; then
   run_sql "CREATE SCHEMA IF NOT EXISTS \`${CATALOG_NAME}\`.\`${SCHEMA_NAME}\`"
 
   # -------------------------------
-  # 2️⃣ CREATE SQL WAREHOUSE
-  # -------------------------------
+# 2️⃣ CHECK OR CREATE SQL WAREHOUSE
+# -------------------------------
+echo "➡️ Checking if SQL Warehouse ${WAREHOUSE_NAME} exists..."
+
+WAREHOUSE_ID=$(curl -s \
+  -H "Authorization: Bearer ${DATABRICKS_ADMIN_TOKEN}" \
+  "${DATABRICKS_HOST}/api/2.0/sql/warehouses" \
+  | jq -r ".warehouses[] | select(.name==\"${WAREHOUSE_NAME}\") | .id")
+
+if [ -n "$WAREHOUSE_ID" ] && [ "$WAREHOUSE_ID" != "null" ]; then
+  echo "✅ Warehouse already exists. Reusing ID: $WAREHOUSE_ID"
+else
   echo "➡️ Creating SQL Warehouse ${WAREHOUSE_NAME}"
 
   CREATE_RESP=$(curl -s -X POST \
@@ -114,6 +124,7 @@ if [ "$MODE" = "DEDICATED" ]; then
   fi
 
   echo "✅ Warehouse created. ID: $WAREHOUSE_ID"
+fi
 
   # -------------------------------
   # 3️⃣ GRANT WAREHOUSE ACCESS (API)
