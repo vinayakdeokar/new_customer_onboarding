@@ -4,20 +4,19 @@ set -e
 # ===============================
 # REQUIRED ENV VARIABLES
 # ===============================
-: "${MODE:?MODE missing (SHARED or DEDICATED)}"
+: "${MODE:?MODE missing (DEDICATED or SHARED)}"
 : "${PRODUCT:?PRODUCT missing}"
 : "${CATALOG_NAME:?CATALOG_NAME missing}"
 : "${DATABRICKS_HOST:?DATABRICKS_HOST missing}"
 : "${DATABRICKS_ADMIN_TOKEN:?DATABRICKS_ADMIN_TOKEN missing}"
 : "${DATABRICKS_SQL_WAREHOUSE_ID:?DATABRICKS_SQL_WAREHOUSE_ID missing}"
 
-# Required only for DEDICATED
-if [ "$MODE" == "DEDICATED" ]; then
+if [ "$MODE" = "DEDICATED" ]; then
   : "${CUSTOMER_CODE:?CUSTOMER_CODE missing}"
 fi
 
 # ===============================
-# HELPERS
+# HELPER : RUN SQL
 # ===============================
 run_sql () {
   local SQL="$1"
@@ -29,10 +28,10 @@ run_sql () {
     -d "{
       \"warehouse_id\": \"${DATABRICKS_SQL_WAREHOUSE_ID}\",
       \"statement\": \"${SQL}\"
-    }"
-  )
+    }")
 
   STATE=$(echo "$RESPONSE" | jq -r '.status.state // empty')
+
   if [ "$STATE" != "SUCCEEDED" ]; then
     echo "❌ SQL FAILED"
     echo "$RESPONSE"
@@ -41,13 +40,87 @@ run_sql () {
 }
 
 # ===============================
-# MODE : SHARED
+# MODE : DEDICATED
 # ===============================
-if [ "$MODE" == "SHARED" ]; then
+if [ "$MODE" = "DEDICATED" ]; then
+  GROUP_NAME="grp-${PRODUCT}-${CUSTOMER_CODE}-users"
+  WAREHOUSE_NAME="wh-${PRODUCT}-${CUSTOMER_CODE}"
+  SCHEMA_NAME="${PRODUCT}_${CUSTOMER_CODE}"
+
+  echo "🔐 MODE: DEDICATED"
+  echo "Customer : ${CUSTOMER_CODE}"
+  echo "Group    : ${GROUP_NAME}"
+  echo "Warehouse: ${WAREHOUSE_NAME}"
+
+  # -------------------------------
+  # 1️⃣ CREATE SCHEMA
+  # -------------------------------
+  run_sql "CREATE SCHEMA IF NOT EXISTS \`${CATALOG_NAME}\`.\`${SCHEMA_NAME}\`"
+
+  # -------------------------------
+  # 2️⃣ CREATE SQL WAREHOUSE
+  # -------------------------------
+  echo "➡️ Creating SQL Warehouse ${WAREHOUSE_NAME}"
+
+  curl -s -X POST \
+    "${DATABRICKS_HOST}/api/2.0/sql/warehouses" \
+    -H "Authorization: Bearer ${DATABRICKS_ADMIN_TOKEN}" \
+    -H "Content-Type: application/json" \
+    -d "{
+      \"name\": \"${WAREHOUSE_NAME}\",
+      \"cluster_size\": \"Small\",
+      \"auto_stop_mins\": 10,
+      \"enable_serverless_compute\": true
+    }" > /dev/null
+
+  # -------------------------------
+  # 3️⃣ GET WAREHOUSE ID
+  # -------------------------------
+  WAREHOUSE_ID=$(curl -s \
+    -H "Authorization: Bearer ${DATABRICKS_ADMIN_TOKEN}" \
+    "${DATABRICKS_HOST}/api/2.0/sql/warehouses" \
+    | jq -r ".warehouses[] | select(.name==\"${WAREHOUSE_NAME}\") | .id")
+
+  if [ -z "$WAREHOUSE_ID" ] || [ "$WAREHOUSE_ID" = "null" ]; then
+    echo "❌ Failed to fetch warehouse ID"
+    exit 1
+  fi
+
+  # -------------------------------
+  # 4️⃣ GRANT WAREHOUSE ACCESS (API)
+  # -------------------------------
+  echo "➡️ Granting warehouse access to group"
+
+  curl -s -X PATCH \
+    "${DATABRICKS_HOST}/api/2.0/permissions/sql/warehouses/${WAREHOUSE_ID}" \
+    -H "Authorization: Bearer ${DATABRICKS_ADMIN_TOKEN}" \
+    -H "Content-Type: application/json" \
+    -d "{
+      \"access_control_list\": [
+        {
+          \"group_name\": \"${GROUP_NAME}\",
+          \"permission_level\": \"CAN_USE\"
+        }
+      ]
+    }" > /dev/null
+
+  # -------------------------------
+  # 5️⃣ DATA GRANTS (SQL)
+  # -------------------------------
+  run_sql "GRANT USAGE ON SCHEMA \`${CATALOG_NAME}\`.\`${SCHEMA_NAME}\` TO \`${GROUP_NAME}\`"
+  run_sql "GRANT SELECT ON ALL TABLES IN SCHEMA \`${CATALOG_NAME}\`.\`${SCHEMA_NAME}\` TO \`${GROUP_NAME}\`"
+
+  echo "✅ DEDICATED access configured successfully"
+fi
+
+# ===============================
+# MODE : SHARED (OPTIONAL)
+# ===============================
+if [ "$MODE" = "SHARED" ]; then
   SCHEMA_NAME="${PRODUCT}_common"
 
   echo "🔁 MODE: SHARED"
-  echo "➡️ Discovering groups: grp-${PRODUCT}-*-users"
+  echo "Schema: ${SCHEMA_NAME}"
 
   GROUPS=$(curl -s -X POST \
     "${DATABRICKS_HOST}/api/2.0/sql/statements/" \
@@ -60,59 +133,12 @@ if [ "$MODE" == "SHARED" ]; then
     | jq -r '.result.data_array[][]' \
     | grep "^grp-${PRODUCT}-.*-users$" || true)
 
-  if [ -z "$GROUPS" ]; then
-    echo "❌ No matching groups found"
-    exit 1
-  fi
-
-  echo "➡️ Applying grants to shared schema: ${SCHEMA_NAME}"
-
   for GROUP in $GROUPS; do
-    echo "   Granting to $GROUP"
     run_sql "GRANT USAGE ON SCHEMA \`${CATALOG_NAME}\`.\`${SCHEMA_NAME}\` TO \`${GROUP}\`"
     run_sql "GRANT SELECT ON ALL TABLES IN SCHEMA \`${CATALOG_NAME}\`.\`${SCHEMA_NAME}\` TO \`${GROUP}\`"
   done
 
-  echo "✅ SHARED access applied successfully"
-fi
-
-# ===============================
-# MODE : DEDICATED
-# ===============================
-if [ "$MODE" == "DEDICATED" ]; then
-  GROUP_NAME="grp-${PRODUCT}-${CUSTOMER_CODE}-users"
-  SCHEMA_NAME="${PRODUCT}_${CUSTOMER_CODE}"
-  WAREHOUSE_NAME="wh-${PRODUCT}-${CUSTOMER_CODE}"
-
-  echo "🔐 MODE: DEDICATED"
-  echo "Customer : ${CUSTOMER_CODE}"
-  echo "Group    : ${GROUP_NAME}"
-  echo "Warehouse: ${WAREHOUSE_NAME}"
-
-  # Create schema
-  run_sql "CREATE SCHEMA IF NOT EXISTS \`${CATALOG_NAME}\`.\`${SCHEMA_NAME}\`"
-
-  # Create warehouse
-  echo "➡️ Creating SQL Warehouse ${WAREHOUSE_NAME}"
-  curl -s -X POST \
-    "${DATABRICKS_HOST}/api/2.0/sql/warehouses" \
-    -H "Authorization: Bearer ${DATABRICKS_ADMIN_TOKEN}" \
-    -H "Content-Type: application/json" \
-    -d "{
-      \"name\": \"${WAREHOUSE_NAME}\",
-      \"cluster_size\": \"Small\",
-      \"auto_stop_mins\": 10,
-      \"enable_serverless_compute\": true
-    }" > /dev/null
-
-  # Grant warehouse access
-  run_sql "GRANT USAGE ON WAREHOUSE \`${WAREHOUSE_NAME}\` TO \`${GROUP_NAME}\`"
-
-  # Grant schema access
-  run_sql "GRANT USAGE ON SCHEMA \`${CATALOG_NAME}\`.\`${SCHEMA_NAME}\` TO \`${GROUP_NAME}\`"
-  run_sql "GRANT SELECT ON ALL TABLES IN SCHEMA \`${CATALOG_NAME}\`.\`${SCHEMA_NAME}\` TO \`${GROUP_NAME}\`"
-
-  echo "✅ DEDICATED access applied successfully"
+  echo "✅ SHARED access configured successfully"
 fi
 
 echo "🎉 SCRIPT COMPLETED SUCCESSFULLY"
