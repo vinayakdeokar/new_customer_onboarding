@@ -57,7 +57,7 @@ if [ "$MODE" = "DEDICATED" ]; then
   # -------------------------------
   run_sql "CREATE SCHEMA IF NOT EXISTS \`${CATALOG_NAME}\`.\`${SCHEMA_NAME}\`"
 
-  # -------------------------------
+# -------------------------------
 # 2️⃣ CREATE SQL WAREHOUSE (CAPTURE ID)
 # -------------------------------
 echo "➡️ Creating SQL Warehouse ${WAREHOUSE_NAME}"
@@ -69,8 +69,10 @@ CREATE_RESP=$(curl -s -X POST \
   -d "{
     \"name\": \"${WAREHOUSE_NAME}\",
     \"cluster_size\": \"Small\",
+    \"min_num_clusters\": 1,
+    \"max_num_clusters\": 1,
     \"auto_stop_mins\": 10,
-    \"enable_serverless_compute\": true
+    \"enable_serverless_compute\": false
   }")
 
 WAREHOUSE_ID=$(echo "$CREATE_RESP" | jq -r '.id')
