@@ -85,21 +85,56 @@ else
     echo "✅ Group already synced."
 fi
 
-# आता तुझे पुढचे GRANTS चालू कर...
-echo "➡️ Applying grants..."
-# (तुझ्या स्क्रिप्टमधील बाकी GRANT चा भाग इथे खाली येईल)
-
-# ... (Sync वाला भाग तसाच ठेव)
-
-echo "⏳ Waiting for Identity sync to propagate..."
-sleep 10  # ५-१० सेकंद थांबल्याने SQL Warehouse ला ग्रुप सापडण्यास मदत होते
-
+# -------------------------------
+# 2️⃣ GRANTS (With Auto-Retry Fix)
+# -------------------------------
 echo "➡️ Applying grants..."
 
-# १. आधी कॅटलॉगवर एक्सेस
+# --- FIX START: Wait for SQL Warehouse to see the Group ---
+echo "⏳ Waiting for Group '$GROUP_NAME' to be visible in SQL Warehouse..."
+
+MAX_RETRIES=20
+SLEEP_SECONDS=5
+FOUND_GROUP=false
+
+for ((i=1; i<=MAX_RETRIES; i++)); do
+  # आपण इथे मुद्दाम run_sql वापरत नाही आहोत कारण ते Error आल्यावर Script बंद करते.
+  # त्याऐवजी आपण direct curl वापरून चेक करू.
+  
+  CHECK_RESPONSE=$(curl -s -X POST "${DATABRICKS_HOST}/api/2.0/sql/statements/" \
+    -H "Authorization: Bearer ${DATABRICKS_ADMIN_TOKEN}" \
+    -H "Content-Type: application/json" \
+    -d "{
+      \"warehouse_id\": \"${DATABRICKS_SQL_WAREHOUSE_ID}\",
+      \"statement\": \"SHOW GROUPS\"
+    }")
+  
+  # रिस्पॉन्समध्ये ग्रुपचे नाव शोधणे
+  if echo "$CHECK_RESPONSE" | grep -q "$GROUP_NAME"; then
+    echo "✅ Group found in SQL Warehouse! Proceeding..."
+    FOUND_GROUP=true
+    break
+  else
+    echo "⚠️ Group not yet visible to SQL Engine. Retrying in $SLEEP_SECONDS seconds... ($i/$MAX_RETRIES)"
+    sleep $SLEEP_SECONDS
+  fi
+done
+
+if [ "$FOUND_GROUP" = false ]; then
+  echo "❌ CRITICAL: Group '$GROUP_NAME' sync timed out. SQL Warehouse cannot see it."
+  exit 1
+fi
+# --- FIX END ---
+
+# आता तुझे नॉर्मल GRANTS कमांड्स (हे आता फेल होणार नाहीत)
+echo "➡️ Granting permissions..."
+
 run_sql "GRANT USE CATALOG ON CATALOG \`${CATALOG_NAME}\` TO \`${GROUP_NAME}\`"
 
-# २. मग स्कीमावर एक्सेस
 run_sql "GRANT USE SCHEMA, SELECT ON SCHEMA \`${CATALOG_NAME}\`.\`${SCHEMA_BRONZE}\` TO \`${GROUP_NAME}\`"
 run_sql "GRANT USE SCHEMA, SELECT ON SCHEMA \`${CATALOG_NAME}\`.\`${SCHEMA_SILVER}\` TO \`${GROUP_NAME}\`"
 run_sql "GRANT USE SCHEMA, SELECT ON SCHEMA \`${CATALOG_NAME}\`.\`${SCHEMA_GOLD}\` TO \`${GROUP_NAME}\`"
+
+echo "------------------------------------------------"
+echo "✅ Schemas and grants created successfully"
+echo "------------------------------------------------"
