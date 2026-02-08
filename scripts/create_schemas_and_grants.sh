@@ -92,10 +92,12 @@ echo "✅ Group visible in SQL: ${GROUP_FOUND}"
 # -------------------------------
 echo "➡️ Applying grants..."
 
-run_sql "GRANT USAGE ON CATALOG \`${CATALOG_NAME}\` TO \`${GROUP_FOUND}\`"
+PRINCIPAL="account users:${GROUP_NAME}"
 
-run_sql "GRANT USAGE, SELECT ON SCHEMA \`${CATALOG_NAME}\`.\`${SCHEMA_BRONZE}\` TO \`${GROUP_FOUND}\`"
-run_sql "GRANT USAGE, SELECT ON SCHEMA \`${CATALOG_NAME}\`.\`${SCHEMA_SILVER}\` TO \`${GROUP_FOUND}\`"
-run_sql "GRANT USAGE, SELECT ON SCHEMA \`${CATALOG_NAME}\`.\`${SCHEMA_GOLD}\` TO \`${GROUP_FOUND}\`"
+run_sql "GRANT USAGE ON CATALOG \`${CATALOG_NAME}\` TO \`${PRINCIPAL}\`"
+
+run_sql "GRANT USAGE, SELECT ON SCHEMA \`${CATALOG_NAME}\`.\`${SCHEMA_BRONZE}\` TO \`${PRINCIPAL}\`"
+run_sql "GRANT USAGE, SELECT ON SCHEMA \`${CATALOG_NAME}\`.\`${SCHEMA_SILVER}\` TO \`${PRINCIPAL}\`"
+run_sql "GRANT USAGE, SELECT ON SCHEMA \`${CATALOG_NAME}\`.\`${SCHEMA_GOLD}\` TO \`${PRINCIPAL}\`"
 
 echo "🎉 All schemas created and grants applied successfully."
