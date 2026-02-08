@@ -121,7 +121,7 @@ pipeline {
       steps {
         withCredentials([
           string(credentialsId: 'DATABRICKS_ACCOUNT_ID', variable: 'DATABRICKS_ACCOUNT_ID'),
-          string(credentialsId: 'DATABRICKS_ACCOUNT_ADMIN_TOKEN', variable: 'DATABRICKS_TOKEN')
+          string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_TOKEN')
         ]) {
           sh '''
             set -e
@@ -139,7 +139,6 @@ pipeline {
         }
       }
     }
-
 
 
     // stage('Grant Catalog Access') {
