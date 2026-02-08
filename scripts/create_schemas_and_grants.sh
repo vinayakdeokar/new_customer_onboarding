@@ -151,7 +151,6 @@ run_sql_with_retry () {
 }
 
 echo "➡️ Applying grants using discovered name..."
-run_sql_with_retry "GRANT USE CATALOG ON CATALOG \`${CATALOG_NAME}\` TO \`${EXACT_SQL_GROUP}\`"
 run_sql_with_retry "GRANT USE SCHEMA, SELECT ON SCHEMA \`${CATALOG_NAME}\`.\`${SCHEMA_BRONZE}\` TO \`${EXACT_SQL_GROUP}\`"
 run_sql_with_retry "GRANT USE SCHEMA, SELECT ON SCHEMA \`${CATALOG_NAME}\`.\`${SCHEMA_SILVER}\` TO \`${EXACT_SQL_GROUP}\`"
 run_sql_with_retry "GRANT USE SCHEMA, SELECT ON SCHEMA \`${CATALOG_NAME}\`.\`${SCHEMA_GOLD}\` TO \`${EXACT_SQL_GROUP}\`"
