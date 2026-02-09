@@ -5,6 +5,12 @@ pipeline {
     string(name: 'CUSTOMER_CODE', description: 'Customer code like vinayak-003')
     string(name: 'PRODUCT', defaultValue: 'm360', description: 'Product name')
     string(name: 'ENV', defaultValue: 'dev', description: 'Environment')
+    string(
+      name: 'WORKSPACE_ID',
+      defaultValue: '7405618110977329',
+      description: 'Databricks Workspace ID'
+    )
+
 
     string(
       name: 'SPN_NAME',
@@ -16,11 +22,11 @@ pipeline {
       description: 'Azure Entra ID group name (single)'
     )
   }
+  
+    environment {
+    KV_NAME = 'kv-databricks-fab'
+  }
 
-  environment {
-  KV_NAME = 'kv-databricks-fab'
-
-  WORKSPACE_NAME = "<<<EXACT_DATABRICKS_WORKSPACE_NAME>>>"
 
 
   }
@@ -160,7 +166,8 @@ pipeline {
         ]) {
           sh """
             export GROUP_NAME="${ACCESS_GROUP}"
-            export WORKSPACE_NAME="${env.WORKSPACE_NAME}"
+            export WORKSPACE_ID="${WORKSPACE_ID}"
+
     
             chmod +x scripts/sync_group_to_databricks.sh
             scripts/sync_group_to_databricks.sh
