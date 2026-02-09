@@ -5,14 +5,16 @@ pipeline {
     string(name: 'CUSTOMER_CODE', description: 'Customer code like vinayak-003')
     string(name: 'PRODUCT', defaultValue: 'm360', description: 'Product name')
     string(name: 'ENV', defaultValue: 'dev', description: 'Environment')
-    string(name: 'SPN_NAME',
+
+    string(
+      name: 'SPN_NAME',
       description: 'Azure Entra ID SPN name (e.g. sp-m360-vinayak-003)'
     )
+
     string(
-    name: 'ACCESS_GROUP',
-    description: 'Azure Entra ID group name (single)'
-  )
-}
+      name: 'ACCESS_GROUP',
+      description: 'Azure Entra ID group name (single)'
+    )
   }
 
   environment {
@@ -128,20 +130,22 @@ pipeline {
         ]) {
           sh """
             export TARGET_SPN_DISPLAY_NAME="${params.SPN_NAME}"
-          
+
             echo "Using SPN: \$TARGET_SPN_DISPLAY_NAME"
-          
+
             chmod +x scripts/dbx_spn_discover.sh
             chmod +x scripts/dbx_spn_generate_secret.sh
-          
+
             scripts/dbx_spn_discover.sh
             scripts/dbx_spn_generate_secret.sh
           """
-
         }
       }
     }
 
+    // --------------------------------------------------
+    // GROUP → WORKSPACE SYNC (ACCOUNT LEVEL)
+    // --------------------------------------------------
     stage('Databricks Group Workspace Sync') {
       steps {
         withCredentials([
@@ -151,16 +155,15 @@ pipeline {
           string(credentialsId: 'DATABRICKS_TENANT_ID', variable: 'DATABRICKS_TENANT_ID')
         ]) {
           sh """
-            export GROUP_NAME="grp-${PRODUCT}-${CUSTOMER_CODE}-users"
+            export GROUP_NAME="${params.ACCESS_GROUP}"
             export WORKSPACE_NAME="<<EXACT_DATABRICKS_WORKSPACE_NAME>>"
-    
+
             chmod +x scripts/sync_group_to_databricks.sh
             scripts/sync_group_to_databricks.sh
           """
         }
       }
     }
-
 
     // --------------------------------------------------
     // UNITY CATALOG ACCESS
