@@ -138,6 +138,26 @@ pipeline {
       }
     }
 
+    stage('Databricks Group Workspace Sync') {
+      steps {
+        withCredentials([
+          string(credentialsId: 'DATABRICKS_ACCOUNT_ID', variable: 'DATABRICKS_ACCOUNT_ID'),
+          string(credentialsId: 'DATABRICKS_CLIENT_ID', variable: 'DATABRICKS_CLIENT_ID'),
+          string(credentialsId: 'DATABRICKS_CLIENT_SECRET', variable: 'DATABRICKS_CLIENT_SECRET'),
+          string(credentialsId: 'DATABRICKS_TENANT_ID', variable: 'DATABRICKS_TENANT_ID')
+        ]) {
+          sh """
+            export GROUP_NAME="grp-${PRODUCT}-${CUSTOMER_CODE}-users"
+            export WORKSPACE_NAME="<<EXACT_DATABRICKS_WORKSPACE_NAME>>"
+    
+            chmod +x scripts/sync_group_to_databricks.sh
+            scripts/sync_group_to_databricks.sh
+          """
+        }
+      }
+    }
+
+
     // --------------------------------------------------
     // UNITY CATALOG ACCESS
     // --------------------------------------------------
