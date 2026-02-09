@@ -158,19 +158,22 @@ pipeline {
           string(credentialsId: 'DATABRICKS_ACCOUNT_ID', variable: 'DATABRICKS_ACCOUNT_ID'),
           string(credentialsId: 'DATABRICKS_CLIENT_ID', variable: 'DATABRICKS_CLIENT_ID'),
           string(credentialsId: 'DATABRICKS_CLIENT_SECRET', variable: 'DATABRICKS_CLIENT_SECRET'),
-          string(credentialsId: 'DATABRICKS_TENANT_ID', variable: 'DATABRICKS_TENANT_ID')
+          string(credentialsId: 'DATABRICKS_TENANT_ID', variable: 'DATABRICKS_TENANT_ID'),
+          string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
+          string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_ADMIN_TOKEN')
         ]) {
-          sh """
-            export GROUP_NAME="${params.ACCESS_GROUP}"
-            export WORKSPACE_ID="${params.WORKSPACE_ID}"
+          sh '''
+            export GROUP_NAME="${ACCESS_GROUP}"
+            export DATABRICKS_HOST="${DATABRICKS_HOST}"
+            export DATABRICKS_ADMIN_TOKEN="${DATABRICKS_ADMIN_TOKEN}"
     
-            chmod +x scripts/sync_group_to_databricks.sh
-            scripts/sync_group_to_databricks.sh
-          """
+            chmod +x group_sync_only.sh
+            ./group_sync_only.sh
+          '''
         }
       }
     }
-    
+
 
     // --------------------------------------------------
     // UNITY CATALOG ACCESS
