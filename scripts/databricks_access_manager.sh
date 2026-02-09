@@ -61,11 +61,7 @@ if [ "$MODE" = "DEDICATED" ]; then
   echo "External Location : ${EXT_LOC_NAME}"
   echo "Path              : ${BRONZE_PATH}"
 
-  run_sql "
-  CREATE EXTERNAL LOCATION IF NOT EXISTS ${EXT_LOC_NAME}
-  URL '${BRONZE_PATH}'
-  WITH (STORAGE CREDENTIAL new_db_test)
-  "
+  run_sql "CREATE EXTERNAL LOCATION IF NOT EXISTS ${EXT_LOC_NAME} URL '${BRONZE_PATH}' WITH (STORAGE CREDENTIAL new_db_test)"
 
   # ------------------------------------------------
   # 2️⃣ BRONZE SCHEMA (EXTERNAL)
