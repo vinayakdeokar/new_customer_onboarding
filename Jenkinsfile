@@ -67,6 +67,20 @@ pipeline {
       }
     }
 
+    stage('Databricks SPN Setup') {
+      steps {
+        withCredentials([
+          string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
+          string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_ADMIN_TOKEN')
+        ]) {
+          sh '''
+            chmod +x scripts/databricks_login_and_add_spn.sh
+            scripts/databricks_login_and_add_spn.sh "${PRODUCT}" "${CUSTOMER_CODE}"
+          '''
+        }
+      }
+    }
+
     stage('Databricks SPN OAuth Secret (Account Level)') {
       steps {
         withCredentials([
@@ -81,22 +95,6 @@ pipeline {
     
             scripts/dbx_spn_discover.sh
             scripts/dbx_spn_generate_secret.sh
-          '''
-        }
-      }
-    }
-
-
-
-    stage('Databricks SPN Setup') {
-      steps {
-        withCredentials([
-          string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
-          string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_ADMIN_TOKEN')
-        ]) {
-          sh '''
-            chmod +x scripts/databricks_login_and_add_spn.sh
-            scripts/databricks_login_and_add_spn.sh "${PRODUCT}" "${CUSTOMER_CODE}"
           '''
         }
       }
