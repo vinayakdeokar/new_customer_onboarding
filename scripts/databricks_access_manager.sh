@@ -47,6 +47,10 @@ run_sql () {
 # ===============================
 # MAIN
 # ===============================
+: "${STORAGE_BRONZE_ROOT:?STORAGE_BRONZE_ROOT missing}"
+BRONZE_PATH="${STORAGE_BRONZE_ROOT}/${PRODUCT}/${CUSTOMER_CODE}/bronze"
+
+
 GROUP_NAME="grp-${PRODUCT}-${CUSTOMER_CODE}-users"
 
 echo "🔐 MODE      : DEDICATED"
