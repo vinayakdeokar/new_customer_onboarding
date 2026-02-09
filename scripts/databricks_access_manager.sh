@@ -103,10 +103,8 @@ if [ "$MODE" = "DEDICATED" ]; then
   echo "Schema : ${BRONZE_SCHEMA}"
   echo "Path   : ${BRONZE_PATH}"
   
-  run_sql "
-    ALTER SCHEMA \`${CATALOG_NAME}\`.\`${BRONZE_SCHEMA}\`
-    SET LOCATION '${BRONZE_PATH}'
-  "
+  run_sql "ALTER SCHEMA \`${CATALOG_NAME}\`.\`${BRONZE_SCHEMA}\` SET LOCATION '${BRONZE_PATH}'"
+
   # -------------------------------
   # 2️⃣ CHECK OR CREATE SQL WAREHOUSE
   # -------------------------------
