@@ -4,17 +4,13 @@ set -e
 # ===============================
 # REQUIRED ENV VARIABLES
 # ===============================
-: "${MODE:?MODE missing (DEDICATED or SHARED)}"
+: "${MODE:?MODE missing}"
 : "${PRODUCT:?PRODUCT missing}"
+: "${CUSTOMER_CODE:?CUSTOMER_CODE missing}"
 : "${CATALOG_NAME:?CATALOG_NAME missing}"
 : "${DATABRICKS_HOST:?DATABRICKS_HOST missing}"
 : "${DATABRICKS_ADMIN_TOKEN:?DATABRICKS_ADMIN_TOKEN missing}"
-: "${DATABRICKS_SQL_WAREHOUSE_ID:?DATABRICKS_SQL_WAREHOUSE_ID missing}"   # <-- EXISTING WAREHOUSE ID
-: "${STORAGE_BRONZE_ROOT:?STORAGE_BRONZE_ROOT missing}"
-
-if [ "$MODE" = "DEDICATED" ]; then
-  : "${CUSTOMER_CODE:?CUSTOMER_CODE missing}"
-fi
+: "${DATABRICKS_SQL_WAREHOUSE_ID:?DATABRICKS_SQL_WAREHOUSE_ID missing}"
 
 # ===============================
 # HELPER: RUN SQL
@@ -31,131 +27,64 @@ run_sql () {
       \"statement\": \"${SQL}\"
     }")
 
-  STATEMENT_ID=$(echo "$RESP" | jq -r '.statement_id')
+  STATE=$(echo "$RESP" | jq -r '.status.state // empty')
 
-  if [ -z "$STATEMENT_ID" ] || [ "$STATEMENT_ID" = "null" ]; then
-    echo "❌ Failed to submit SQL"
+  if [ "$STATE" != "SUCCEEDED" ]; then
+    echo "❌ SQL FAILED"
     echo "$RESP"
     exit 1
   fi
-
-  # Poll until finished
-  for i in {1..20}; do
-    STATUS_RESP=$(curl -s -X GET \
-      "${DATABRICKS_HOST}/api/2.0/sql/statements/${STATEMENT_ID}" \
-      -H "Authorization: Bearer ${DATABRICKS_ADMIN_TOKEN}")
-
-    STATE=$(echo "$STATUS_RESP" | jq -r '.status.state')
-
-    case "$STATE" in
-      SUCCEEDED)
-        return 0
-        ;;
-      FAILED|CANCELED)
-        echo "❌ SQL FAILED"
-        echo "$STATUS_RESP"
-        exit 1
-        ;;
-      PENDING|RUNNING)
-        sleep 3
-        ;;
-      *)
-        echo "❌ Unknown SQL state: $STATE"
-        echo "$STATUS_RESP"
-        exit 1
-        ;;
-    esac
-  done
-
-  echo "❌ SQL did not finish in time"
-  exit 1
 }
 
-
 # ===============================
-# MODE : DEDICATED
+# MAIN
 # ===============================
-if [ "$MODE" = "DEDICATED" ]; then
-  GROUP_NAME="grp-${PRODUCT}-${CUSTOMER_CODE}-users"
+GROUP_NAME="grp-${PRODUCT}-${CUSTOMER_CODE}-users"
 
-  echo "🔐 MODE: DEDICATED"
-  echo "Customer : ${CUSTOMER_CODE}"
-  echo "Group    : ${GROUP_NAME}"
-  echo "Warehouse: EXISTING (${DATABRICKS_SQL_WAREHOUSE_ID})"
+echo "🔐 MODE: DEDICATED"
+echo "Customer : ${CUSTOMER_CODE}"
+echo "Group    : ${GROUP_NAME}"
+echo "Warehouse: EXISTING (${DATABRICKS_SQL_WAREHOUSE_ID})"
 
-  # ------------------------------------------------
-  # 1️⃣ EXTERNAL LOCATION (PER CUSTOMER – BRONZE)
-  # ------------------------------------------------
-  EXT_LOC_NAME="ext_bronze_${CUSTOMER_CODE}"
-  BRONZE_PATH="${STORAGE_BRONZE_ROOT}/${CUSTOMER_CODE}"
-  
-  run_sql "CREATE EXTERNAL LOCATION IF NOT EXISTS \`${EXT_LOC_NAME}\` URL '${BRONZE_PATH}' WITH (STORAGE CREDENTIAL new_db_test)"
+# ------------------------------------------------
+# 1️⃣ BRONZE SCHEMA (EXTERNAL via existing ext_bronze)
+# ------------------------------------------------
+BRONZE_SCHEMA="${PRODUCT}-${CUSTOMER_CODE}_bronze"
 
+run_sql "
+CREATE SCHEMA IF NOT EXISTS \`${CATALOG_NAME}\`.\`${BRONZE_SCHEMA}\`
+MANAGED LOCATION '@ext_bronze/${CUSTOMER_CODE}'
+"
 
-  # ------------------------------------------------
-  # 2️⃣ BRONZE SCHEMA (EXTERNAL)
-  # ------------------------------------------------
-  BRONZE_SCHEMA="${PRODUCT}-${CUSTOMER_CODE}_bronze"
+run_sql "
+GRANT USAGE, SELECT
+ON SCHEMA \`${CATALOG_NAME}\`.\`${BRONZE_SCHEMA}\`
+TO \`${GROUP_NAME}\`
+"
 
-  echo "➡️ Creating BRONZE schema"
-  echo "Schema : ${BRONZE_SCHEMA}"
+# ------------------------------------------------
+# 2️⃣ SILVER & GOLD (MANAGED)
+# ------------------------------------------------
+for LAYER in silver gold; do
+  SCHEMA_NAME="${PRODUCT}-${CUSTOMER_CODE}_${LAYER}"
 
-  run_sql "CREATE SCHEMA IF NOT EXISTS \`${CATALOG_NAME}\`.\`${BRONZE_SCHEMA}\` MANAGED LOCATION '${BRONZE_PATH}'"
-
+  run_sql "
+  CREATE SCHEMA IF NOT EXISTS \`${CATALOG_NAME}\`.\`${SCHEMA_NAME}\`
+  "
 
   run_sql "
   GRANT USAGE, SELECT
-  ON SCHEMA \`${CATALOG_NAME}\`.\`${BRONZE_SCHEMA}\`
+  ON SCHEMA \`${CATALOG_NAME}\`.\`${SCHEMA_NAME}\`
   TO \`${GROUP_NAME}\`
   "
+done
 
-  # ------------------------------------------------
-  # 3️⃣ SILVER & GOLD SCHEMAS (MANAGED)
-  # ------------------------------------------------
-  for LAYER in silver gold; do
-    SCHEMA_NAME="${PRODUCT}-${CUSTOMER_CODE}_${LAYER}"
+# ------------------------------------------------
+# 3️⃣ CATALOG ACCESS
+# ------------------------------------------------
+run_sql "
+GRANT USAGE ON CATALOG \`${CATALOG_NAME}\`
+TO \`${GROUP_NAME}\`
+"
 
-    echo "➡️ Creating ${LAYER} schema: ${SCHEMA_NAME}"
-
-    run_sql "
-    CREATE SCHEMA IF NOT EXISTS \`${CATALOG_NAME}\`.\`${SCHEMA_NAME}\`
-    "
-
-    run_sql "
-    GRANT USAGE, SELECT
-    ON SCHEMA \`${CATALOG_NAME}\`.\`${SCHEMA_NAME}\`
-    TO \`${GROUP_NAME}\`
-    "
-  done
-
-  # ------------------------------------------------
-  # 4️⃣ GRANT ACCESS TO EXISTING SQL WAREHOUSE
-  # ------------------------------------------------
-  echo "➡️ Granting group access to existing warehouse"
-
-  curl -s -X PATCH \
-    "${DATABRICKS_HOST}/api/2.0/permissions/sql/warehouses/${DATABRICKS_SQL_WAREHOUSE_ID}" \
-    -H "Authorization: Bearer ${DATABRICKS_ADMIN_TOKEN}" \
-    -H "Content-Type: application/json" \
-    -d "{
-      \"access_control_list\": [
-        {
-          \"group_name\": \"${GROUP_NAME}\",
-          \"permission_level\": \"CAN_USE\"
-        }
-      ]
-    }" > /dev/null
-
-  # ------------------------------------------------
-  # 5️⃣ CATALOG ACCESS
-  # ------------------------------------------------
-  run_sql "
-  GRANT USAGE
-  ON CATALOG \`${CATALOG_NAME}\`
-  TO \`${GROUP_NAME}\`
-  "
-
-  echo "✅ DEDICATED access configured successfully"
-fi
-
-echo "🎉 SCRIPT COMPLETED SUCCESSFULLY"
+echo "🎉 SETUP COMPLETED SUCCESSFULLY"
