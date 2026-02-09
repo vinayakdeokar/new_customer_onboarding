@@ -10,20 +10,16 @@ pipeline {
       description: 'Azure Entra ID SPN name (e.g. sp-m360-vinayak-003)'
     )
   }
-  }
 
   environment {
     KV_NAME = 'kv-databricks-fab'
   }
 
-  stage('Init Workspace') {
-    steps {
-      sh '''
-        echo "🧹 Cleaning old env state"
-        rm -f db_env.sh
-      '''
-    }
+  stages {
+    // all stages here
   }
+}
+
 
 
   stages {
