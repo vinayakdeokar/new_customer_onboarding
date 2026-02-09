@@ -2,7 +2,7 @@ pipeline {
   agent any
 
   parameters {
-    string(name: 'CUSTOMER_CODE', description: 'Customer code like cx11')
+    string(name: 'CUSTOMER_CODE', description: 'Customer code like vinayak-003')
     string(name: 'PRODUCT', defaultValue: 'm360', description: 'Product name')
     string(name: 'ENV', defaultValue: 'dev', description: 'Environment')
     string(
@@ -16,21 +16,33 @@ pipeline {
   }
 
   stages {
-    // all stages here
-  }
-}
 
+    // --------------------------------------------------
+    // INIT – CLEAN OLD STATE
+    // --------------------------------------------------
+    stage('Init Workspace') {
+      steps {
+        sh '''
+          echo "🧹 Cleaning old env state"
+          rm -f db_env.sh
+        '''
+      }
+    }
 
-
-  stages {
-
+    // --------------------------------------------------
+    // CHECKOUT
+    // --------------------------------------------------
     stage('Checkout') {
       steps {
         checkout scm
         echo "Customer=${params.CUSTOMER_CODE}, Product=${params.PRODUCT}, Env=${params.ENV}"
+        echo "SPN=${params.SPN_NAME}"
       }
     }
 
+    // --------------------------------------------------
+    // CUSTOMER CHECK
+    // --------------------------------------------------
     stage('Customer Check') {
       steps {
         sh '''
@@ -49,6 +61,9 @@ pipeline {
       }
     }
 
+    // --------------------------------------------------
+    // AZURE LOGIN
+    // --------------------------------------------------
     stage('Azure Login') {
       steps {
         withCredentials([
@@ -65,6 +80,9 @@ pipeline {
       }
     }
 
+    // --------------------------------------------------
+    // PRE-DATABRICKS CHECK
+    // --------------------------------------------------
     stage('Pre Databricks Identity Check') {
       steps {
         withCredentials([
@@ -78,6 +96,9 @@ pipeline {
       }
     }
 
+    // --------------------------------------------------
+    // SPN SETUP (WORKSPACE)
+    // --------------------------------------------------
     stage('Databricks SPN Setup') {
       steps {
         withCredentials([
@@ -92,6 +113,9 @@ pipeline {
       }
     }
 
+    // --------------------------------------------------
+    // SPN OAUTH SECRET (ACCOUNT LEVEL)
+    // --------------------------------------------------
     stage('Databricks SPN OAuth Secret (Account Level)') {
       steps {
         withCredentials([
@@ -99,44 +123,24 @@ pipeline {
           string(credentialsId: 'AZURE_TENANT_ID', variable: 'AZURE_TENANT_ID')
         ]) {
           sh '''
-            # ✅ TAKE FROM JENKINS PARAM
+            # TAKE SPN FROM JENKINS INPUT
             export TARGET_SPN_DISPLAY_NAME="${SPN_NAME}"
-    
+
             echo "Using SPN: $TARGET_SPN_DISPLAY_NAME"
-    
+
             chmod +x scripts/dbx_spn_discover.sh
             chmod +x scripts/dbx_spn_generate_secret.sh
-    
+
             scripts/dbx_spn_discover.sh
             scripts/dbx_spn_generate_secret.sh
           '''
         }
       }
     }
-    
 
-    // stage('Databricks SPN OAuth Secret (Account Level)') {
-    //   steps {
-    //     withCredentials([
-    //       string(credentialsId: 'DATABRICKS_ACCOUNT_ID', variable: 'DATABRICKS_ACCOUNT_ID'),
-    //       string(credentialsId: 'AZURE_TENANT_ID', variable: 'AZURE_TENANT_ID')
-    //     ]) {
-    //       sh '''
-    //         export TARGET_SPN_DISPLAY_NAME="sp-m360-vinayak-002"
-    
-    //         chmod +x scripts/dbx_spn_discover.sh
-    //         chmod +x scripts/dbx_spn_generate_secret.sh
-    
-    //         scripts/dbx_spn_discover.sh
-    //         scripts/dbx_spn_generate_secret.sh
-    //       '''
-    //     }
-    //   }
-    // }
-
-    // =========================================================
-    // FINAL ACCESS MANAGEMENT STAGE (SHARED / DEDICATED)
-    // =========================================================
+    // --------------------------------------------------
+    // UNITY CATALOG ACCESS
+    // --------------------------------------------------
     stage('Databricks Access Manager') {
       steps {
         withCredentials([
@@ -146,32 +150,22 @@ pipeline {
           string(credentialsId: 'DATABRICKS_CATALOG_NAME', variable: 'CATALOG_NAME'),
           string(credentialsId: 'STORAGE_BRONZE_ROOT', variable: 'STORAGE_BRONZE_ROOT')
         ]) {
-    
           sh '''
             chmod +x scripts/databricks_access_manager.sh
-    
-            # =================================================
-            # MODE SELECTION
-            # =================================================
+
             export MODE=DEDICATED
-            # export MODE=SHARED
-    
             export PRODUCT=${PRODUCT}
             export CUSTOMER_CODE=${CUSTOMER_CODE}
             export CATALOG_NAME=${CATALOG_NAME}
-    
-            # 🔴 THIS WAS MISSING
             export STORAGE_BRONZE_ROOT=${STORAGE_BRONZE_ROOT}
-    
-            # (optional debug – masked but format visible)
+
             echo "DEBUG STORAGE_BRONZE_ROOT=${STORAGE_BRONZE_ROOT}"
-    
+
             ./scripts/databricks_access_manager.sh
           '''
         }
       }
     }
-
 
   }
 }
