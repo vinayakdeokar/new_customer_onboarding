@@ -5,11 +5,26 @@ pipeline {
     string(name: 'CUSTOMER_CODE', description: 'Customer code like cx11')
     string(name: 'PRODUCT', defaultValue: 'm360', description: 'Product name')
     string(name: 'ENV', defaultValue: 'dev', description: 'Environment')
+    string(
+      name: 'SPN_NAME',
+      description: 'Azure Entra ID SPN name (e.g. sp-m360-vinayak-003)'
+    )
+  }
   }
 
   environment {
     KV_NAME = 'kv-databricks-fab'
   }
+
+  stage('Init Workspace') {
+    steps {
+      sh '''
+        echo "🧹 Cleaning old env state"
+        rm -f db_env.sh
+      '''
+    }
+  }
+
 
   stages {
 
@@ -88,7 +103,10 @@ pipeline {
           string(credentialsId: 'AZURE_TENANT_ID', variable: 'AZURE_TENANT_ID')
         ]) {
           sh '''
-            export TARGET_SPN_DISPLAY_NAME="sp-m360-vinayak-002"
+            # ✅ TAKE FROM JENKINS PARAM
+            export TARGET_SPN_DISPLAY_NAME="${SPN_NAME}"
+    
+            echo "Using SPN: $TARGET_SPN_DISPLAY_NAME"
     
             chmod +x scripts/dbx_spn_discover.sh
             chmod +x scripts/dbx_spn_generate_secret.sh
@@ -99,6 +117,26 @@ pipeline {
         }
       }
     }
+    
+
+    // stage('Databricks SPN OAuth Secret (Account Level)') {
+    //   steps {
+    //     withCredentials([
+    //       string(credentialsId: 'DATABRICKS_ACCOUNT_ID', variable: 'DATABRICKS_ACCOUNT_ID'),
+    //       string(credentialsId: 'AZURE_TENANT_ID', variable: 'AZURE_TENANT_ID')
+    //     ]) {
+    //       sh '''
+    //         export TARGET_SPN_DISPLAY_NAME="sp-m360-vinayak-002"
+    
+    //         chmod +x scripts/dbx_spn_discover.sh
+    //         chmod +x scripts/dbx_spn_generate_secret.sh
+    
+    //         scripts/dbx_spn_discover.sh
+    //         scripts/dbx_spn_generate_secret.sh
+    //       '''
+    //     }
+    //   }
+    // }
 
     // =========================================================
     // FINAL ACCESS MANAGEMENT STAGE (SHARED / DEDICATED)
