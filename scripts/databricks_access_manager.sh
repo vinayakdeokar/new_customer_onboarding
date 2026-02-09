@@ -11,6 +11,7 @@ set -e
 : "${DATABRICKS_HOST:?DATABRICKS_HOST missing}"
 : "${DATABRICKS_ADMIN_TOKEN:?DATABRICKS_ADMIN_TOKEN missing}"
 : "${DATABRICKS_SQL_WAREHOUSE_ID:?DATABRICKS_SQL_WAREHOUSE_ID missing}"
+: "${STORAGE_BRONZE_ROOT:?STORAGE_BRONZE_ROOT missing}"
 
 # ===============================
 # HELPER: RUN SQL (SYNC)
@@ -43,35 +44,24 @@ run_sql () {
   fi
 }
 
-
 # ===============================
 # MAIN
 # ===============================
-: "${STORAGE_BRONZE_ROOT:?STORAGE_BRONZE_ROOT missing}"
-BRONZE_PATH="${STORAGE_BRONZE_ROOT}/${PRODUCT}/${CUSTOMER_CODE}/bronze"
-
-
 GROUP_NAME="grp-${PRODUCT}-${CUSTOMER_CODE}-users"
-
-echo "🔐 MODE      : DEDICATED"
-echo "Customer    : ${CUSTOMER_CODE}"
-echo "Group       : ${GROUP_NAME}"
-echo "Warehouse   : EXISTING (${DATABRICKS_SQL_WAREHOUSE_ID})"
-echo "Catalog     : ${CATALOG_NAME}"
-echo "Ext Location: ext_bronze_mcr"
-
-# ------------------------------------------------
-# 1️⃣ BRONZE SCHEMA (EXTERNAL LOCATION)
-# ------------------------------------------------
 BRONZE_SCHEMA="${PRODUCT}_${CUSTOMER_CODE}_bronze"
 
-echo "➡️ Creating BRONZE schema"
-echo "Schema : ${BRONZE_SCHEMA}"
-echo "Path   : ${BRONZE_PATH}"
+echo "🔐 MODE      : ${MODE}"
+echo "Customer    : ${CUSTOMER_CODE}"
+echo "Group       : ${GROUP_NAME}"
+echo "Catalog     : ${CATALOG_NAME}"
+echo "Bronze Root : ${STORAGE_BRONZE_ROOT}"
 
+# ------------------------------------------------
+# 1️⃣ BRONZE SCHEMA (ATTACH TO EXISTING EXTERNAL LOCATION)
+# ------------------------------------------------
 run_sql "
 CREATE SCHEMA IF NOT EXISTS \`${CATALOG_NAME}\`.\`${BRONZE_SCHEMA}\`
-MANAGED LOCATION '${BRONZE_PATH}'
+MANAGED LOCATION '${STORAGE_BRONZE_ROOT}/${PRODUCT}/${CUSTOMER_CODE}/bronze'
 "
 
 run_sql "
@@ -81,12 +71,10 @@ TO \`${GROUP_NAME}\`
 "
 
 # ------------------------------------------------
-# 2️⃣ SILVER & GOLD SCHEMAS (MANAGED)
+# 2️⃣ SILVER & GOLD SCHEMAS (DEFAULT MANAGED)
 # ------------------------------------------------
 for LAYER in silver gold; do
   SCHEMA_NAME="${PRODUCT}_${CUSTOMER_CODE}_${LAYER}"
-
-  echo "➡️ Creating ${LAYER} schema : ${SCHEMA_NAME}"
 
   run_sql "
   CREATE SCHEMA IF NOT EXISTS \`${CATALOG_NAME}\`.\`${SCHEMA_NAME}\`
