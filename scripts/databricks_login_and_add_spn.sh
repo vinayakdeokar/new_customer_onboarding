@@ -40,21 +40,6 @@ echo "   ➜ Client ID: $SPN_CLIENT_ID"
 databricks clusters list > /dev/null
 echo "✅ Databricks CLI login successful"
 
-# --------------------------------------------------
-# Step 4️⃣ Check SPN exists in Databricks
-# --------------------------------------------------
-echo "🔎 Checking SPN in Databricks workspace..."
-
-EXISTING=$(curl -s \
-  -H "Authorization: Bearer $DATABRICKS_ADMIN_TOKEN" \
-  "$DATABRICKS_HOST/api/2.0/preview/scim/v2/ServicePrincipals?filter=applicationId%20eq%20\"$SPN_CLIENT_ID\"")
-
-COUNT=$(echo "$EXISTING" | jq '.Resources | length')
-
-if [ "$COUNT" -gt 0 ]; then
-  echo "✅ SPN already exists in Databricks (External). Skipping."
-  exit 0
-fi
 
 # --------------------------------------------------
 # Step 5️⃣ Add SPN to Databricks
