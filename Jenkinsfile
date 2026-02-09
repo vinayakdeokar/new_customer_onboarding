@@ -167,12 +167,13 @@ pipeline {
             export DATABRICKS_HOST="${DATABRICKS_HOST}"
             export DATABRICKS_ADMIN_TOKEN="${DATABRICKS_ADMIN_TOKEN}"
     
-            chmod +x sync_group_to_databricks.sh
-            ./sync_group_to_databricks.sh
+            chmod +x scripts/sync_group_to_databricks.sh
+            ./scripts/sync_group_to_databricks.sh
           '''
         }
       }
     }
+
 
 
     // --------------------------------------------------
