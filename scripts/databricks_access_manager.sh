@@ -159,7 +159,6 @@ fi
   # 6️⃣ SCHEMA + TABLE GRANTS
   # -------------------------------
   run_sql "GRANT USAGE ON SCHEMA \`${CATALOG_NAME}\`.\`${SCHEMA_NAME}\` TO \`${GROUP_NAME}\`"
-  run_sql "GRANT USAGE, SELECT ON SCHEMA \`${CATALOG_NAME}\`.\`${SCHEMA_NAME}\` TO \`${GROUP_NAME}\`"
 
 
   echo "✅ DEDICATED access configured successfully"
@@ -186,8 +185,9 @@ if [ "$MODE" = "SHARED" ]; then
     | grep "^grp-${PRODUCT}-.*-users$" || true)
 
   for GROUP in $GROUPS; do
-    run_sql "GRANT USAGE ON SCHEMA \`${CATALOG_NAME}\`.\`${SCHEMA_NAME}\` TO \`${GROUP}\`"
-    run_sql "GRANT USAGE, SELECT ON SCHEMA \`${CATALOG_NAME}\`.\`${SCHEMA_NAME}\` TO \`${GROUP_NAME}\`"
+  run_sql "GRANT USAGE, SELECT ON SCHEMA \`${CATALOG_NAME}\`.\`${SCHEMA_NAME}\` TO \`${GROUP}\`"
+done
+
 
   done
 
