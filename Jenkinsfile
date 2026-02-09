@@ -67,6 +67,27 @@ pipeline {
       }
     }
 
+    stage('Databricks SPN OAuth Secret (Account Level)') {
+      steps {
+        withCredentials([
+          string(credentialsId: 'DATABRICKS_ACCOUNT_ID', variable: 'DATABRICKS_ACCOUNT_ID'),
+          string(credentialsId: 'AZURE_TENANT_ID', variable: 'AZURE_TENANT_ID')
+        ]) {
+          sh '''
+            export TARGET_SPN_DISPLAY_NAME="sp-m360-vinayak-002"
+    
+            chmod +x scripts/dbx_spn_discover.sh
+            chmod +x scripts/dbx_spn_generate_secret.sh
+    
+            scripts/dbx_spn_discover.sh
+            scripts/dbx_spn_generate_secret.sh
+          '''
+        }
+      }
+    }
+
+
+
     stage('Databricks SPN Setup') {
       steps {
         withCredentials([
