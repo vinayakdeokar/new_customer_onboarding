@@ -1,4 +1,4 @@
-#!/bin/bash
+  #!/bin/bash
 set -e
 
 # ===============================
@@ -78,7 +78,7 @@ if [ "$MODE" = "DEDICATED" ]; then
   echo "Group    : ${GROUP_NAME}"
   echo "Warehouse: ${WAREHOUSE_NAME}"
 
-  run_sql "CREATE EXTERNAL LOCATION IF NOT EXISTS bronze_ext_loc URL '${STORAGE_BRONZE_ROOT}' WITH (STORAGE CREDENTIAL new_db_test)"
+
 
 
 
@@ -97,6 +97,7 @@ if [ "$MODE" = "DEDICATED" ]; then
   run_sql "CREATE SCHEMA \`${CATALOG_NAME}\`.\`${BRONZE_SCHEMA}\` MANAGED LOCATION '${BRONZE_PATH}'"
 
   run_sql "GRANT USAGE, SELECT ON SCHEMA \`${CATALOG_NAME}\`.\`${BRONZE_SCHEMA}\` TO \`${GROUP_NAME}\`"
+  sleep 10
 
   # ------------------------------------------------
   # 2️⃣ SILVER & GOLD SCHEMAS (MANAGED)
