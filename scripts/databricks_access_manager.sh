@@ -88,7 +88,8 @@ if [ "$MODE" = "DEDICATED" ]; then
   echo "Schema : ${BRONZE_SCHEMA}"
   echo "Path   : ${BRONZE_PATH}"
 
-  run_sql "CREATE SCHEMA \`${CATALOG_NAME}\`.\`${BRONZE_SCHEMA}\` LOCATION '${BRONZE_PATH}'"
+  run_sql "CREATE SCHEMA \`${CATALOG_NAME}\`.\`${BRONZE_SCHEMA}\` MANAGED LOCATION '${BRONZE_PATH}'"
+
   run_sql "GRANT USAGE, SELECT ON SCHEMA \`${CATALOG_NAME}\`.\`${BRONZE_SCHEMA}\` TO \`${GROUP_NAME}\`"
 
   # ------------------------------------------------
