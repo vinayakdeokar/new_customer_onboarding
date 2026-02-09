@@ -167,8 +167,8 @@ pipeline {
             export DATABRICKS_HOST="${DATABRICKS_HOST}"
             export DATABRICKS_ADMIN_TOKEN="${DATABRICKS_ADMIN_TOKEN}"
     
-            chmod +x group_sync_only.sh
-            ./group_sync_only.sh
+            chmod +x sync_group_to_databricks.sh
+            ./sync_group_to_databricks.sh
           '''
         }
       }
