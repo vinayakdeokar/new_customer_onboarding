@@ -189,7 +189,7 @@ pipeline {
           string(credentialsId: 'STORAGE_BRONZE_ROOT', variable: 'STORAGE_BRONZE_ROOT')
         ]) {
           sh '''
-            chmod +x scripts/databricks_access_manager.sh
+            chmod +x scripts/new_script.sh
 
             export MODE=DEDICATED
             export PRODUCT=${PRODUCT}
@@ -199,7 +199,7 @@ pipeline {
 
             echo "DEBUG STORAGE_BRONZE_ROOT=${STORAGE_BRONZE_ROOT}"
 
-            ./scripts/databricks_access_manager.sh
+            ./scripts/new_script.sh
           '''
         }
       }
