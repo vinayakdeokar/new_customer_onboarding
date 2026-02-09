@@ -78,12 +78,10 @@ if [ "$MODE" = "DEDICATED" ]; then
   echo "Group    : ${GROUP_NAME}"
   echo "Warehouse: ${WAREHOUSE_NAME}"
 
-  run_sql "
-  CREATE EXTERNAL LOCATION IF NOT EXISTS bronze_ext_loc
-  URL '${STORAGE_BRONZE_ROOT}'
-  WITH (STORAGE CREDENTIAL \`azure_uc_cred\`)
-  "
+  run_sql "CREATE EXTERNAL LOCATION IF NOT EXISTS bronze_ext_loc URL '${STORAGE_BRONZE_ROOT}' WITH (STORAGE CREDENTIAL azure_uc_cred)"
 
+
+ 
 
   # ------------------------------------------------
   # 1️⃣ BRONZE SCHEMA – EXTERNAL (CREATE TIME ONLY)
