@@ -18,17 +18,23 @@ set -e
 run_sql () {
   local SQL="$1"
 
+  PAYLOAD=$(jq -n \
+    --arg wh "$DATABRICKS_SQL_WAREHOUSE_ID" \
+    --arg stmt "$SQL" \
+    '{
+      warehouse_id: $wh,
+      statement: $stmt,
+      wait_timeout: "30s"
+    }'
+  )
+
   RESP=$(curl -s -X POST \
     "${DATABRICKS_HOST}/api/2.0/sql/statements/" \
     -H "Authorization: Bearer ${DATABRICKS_ADMIN_TOKEN}" \
     -H "Content-Type: application/json" \
-    -d "{
-      \"warehouse_id\": \"${DATABRICKS_SQL_WAREHOUSE_ID}\",
-      \"statement\": \"${SQL}\",
-      \"wait_timeout\": \"30s\"
-    }")
+    -d "$PAYLOAD")
 
-  STATE=$(echo "$RESP" | jq -r '.status.state')
+  STATE=$(echo "$RESP" | jq -r '.status.state // empty')
 
   if [ "$STATE" != "SUCCEEDED" ]; then
     echo "❌ SQL FAILED"
@@ -36,6 +42,7 @@ run_sql () {
     exit 1
   fi
 }
+
 
 # ===============================
 # MAIN
