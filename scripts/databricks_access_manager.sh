@@ -71,10 +71,8 @@ if [ "$MODE" = "DEDICATED" ]; then
   echo "➡️ Creating BRONZE schema"
   echo "Schema : ${BRONZE_SCHEMA}"
 
-  run_sql "
-  CREATE SCHEMA IF NOT EXISTS \`${CATALOG_NAME}\`.\`${BRONZE_SCHEMA}\`
-  MANAGED LOCATION '${BRONZE_PATH}'
-  "
+  run_sql "CREATE SCHEMA IF NOT EXISTS \`${CATALOG_NAME}\`.\`${BRONZE_SCHEMA}\` MANAGED LOCATION '${BRONZE_PATH}'"
+
 
   run_sql "
   GRANT USAGE, SELECT
