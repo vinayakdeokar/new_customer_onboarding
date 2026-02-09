@@ -63,10 +63,11 @@ BRONZE_SCHEMA="${PRODUCT}_${CUSTOMER_CODE}_bronze"
 
 echo "➡️ Creating BRONZE schema"
 echo "Schema : ${BRONZE_SCHEMA}"
+echo "Path   : ${BRONZE_PATH}"
 
 run_sql "
 CREATE SCHEMA IF NOT EXISTS \`${CATALOG_NAME}\`.\`${BRONZE_SCHEMA}\`
-MANAGED LOCATION '@ext_bronze_mcr/${CUSTOMER_CODE}'
+MANAGED LOCATION '${BRONZE_PATH}'
 "
 
 run_sql "
