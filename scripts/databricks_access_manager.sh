@@ -31,14 +31,46 @@ run_sql () {
       \"statement\": \"${SQL}\"
     }")
 
-  STATE=$(echo "$RESP" | jq -r '.status.state // empty')
+  STATEMENT_ID=$(echo "$RESP" | jq -r '.statement_id')
 
-  if [ "$STATE" != "SUCCEEDED" ]; then
-    echo "❌ SQL FAILED"
+  if [ -z "$STATEMENT_ID" ] || [ "$STATEMENT_ID" = "null" ]; then
+    echo "❌ Failed to submit SQL"
     echo "$RESP"
     exit 1
   fi
+
+  # Poll until finished
+  for i in {1..20}; do
+    STATUS_RESP=$(curl -s -X GET \
+      "${DATABRICKS_HOST}/api/2.0/sql/statements/${STATEMENT_ID}" \
+      -H "Authorization: Bearer ${DATABRICKS_ADMIN_TOKEN}")
+
+    STATE=$(echo "$STATUS_RESP" | jq -r '.status.state')
+
+    case "$STATE" in
+      SUCCEEDED)
+        return 0
+        ;;
+      FAILED|CANCELED)
+        echo "❌ SQL FAILED"
+        echo "$STATUS_RESP"
+        exit 1
+        ;;
+      PENDING|RUNNING)
+        sleep 3
+        ;;
+      *)
+        echo "❌ Unknown SQL state: $STATE"
+        echo "$STATUS_RESP"
+        exit 1
+        ;;
+    esac
+  done
+
+  echo "❌ SQL did not finish in time"
+  exit 1
 }
+
 
 # ===============================
 # MODE : DEDICATED
