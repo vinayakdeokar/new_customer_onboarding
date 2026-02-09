@@ -1,4 +1,4 @@
-  #!/bin/bash
+#!/bin/bash
 set -e
 
 # ===============================
@@ -9,7 +9,7 @@ set -e
 : "${CATALOG_NAME:?CATALOG_NAME missing}"
 : "${DATABRICKS_HOST:?DATABRICKS_HOST missing}"
 : "${DATABRICKS_ADMIN_TOKEN:?DATABRICKS_ADMIN_TOKEN missing}"
-: "${DATABRICKS_SQL_WAREHOUSE_ID:?DATABRICKS_SQL_WAREHOUSE_ID missing}"
+: "${DATABRICKS_SQL_WAREHOUSE_ID:?DATABRICKS_SQL_WAREHOUSE_ID missing}"   # <-- EXISTING WAREHOUSE ID
 : "${STORAGE_BRONZE_ROOT:?STORAGE_BRONZE_ROOT missing}"
 
 if [ "$MODE" = "DEDICATED" ]; then
@@ -41,110 +41,77 @@ run_sql () {
 }
 
 # ===============================
-# HELPER: WAIT UNTIL UC SEES GROUP
-# ===============================
-wait_for_uc_principal () {
-  local GROUP="$1"
-
-  for i in {1..10}; do
-    RESP=$(curl -s -X POST \
-      "${DATABRICKS_HOST}/api/2.0/sql/statements/" \
-      -H "Authorization: Bearer ${DATABRICKS_ADMIN_TOKEN}" \
-      -H "Content-Type: application/json" \
-      -d "{
-        \"warehouse_id\": \"${DATABRICKS_SQL_WAREHOUSE_ID}\",
-        \"statement\": \"SHOW GRANTS ON CATALOG \`${CATALOG_NAME}\`\"
-      }")
-
-    if echo "$RESP" | grep -q "\"${GROUP}\""; then
-      return 0
-    fi
-    sleep 5
-  done
-
-  echo "❌ UC still does not recognise group $GROUP"
-  exit 1
-}
-
-# ===============================
 # MODE : DEDICATED
 # ===============================
 if [ "$MODE" = "DEDICATED" ]; then
   GROUP_NAME="grp-${PRODUCT}-${CUSTOMER_CODE}-users"
-  WAREHOUSE_NAME="wh-${PRODUCT}-${CUSTOMER_CODE}"
 
   echo "🔐 MODE: DEDICATED"
   echo "Customer : ${CUSTOMER_CODE}"
   echo "Group    : ${GROUP_NAME}"
-  echo "Warehouse: ${WAREHOUSE_NAME}"
+  echo "Warehouse: EXISTING (${DATABRICKS_SQL_WAREHOUSE_ID})"
 
+  # ------------------------------------------------
+  # 1️⃣ EXTERNAL LOCATION (PER CUSTOMER – BRONZE)
+  # ------------------------------------------------
   EXT_LOC_NAME="ext_bronze_${CUSTOMER_CODE}"
-
   BRONZE_PATH="${STORAGE_BRONZE_ROOT}/${CUSTOMER_CODE}"
-  
+
+  echo "➡️ Creating / Using External Location"
+  echo "External Location : ${EXT_LOC_NAME}"
+  echo "Path              : ${BRONZE_PATH}"
+
   run_sql "
   CREATE EXTERNAL LOCATION IF NOT EXISTS ${EXT_LOC_NAME}
   URL '${BRONZE_PATH}'
   WITH (STORAGE CREDENTIAL new_db_test)
   "
 
-
-
-
-
-
- 
-
   # ------------------------------------------------
-  # 1️⃣ BRONZE SCHEMA – EXTERNAL (CREATE TIME ONLY)
+  # 2️⃣ BRONZE SCHEMA (EXTERNAL)
   # ------------------------------------------------
   BRONZE_SCHEMA="${PRODUCT}-${CUSTOMER_CODE}_bronze"
-  BRONZE_PATH="${STORAGE_BRONZE_ROOT}/${CUSTOMER_CODE}"
 
-  echo "➡️ Creating BRONZE schema as EXTERNAL"
+  echo "➡️ Creating BRONZE schema"
   echo "Schema : ${BRONZE_SCHEMA}"
-  echo "Path   : ${BRONZE_PATH}"
 
-  run_sql "CREATE SCHEMA \`${CATALOG_NAME}\`.\`${BRONZE_SCHEMA}\` MANAGED LOCATION '${BRONZE_PATH}'"
+  run_sql "
+  CREATE SCHEMA IF NOT EXISTS \`${CATALOG_NAME}\`.\`${BRONZE_SCHEMA}\`
+  MANAGED LOCATION '${BRONZE_PATH}'
+  "
+
+  run_sql "
+  GRANT USAGE, SELECT
+  ON SCHEMA \`${CATALOG_NAME}\`.\`${BRONZE_SCHEMA}\`
+  TO \`${GROUP_NAME}\`
+  "
 
   # ------------------------------------------------
-  # 2️⃣ SILVER & GOLD SCHEMAS (MANAGED)
+  # 3️⃣ SILVER & GOLD SCHEMAS (MANAGED)
   # ------------------------------------------------
   for LAYER in silver gold; do
     SCHEMA_NAME="${PRODUCT}-${CUSTOMER_CODE}_${LAYER}"
 
-    echo "➡️ Processing schema: ${SCHEMA_NAME}"
+    echo "➡️ Creating ${LAYER} schema: ${SCHEMA_NAME}"
 
-    run_sql "CREATE SCHEMA IF NOT EXISTS \`${CATALOG_NAME}\`.\`${SCHEMA_NAME}\`"
-    run_sql "GRANT USAGE, SELECT ON SCHEMA \`${CATALOG_NAME}\`.\`${SCHEMA_NAME}\` TO \`${GROUP_NAME}\`"
+    run_sql "
+    CREATE SCHEMA IF NOT EXISTS \`${CATALOG_NAME}\`.\`${SCHEMA_NAME}\`
+    "
+
+    run_sql "
+    GRANT USAGE, SELECT
+    ON SCHEMA \`${CATALOG_NAME}\`.\`${SCHEMA_NAME}\`
+    TO \`${GROUP_NAME}\`
+    "
   done
 
   # ------------------------------------------------
-  # 3️⃣ CHECK OR CREATE SQL WAREHOUSE
+  # 4️⃣ GRANT ACCESS TO EXISTING SQL WAREHOUSE
   # ------------------------------------------------
-  WAREHOUSE_ID=$(curl -s \
-    -H "Authorization: Bearer ${DATABRICKS_ADMIN_TOKEN}" \
-    "${DATABRICKS_HOST}/api/2.0/sql/warehouses" \
-    | jq -r ".warehouses[] | select(.name==\"${WAREHOUSE_NAME}\") | .id")
-
-  if [ -z "$WAREHOUSE_ID" ] || [ "$WAREHOUSE_ID" = "null" ]; then
-    CREATE_RESP=$(curl -s -X POST \
-      "${DATABRICKS_HOST}/api/2.0/sql/warehouses" \
-      -H "Authorization: Bearer ${DATABRICKS_ADMIN_TOKEN}" \
-      -H "Content-Type: application/json" \
-      -d "{
-        \"name\": \"${WAREHOUSE_NAME}\",
-        \"cluster_size\": \"Small\",
-        \"min_num_clusters\": 1,
-        \"max_num_clusters\": 1,
-        \"auto_stop_mins\": 10,
-        \"enable_serverless_compute\": false
-      }")
-    WAREHOUSE_ID=$(echo "$CREATE_RESP" | jq -r '.id')
-  fi
+  echo "➡️ Granting group access to existing warehouse"
 
   curl -s -X PATCH \
-    "${DATABRICKS_HOST}/api/2.0/permissions/sql/warehouses/${WAREHOUSE_ID}" \
+    "${DATABRICKS_HOST}/api/2.0/permissions/sql/warehouses/${DATABRICKS_SQL_WAREHOUSE_ID}" \
     -H "Authorization: Bearer ${DATABRICKS_ADMIN_TOKEN}" \
     -H "Content-Type: application/json" \
     -d "{
@@ -157,10 +124,13 @@ if [ "$MODE" = "DEDICATED" ]; then
     }" > /dev/null
 
   # ------------------------------------------------
-  # 4️⃣ CATALOG ACCESS
+  # 5️⃣ CATALOG ACCESS
   # ------------------------------------------------
-  run_sql "GRANT USAGE ON CATALOG \`${CATALOG_NAME}\` TO \`${GROUP_NAME}\`"
-  wait_for_uc_principal "${GROUP_NAME}"
+  run_sql "
+  GRANT USAGE
+  ON CATALOG \`${CATALOG_NAME}\`
+  TO \`${GROUP_NAME}\`
+  "
 
   echo "✅ DEDICATED access configured successfully"
 fi
