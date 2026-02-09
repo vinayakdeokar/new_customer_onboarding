@@ -61,8 +61,9 @@ echo "Bronze Root : ${STORAGE_BRONZE_ROOT}"
 # ------------------------------------------------
 run_sql "
 CREATE SCHEMA IF NOT EXISTS \`${CATALOG_NAME}\`.\`${BRONZE_SCHEMA}\`
-LOCATION '${STORAGE_BRONZE_ROOT}/${PRODUCT}/${CUSTOMER_CODE}/bronze'
+MANAGED LOCATION '${STORAGE_BRONZE_ROOT}'
 "
+
 
 
 run_sql "
