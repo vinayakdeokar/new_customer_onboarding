@@ -15,17 +15,17 @@ HOST="https://accounts.azuredatabricks.net"
 
 echo "🔐 Getting OAuth token from Azure AD (Account Admin SPN)..."
 
-# ===============================
-# 1️⃣ Get OAuth token (Account-level)
-# ===============================
-ACCESS_TOKEN=$(curl -s -X POST \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "client_id=$DATABRICKS_CLIENT_ID" \
-  -d "client_secret=$DATABRICKS_CLIENT_SECRET" \
-  -d "grant_type=client_credentials" \
-  -d "scope=2ff814a6-3304-4ab8-85cb-cd0e6f879c1d/.default" \
-  "https://login.microsoftonline.com/$DATABRICKS_TENANT_ID/oauth2/v2.0/token" \
-  | jq -r '.access_token')
+echo "🔐 Getting Databricks Account token via Azure CLI..."
+
+ACCESS_TOKEN=$(az account get-access-token \
+  --resource 2ff814a6-3304-4ab8-85cb-cd0e6f879c1d \
+  --query accessToken -o tsv)
+
+if [ -z "$ACCESS_TOKEN" ]; then
+  echo "❌ Failed to get Databricks Account token"
+  exit 1
+fi
+
 
 if [[ -z "$ACCESS_TOKEN" || "$ACCESS_TOKEN" == "null" ]]; then
   echo "❌ Failed to get OAuth token"
