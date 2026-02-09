@@ -93,28 +93,32 @@ pipeline {
           string(credentialsId: 'DATABRICKS_CATALOG_NAME', variable: 'CATALOG_NAME'),
           string(credentialsId: 'STORAGE_BRONZE_ROOT', variable: 'STORAGE_BRONZE_ROOT')
         ]) {
-
+    
           sh '''
             chmod +x scripts/databricks_access_manager.sh
-
+    
             # =================================================
             # MODE SELECTION
-            # MODE=DEDICATED -> 1 customer = 1 warehouse + 1 group
-            # MODE=SHARED    -> 1 schema + multiple groups auto-attach
             # =================================================
-
             export MODE=DEDICATED
             # export MODE=SHARED
-
+    
             export PRODUCT=${PRODUCT}
             export CUSTOMER_CODE=${CUSTOMER_CODE}
             export CATALOG_NAME=${CATALOG_NAME}
-
+    
+            # 🔴 THIS WAS MISSING
+            export STORAGE_BRONZE_ROOT=${STORAGE_BRONZE_ROOT}
+    
+            # (optional debug – masked but format visible)
+            echo "DEBUG STORAGE_BRONZE_ROOT=${STORAGE_BRONZE_ROOT}"
+    
             ./scripts/databricks_access_manager.sh
           '''
         }
       }
     }
+
 
   }
 }
