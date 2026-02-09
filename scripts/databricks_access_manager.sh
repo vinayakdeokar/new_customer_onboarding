@@ -75,7 +75,6 @@ wait_for_uc_principal () {
 if [ "$MODE" = "DEDICATED" ]; then
   GROUP_NAME="grp-${PRODUCT}-${CUSTOMER_CODE}-users"
   WAREHOUSE_NAME="wh-${PRODUCT}-${CUSTOMER_CODE}"
-  SCHEMA_NAME="${PRODUCT}_${CUSTOMER_CODE}"
 
   echo "🔐 MODE: DEDICATED"
   echo "Customer : ${CUSTOMER_CODE}"
@@ -83,51 +82,61 @@ if [ "$MODE" = "DEDICATED" ]; then
   echo "Warehouse: ${WAREHOUSE_NAME}"
 
   # -------------------------------
-  # 1️⃣ CREATE SCHEMA
+  # 1️⃣ CREATE + GRANT SCHEMAS (bronze / silver / gold)
   # -------------------------------
-  run_sql "CREATE SCHEMA IF NOT EXISTS \`${CATALOG_NAME}\`.\`${SCHEMA_NAME}\`"
+  for LAYER in bronze silver gold; do
+    SCHEMA_NAME="${PRODUCT}-${CUSTOMER_CODE}_${LAYER}"
+
+    echo "➡️ Processing schema: ${SCHEMA_NAME}"
+
+    # Create schema only if not exists
+    run_sql "CREATE SCHEMA IF NOT EXISTS \`${CATALOG_NAME}\`.\`${SCHEMA_NAME}\`"
+
+    # Grant read access (existing + future tables)
+    run_sql "GRANT USAGE, SELECT ON SCHEMA \`${CATALOG_NAME}\`.\`${SCHEMA_NAME}\` TO \`${GROUP_NAME}\`"
+  done
 
   # -------------------------------
-# 2️⃣ CHECK OR CREATE SQL WAREHOUSE
-# -------------------------------
-echo "➡️ Checking if SQL Warehouse ${WAREHOUSE_NAME} exists..."
+  # 2️⃣ CHECK OR CREATE SQL WAREHOUSE
+  # -------------------------------
+  echo "➡️ Checking if SQL Warehouse ${WAREHOUSE_NAME} exists..."
 
-WAREHOUSE_ID=$(curl -s \
-  -H "Authorization: Bearer ${DATABRICKS_ADMIN_TOKEN}" \
-  "${DATABRICKS_HOST}/api/2.0/sql/warehouses" \
-  | jq -r ".warehouses[] | select(.name==\"${WAREHOUSE_NAME}\") | .id")
-
-if [ -n "$WAREHOUSE_ID" ] && [ "$WAREHOUSE_ID" != "null" ]; then
-  echo "✅ Warehouse already exists. Reusing ID: $WAREHOUSE_ID"
-else
-  echo "➡️ Creating SQL Warehouse ${WAREHOUSE_NAME}"
-
-  CREATE_RESP=$(curl -s -X POST \
-    "${DATABRICKS_HOST}/api/2.0/sql/warehouses" \
+  WAREHOUSE_ID=$(curl -s \
     -H "Authorization: Bearer ${DATABRICKS_ADMIN_TOKEN}" \
-    -H "Content-Type: application/json" \
-    -d "{
-      \"name\": \"${WAREHOUSE_NAME}\",
-      \"cluster_size\": \"Small\",
-      \"min_num_clusters\": 1,
-      \"max_num_clusters\": 1,
-      \"auto_stop_mins\": 10,
-      \"enable_serverless_compute\": false
-    }")
+    "${DATABRICKS_HOST}/api/2.0/sql/warehouses" \
+    | jq -r ".warehouses[] | select(.name==\"${WAREHOUSE_NAME}\") | .id")
 
-  WAREHOUSE_ID=$(echo "$CREATE_RESP" | jq -r '.id')
+  if [ -n "$WAREHOUSE_ID" ] && [ "$WAREHOUSE_ID" != "null" ]; then
+    echo "✅ Warehouse already exists. Reusing ID: $WAREHOUSE_ID"
+  else
+    echo "➡️ Creating SQL Warehouse ${WAREHOUSE_NAME}"
 
-  if [ -z "$WAREHOUSE_ID" ] || [ "$WAREHOUSE_ID" = "null" ]; then
-    echo "❌ Warehouse creation failed"
-    echo "$CREATE_RESP"
-    exit 1
+    CREATE_RESP=$(curl -s -X POST \
+      "${DATABRICKS_HOST}/api/2.0/sql/warehouses" \
+      -H "Authorization: Bearer ${DATABRICKS_ADMIN_TOKEN}" \
+      -H "Content-Type: application/json" \
+      -d "{
+        \"name\": \"${WAREHOUSE_NAME}\",
+        \"cluster_size\": \"Small\",
+        \"min_num_clusters\": 1,
+        \"max_num_clusters\": 1,
+        \"auto_stop_mins\": 10,
+        \"enable_serverless_compute\": false
+      }")
+
+    WAREHOUSE_ID=$(echo "$CREATE_RESP" | jq -r '.id')
+
+    if [ -z "$WAREHOUSE_ID" ] || [ "$WAREHOUSE_ID" = "null" ]; then
+      echo "❌ Warehouse creation failed"
+      echo "$CREATE_RESP"
+      exit 1
+    fi
+
+    echo "✅ Warehouse created. ID: $WAREHOUSE_ID"
   fi
 
-  echo "✅ Warehouse created. ID: $WAREHOUSE_ID"
-fi
-
   # -------------------------------
-  # 3️⃣ GRANT WAREHOUSE ACCESS (API)
+  # 3️⃣ GRANT WAREHOUSE ACCESS
   # -------------------------------
   echo "➡️ Granting warehouse access to group"
 
@@ -145,7 +154,7 @@ fi
     }" > /dev/null
 
   # -------------------------------
-  # 4️⃣ UC CATALOG GRANT (MANDATORY)
+  # 4️⃣ UC CATALOG GRANT
   # -------------------------------
   echo "➡️ Granting catalog access (UC warm-up)"
   run_sql "GRANT USAGE ON CATALOG \`${CATALOG_NAME}\` TO \`${GROUP_NAME}\`"
@@ -154,13 +163,6 @@ fi
   # 5️⃣ WAIT FOR UC SYNC
   # -------------------------------
   wait_for_uc_principal "${GROUP_NAME}"
-
-  # -------------------------------
-  # 6️⃣ SCHEMA + TABLE GRANTS
-  # -------------------------------
-  run_sql "GRANT USAGE, SELECT ON SCHEMA \`${CATALOG_NAME}\`.\`${SCHEMA_NAME}\` TO \`${GROUP_NAME}\`"
-
-
 
   echo "✅ DEDICATED access configured successfully"
 fi
@@ -186,8 +188,8 @@ if [ "$MODE" = "SHARED" ]; then
     | grep "^grp-${PRODUCT}-.*-users$" || true)
 
   for GROUP in $GROUPS; do
-  run_sql "GRANT USAGE, SELECT ON SCHEMA \`${CATALOG_NAME}\`.\`${SCHEMA_NAME}\` TO \`${GROUP}\`"
-done
+    run_sql "GRANT USAGE, SELECT ON SCHEMA \`${CATALOG_NAME}\`.\`${SCHEMA_NAME}\` TO \`${GROUP}\`"
+  done
 
   echo "✅ SHARED access configured successfully"
 fi
