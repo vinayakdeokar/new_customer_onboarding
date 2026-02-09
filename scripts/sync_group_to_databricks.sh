@@ -1,82 +1,139 @@
 #!/bin/bash
 set -e
 
-# ===============================
-# REQUIRED ENV VARIABLES
-# ===============================
-: "${DATABRICKS_ACCOUNT_ID:?Missing DATABRICKS_ACCOUNT_ID}"
-: "${DATABRICKS_CLIENT_ID:?Missing DATABRICKS_CLIENT_ID}"
-: "${DATABRICKS_CLIENT_SECRET:?Missing DATABRICKS_CLIENT_SECRET}"
-: "${DATABRICKS_TENANT_ID:?Missing DATABRICKS_TENANT_ID}"
-: "${GROUP_NAME:?Missing GROUP_NAME}"
-: "${WORKSPACE_NAME:?Missing WORKSPACE_NAME}"
+# -------------------------------
+# REQUIRED ENV VARIABLES (Jenkins)
+# -------------------------------
+: "${PRODUCT:?PRODUCT missing}"
+: "${CUSTOMER_CODE:?CUSTOMER_CODE missing}"
+: "${CATALOG_NAME:?CATALOG_NAME missing}"
+: "${DATABRICKS_HOST:?DATABRICKS_HOST missing}"
+: "${DATABRICKS_ADMIN_TOKEN:?DATABRICKS_ADMIN_TOKEN missing}"
+: "${DATABRICKS_SQL_WAREHOUSE_ID:?DATABRICKS_SQL_WAREHOUSE_ID missing}"
 
-HOST="https://accounts.azuredatabricks.net"
+# -------------------------------
+# DERIVED VALUES
+# -------------------------------
+GROUP_NAME="grp-${PRODUCT}-${CUSTOMER_CODE}-users"
 
-echo "🔐 Getting OAuth token from Azure AD (Account Admin SPN)..."
+SCHEMA_BRONZE="${PRODUCT}-${CUSTOMER_CODE}_bronze"
+SCHEMA_SILVER="${PRODUCT}-${CUSTOMER_CODE}_silver"
+SCHEMA_GOLD="${PRODUCT}-${CUSTOMER_CODE}_gold"
 
-echo "🔐 Getting Databricks Account token via Azure CLI..."
+# -------------------------------
+# LOG HEADER
+# -------------------------------
+echo "------------------------------------------------"
+echo "Catalog   : ${CATALOG_NAME}"
+echo "Schemas   : ${SCHEMA_BRONZE} | ${SCHEMA_SILVER} | ${SCHEMA_GOLD}"
+echo "Group     : ${GROUP_NAME}"
+echo "------------------------------------------------"
 
-ACCESS_TOKEN=$(az account get-access-token \
-  --resource 2ff814a6-3304-4ab8-85cb-cd0e6f879c1d \
-  --query accessToken -o tsv)
+# -------------------------------
+# FUNCTION: EXECUTE SQL SAFELY
+# -------------------------------
+run_sql () {
+  local SQL="$1"
 
-if [ -z "$ACCESS_TOKEN" ]; then
-  echo "❌ Failed to get Databricks Account token"
-  exit 1
+  RESPONSE=$(curl -s -X POST \
+    "${DATABRICKS_HOST}/api/2.0/sql/statements/" \
+    -H "Authorization: Bearer ${DATABRICKS_ADMIN_TOKEN}" \
+    -H "Content-Type: application/json" \
+    -d "{
+      \"warehouse_id\": \"${DATABRICKS_SQL_WAREHOUSE_ID}\",
+      \"statement\": \"${SQL}\"
+    }"
+  )
+
+  STATE=$(echo "$RESPONSE" | jq -r '.status.state // empty')
+
+  if [ "$STATE" != "SUCCEEDED" ]; then
+    echo "❌ SQL FAILED"
+    echo "$RESPONSE"
+    exit 1
+  fi
+}
+
+# -------------------------------
+# 1️⃣ CREATE SCHEMAS
+# -------------------------------
+echo "➡️ Creating schemas..."
+
+run_sql "CREATE SCHEMA IF NOT EXISTS \`${CATALOG_NAME}\`.\`${SCHEMA_BRONZE}\`"
+echo "Created in Bronze"
+run_sql "CREATE SCHEMA IF NOT EXISTS \`${CATALOG_NAME}\`.\`${SCHEMA_SILVER}\`"
+run_sql "CREATE SCHEMA IF NOT EXISTS \`${CATALOG_NAME}\`.\`${SCHEMA_GOLD}\`"
+
+# -------------------------------
+# 0️⃣ SYNC ENTRA GROUP TO WORKSPACE (Add this before Grants)
+# -------------------------------
+echo "➡️ Ensuring Group '$GROUP_NAME' is synced to workspace..."
+
+# आधी चेक करा ग्रुप आहे का
+GROUP_EXISTS=$(curl -s -X GET "${DATABRICKS_HOST}/api/2.0/preview/scim/v2/Groups?filter=displayName+eq+%22$GROUP_NAME%22" \
+  -H "Authorization: Bearer ${DATABRICKS_ADMIN_TOKEN}")
+
+if [[ $(echo "$GROUP_EXISTS" | jq -r '.totalResults') == "0" ]]; then
+    echo "🔗 Group not found in workspace. Syncing from Azure Entra ID..."
+    # ही कमांड Azure मधील ग्रुपला वर्कस्पेसला 'Attach' करते
+    curl -s -X POST "${DATABRICKS_HOST}/api/2.0/preview/scim/v2/Groups" \
+      -H "Authorization: Bearer ${DATABRICKS_ADMIN_TOKEN}" \
+      -H "Content-Type: application/json" \
+      -d "{\"displayName\": \"$GROUP_NAME\", \"schemas\": [\"urn:ietf:params:scim:schemas:core:2.0:Group\"]}" > /dev/null
+    echo "✅ Group synced successfully."
+else
+    echo "✅ Group already synced."
 fi
 
+# ग्रुपला SQL Warehouse वापरण्याची परवानगी (Entitlement) देणे
+echo "➡️ Adding SQL Warehouse entitlement to group..."
+GROUP_ID=$(curl -s -X GET "${DATABRICKS_HOST}/api/2.0/preview/scim/v2/Groups?filter=displayName+eq+%22$GROUP_NAME%22" \
+  -H "Authorization: Bearer ${DATABRICKS_ADMIN_TOKEN}" | jq -r '.Resources[0].id')
 
-if [[ -z "$ACCESS_TOKEN" || "$ACCESS_TOKEN" == "null" ]]; then
-  echo "❌ Failed to get OAuth token"
-  exit 1
+curl -s -X PATCH "${DATABRICKS_HOST}/api/2.0/preview/scim/v2/Groups/$GROUP_ID" \
+  -H "Authorization: Bearer ${DATABRICKS_ADMIN_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "schemas": ["urn:ietf:params:scim:api:messages:2.0:PatchOp"],
+    "Operations": [
+      {
+        "op": "add",
+        "path": "entitlements",
+        "value": [
+          {"value": "databricks-sql-access"}
+        ]
+      }
+    ]
+  }'
+echo "✅ Entitlement added."
+sleep 5
+# -------------------------------
+# 2️⃣ GRANTS (Dynamic Principal Discovery Fix)
+# -------------------------------
+echo "➡️ Discovering Exact Principal Name from SQL Engine..."
+
+# SQL Warehouse कडून ग्रुपची लिस्ट मागवून आपल्या ग्रुपचे 'Exact' नाव शोधणे
+# यामुळे Case Sensitivity (Capital/Small) चा प्रॉब्लेम कायमचा सुटतो.
+EXACT_SQL_GROUP=$(curl -s -X POST "${DATABRICKS_HOST}/api/2.0/sql/statements/" \
+  -H "Authorization: Bearer ${DATABRICKS_ADMIN_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d "{\"warehouse_id\": \"$DATABRICKS_SQL_WAREHOUSE_ID\", \"statement\": \"SHOW GROUPS\"}" \
+  | jq -r '.result.data_array[][]' | grep -i "^${GROUP_NAME}$" | head -n 1)
+
+if [ -z "$EXACT_SQL_GROUP" ] || [ "$EXACT_SQL_GROUP" == "null" ]; then
+    echo "❌ ERROR: Group '$GROUP_NAME' SQL Warehouse ला अजिबात दिसत नाहीये."
+    echo "कृपया Azure Portal मध्ये ग्रुपचे स्पेलिंग नीट तपासा."
+    exit 1
 fi
 
-echo "✅ OAuth token acquired"
+echo "➡️ Applying grants using discovered name..."
 
-AUTH_HEADER="Authorization: Bearer $ACCESS_TOKEN"
+# 1️⃣ USE_CATALOG
+run_sql "GRANT USAGE ON CATALOG \`${CATALOG_NAME}\` TO \`${EXACT_SQL_GROUP}\`"
 
-# ===============================
-# 2️⃣ Find group at Databricks ACCOUNT level
-# ===============================
-echo "🔎 Looking for Azure AD group in Databricks Account: $GROUP_NAME"
+# 2️⃣ USE_SCHEMA + SELECT
+run_sql "GRANT USAGE, SELECT ON SCHEMA \`${CATALOG_NAME}\`.\`${SCHEMA_BRONZE}\` TO \`${EXACT_SQL_GROUP}\`"
+run_sql "GRANT USAGE, SELECT ON SCHEMA \`${CATALOG_NAME}\`.\`${SCHEMA_SILVER}\` TO \`${EXACT_SQL_GROUP}\`"
+run_sql "GRANT USAGE, SELECT ON SCHEMA \`${CATALOG_NAME}\`.\`${SCHEMA_GOLD}\` TO \`${EXACT_SQL_GROUP}\`"
 
-GROUP_ID=$(curl -s -H "$AUTH_HEADER" \
-  "$HOST/api/2.0/accounts/$DATABRICKS_ACCOUNT_ID/scim/v2/Groups?filter=displayName%20eq%20%22$GROUP_NAME%22" \
-  | jq -r '.Resources[0].id')
-
-if [[ -z "$GROUP_ID" || "$GROUP_ID" == "null" ]]; then
-  echo "❌ Group NOT found at Databricks Account level."
-  echo "👉 Ensure Azure Entra ID group exists and SCIM sync is enabled."
-  exit 1
-fi
-
-echo "✅ Group found"
-echo "   Group ID: $GROUP_ID"
-
-# ===============================
-# 3️⃣ Get Workspace ID
-# ===============================
-echo "🔎 Resolving workspace: $WORKSPACE_NAME"
-
-WORKSPACE_ID=$(curl -s -H "$AUTH_HEADER" \
-  "$HOST/api/2.0/accounts/$DATABRICKS_ACCOUNT_ID/workspaces" \
-  | jq -r ".workspaces[] | select(.workspace_name==\"$WORKSPACE_NAME\") | .workspace_id")
-
-if [[ -z "$WORKSPACE_ID" || "$WORKSPACE_ID" == "null" ]]; then
-  echo "❌ Workspace not found: $WORKSPACE_NAME"
-  exit 1
-fi
-
-echo "✅ Workspace ID: $WORKSPACE_ID"
-
-# ===============================
-# 4️⃣ Assign group to workspace
-# ===============================
-echo "➡️ Assigning group to workspace (idempotent)"
-
-curl -s -X POST -H "$AUTH_HEADER" \
-  "$HOST/api/2.0/accounts/$DATABRICKS_ACCOUNT_ID/workspaces/$WORKSPACE_ID/permissions/groups/$GROUP_ID" \
-  >/dev/null
-
-echo "🎉 SUCCESS: Group synced & assigned to Databricks workspace"
+echo "✅ All grants applied successfully."
