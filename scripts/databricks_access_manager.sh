@@ -188,9 +188,6 @@ if [ "$MODE" = "SHARED" ]; then
   run_sql "GRANT USAGE, SELECT ON SCHEMA \`${CATALOG_NAME}\`.\`${SCHEMA_NAME}\` TO \`${GROUP}\`"
 done
 
-
-  done
-
   echo "✅ SHARED access configured successfully"
 fi
 
