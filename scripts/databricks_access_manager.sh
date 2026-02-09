@@ -78,6 +78,16 @@ if [ "$MODE" = "DEDICATED" ]; then
   echo "Group    : ${GROUP_NAME}"
   echo "Warehouse: ${WAREHOUSE_NAME}"
 
+  EXT_LOC_NAME="ext_bronze_${CUSTOMER_CODE//-/_}"
+BRONZE_PATH="${STORAGE_BRONZE_ROOT}/${CUSTOMER_CODE}"
+
+run_sql "
+CREATE EXTERNAL LOCATION IF NOT EXISTS ${EXT_LOC_NAME}
+URL '${BRONZE_PATH}'
+WITH (STORAGE CREDENTIAL new_db_test)
+"
+
+
 
 
 
@@ -95,9 +105,6 @@ if [ "$MODE" = "DEDICATED" ]; then
   echo "Path   : ${BRONZE_PATH}"
 
   run_sql "CREATE SCHEMA \`${CATALOG_NAME}\`.\`${BRONZE_SCHEMA}\` MANAGED LOCATION '${BRONZE_PATH}'"
-
-  run_sql "GRANT USAGE, SELECT ON SCHEMA \`${CATALOG_NAME}\`.\`${BRONZE_SCHEMA}\` TO \`${GROUP_NAME}\`"
-  sleep 10
 
   # ------------------------------------------------
   # 2️⃣ SILVER & GOLD SCHEMAS (MANAGED)
