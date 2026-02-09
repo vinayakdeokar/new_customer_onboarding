@@ -5,10 +5,14 @@ pipeline {
     string(name: 'CUSTOMER_CODE', description: 'Customer code like vinayak-003')
     string(name: 'PRODUCT', defaultValue: 'm360', description: 'Product name')
     string(name: 'ENV', defaultValue: 'dev', description: 'Environment')
-    string(
-      name: 'SPN_NAME',
+    string(name: 'SPN_NAME',
       description: 'Azure Entra ID SPN name (e.g. sp-m360-vinayak-003)'
     )
+    string(
+    name: 'ACCESS_GROUP',
+    description: 'Azure Entra ID group name (single)'
+  )
+}
   }
 
   environment {
