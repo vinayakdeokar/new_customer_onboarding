@@ -1,12 +1,24 @@
 #!/bin/bash
 set -euo pipefail
 
+# ==================================================
+# REQUIRED ENV VARIABLES (must be exported by Jenkins)
+# ==================================================
 : "${DATABRICKS_ACCOUNT_ID:?Missing DATABRICKS_ACCOUNT_ID}"
 : "${GROUP_NAME:?Missing GROUP_NAME}"
-: "${WORKSPACE_NAME:?Missing WORKSPACE_NAME}"
+: "${WORKSPACE_ID:?Missing WORKSPACE_ID}"
 
 HOST="https://accounts.azuredatabricks.net"
 
+echo "==============================================="
+echo "🔗 Databricks Group → Workspace ASSIGN ONLY"
+echo "Group        : $GROUP_NAME"
+echo "Workspace ID : $WORKSPACE_ID"
+echo "==============================================="
+
+# --------------------------------------------------
+# 1️⃣ Get Databricks Account OAuth Token
+# --------------------------------------------------
 echo "🔐 Getting Databricks Account token..."
 
 ACCESS_TOKEN=$(az account get-access-token \
@@ -22,42 +34,26 @@ AUTH_HEADER="Authorization: Bearer $ACCESS_TOKEN"
 echo "✅ Token acquired"
 
 # --------------------------------------------------
-# 1️⃣ Check group at Databricks ACCOUNT level (NO CREATE)
+# 2️⃣ Verify Group exists at Databricks ACCOUNT level
 # --------------------------------------------------
-echo "🔎 Checking group at Databricks Account level: $GROUP_NAME"
+echo "🔎 Checking group at Databricks Account level..."
 
 GROUP_ID=$(curl -s -H "$AUTH_HEADER" \
-  "$HOST/api/2.0/accounts/$DATABRICKS_ACCOUNT_ID/scim/v2/Groups?filter=displayName%20eq%20%22$GROUP_NAME%22" \
-  | jq -r '.Resources[0].id // empty')
+"$HOST/api/2.0/accounts/$DATABRICKS_ACCOUNT_ID/scim/v2/Groups" \
+| jq -r ".Resources[] | select(.displayName==\"$GROUP_NAME\") | .id" \
+| head -n 1)
 
 if [[ -z "$GROUP_ID" ]]; then
   echo "❌ Group NOT present at Databricks Account level"
-  echo "👉 This pipeline does NOT create groups"
-  echo "👉 Ask platform team to pre-sync this Azure Entra ID group"
+  echo "👉 Group must be pre-synced via Databricks Account Console"
   exit 1
 fi
 
-echo "✅ Group present at account level"
+echo "✅ Group found"
 echo "   ➜ Group ID: $GROUP_ID"
 
 # --------------------------------------------------
-# 2️⃣ Resolve Workspace
-# --------------------------------------------------
-echo "🔎 Resolving workspace: $WORKSPACE_NAME"
-
-WORKSPACE_ID=$(curl -s -H "$AUTH_HEADER" \
-  "$HOST/api/2.0/accounts/$DATABRICKS_ACCOUNT_ID/workspaces" \
-  | jq -r ".workspaces[] | select(.workspace_name==\"$WORKSPACE_NAME\") | .workspace_id")
-
-if [[ -z "$WORKSPACE_ID" ]]; then
-  echo "❌ Workspace not found: $WORKSPACE_NAME"
-  exit 1
-fi
-
-echo "✅ Workspace ID: $WORKSPACE_ID"
-
-# --------------------------------------------------
-# 3️⃣ Assign group to workspace
+# 3️⃣ Assign Group to Workspace (ID based – CORRECT)
 # --------------------------------------------------
 echo "➡️ Assigning group to workspace..."
 
