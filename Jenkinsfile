@@ -122,18 +122,18 @@ pipeline {
           string(credentialsId: 'DATABRICKS_ACCOUNT_ID', variable: 'DATABRICKS_ACCOUNT_ID'),
           string(credentialsId: 'AZURE_TENANT_ID', variable: 'AZURE_TENANT_ID')
         ]) {
-          sh '''
-            # TAKE SPN FROM JENKINS INPUT
-            export TARGET_SPN_DISPLAY_NAME="${SPN_NAME}"
-
-            echo "Using SPN: $TARGET_SPN_DISPLAY_NAME"
-
+          sh """
+            export TARGET_SPN_DISPLAY_NAME="${params.SPN_NAME}"
+          
+            echo "Using SPN: \$TARGET_SPN_DISPLAY_NAME"
+          
             chmod +x scripts/dbx_spn_discover.sh
             chmod +x scripts/dbx_spn_generate_secret.sh
-
+          
             scripts/dbx_spn_discover.sh
             scripts/dbx_spn_generate_secret.sh
-          '''
+          """
+
         }
       }
     }
