@@ -18,7 +18,11 @@ pipeline {
   }
 
   environment {
-    KV_NAME = 'kv-databricks-fab'
+  KV_NAME = 'kv-databricks-fab'
+
+  WORKSPACE_NAME = "<<<EXACT_DATABRICKS_WORKSPACE_NAME>>>"
+
+
   }
 
   stages {
