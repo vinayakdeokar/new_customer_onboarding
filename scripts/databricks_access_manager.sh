@@ -4,7 +4,7 @@ set -e
 # ===============================
 # REQUIRED ENV VARIABLES
 # ===============================
-: "${MODE:?MODE missing}"
+: "${MODE:?MODE missing (DEDICATED)}"
 : "${PRODUCT:?PRODUCT missing}"
 : "${CUSTOMER_CODE:?CUSTOMER_CODE missing}"
 : "${CATALOG_NAME:?CATALOG_NAME missing}"
@@ -13,76 +13,53 @@ set -e
 : "${DATABRICKS_SQL_WAREHOUSE_ID:?DATABRICKS_SQL_WAREHOUSE_ID missing}"
 
 # ===============================
-# HELPER: RUN SQL
+# HELPER: RUN SQL (SYNC)
 # ===============================
-# safe run_sql using jq to build JSON payload and polling by statement_id
 run_sql () {
   local SQL="$1"
 
-  # build JSON payload safely with jq (escapes quotes/newlines/etc.)
-  PAYLOAD=$(jq -n --arg wh "$DATABRICKS_SQL_WAREHOUSE_ID" --arg stmt "$SQL" '{warehouse_id:$wh, statement:$stmt}')
-
-  # submit statement
   RESP=$(curl -s -X POST \
     "${DATABRICKS_HOST}/api/2.0/sql/statements/" \
     -H "Authorization: Bearer ${DATABRICKS_ADMIN_TOKEN}" \
     -H "Content-Type: application/json" \
-    -d "$PAYLOAD")
+    -d "{
+      \"warehouse_id\": \"${DATABRICKS_SQL_WAREHOUSE_ID}\",
+      \"statement\": \"${SQL}\",
+      \"wait_timeout\": \"30s\"
+    }")
 
-  # debug: show submit response if it doesn't contain statement_id
-  STATEMENT_ID=$(echo "$RESP" | jq -r '.statement_id // empty')
+  STATE=$(echo "$RESP" | jq -r '.status.state')
 
-  if [ -z "$STATEMENT_ID" ]; then
-    echo "❌ Failed to submit SQL (no statement_id). Full response:"
-    echo "$RESP" | sed -n '1,200p'
+  if [ "$STATE" != "SUCCEEDED" ]; then
+    echo "❌ SQL FAILED"
+    echo "$RESP"
     exit 1
   fi
-
-  # poll for completion (allow enough tries for UC operations)
-  for i in {1..40}; do
-    STATUS_RESP=$(curl -s -X GET \
-      "${DATABRICKS_HOST}/api/2.0/sql/statements/${STATEMENT_ID}" \
-      -H "Authorization: Bearer ${DATABRICKS_ADMIN_TOKEN}")
-
-    STATE=$(echo "$STATUS_RESP" | jq -r '.status.state // empty')
-
-    if [ "$STATE" = "SUCCEEDED" ]; then
-      return 0
-    fi
-
-    if [ "$STATE" = "FAILED" ] || [ "$STATE" = "CANCELED" ]; then
-      echo "❌ SQL FAILED (statement_id=${STATEMENT_ID}). Full status response:"
-      echo "$STATUS_RESP" | sed -n '1,400p'
-      exit 1
-    fi
-
-    # still running (PENDING / RUNNING)
-    sleep 3
-  done
-
-  echo "❌ SQL did not finish within timeout for statement_id=${STATEMENT_ID}"
-  exit 1
 }
-
 
 # ===============================
 # MAIN
 # ===============================
 GROUP_NAME="grp-${PRODUCT}-${CUSTOMER_CODE}-users"
 
-echo "🔐 MODE: DEDICATED"
-echo "Customer : ${CUSTOMER_CODE}"
-echo "Group    : ${GROUP_NAME}"
-echo "Warehouse: EXISTING (${DATABRICKS_SQL_WAREHOUSE_ID})"
+echo "🔐 MODE      : DEDICATED"
+echo "Customer    : ${CUSTOMER_CODE}"
+echo "Group       : ${GROUP_NAME}"
+echo "Warehouse   : EXISTING (${DATABRICKS_SQL_WAREHOUSE_ID})"
+echo "Catalog     : ${CATALOG_NAME}"
+echo "Ext Location: ext_bronze_mcr"
 
 # ------------------------------------------------
-# 1️⃣ BRONZE SCHEMA (EXTERNAL via existing ext_bronze)
+# 1️⃣ BRONZE SCHEMA (EXTERNAL LOCATION)
 # ------------------------------------------------
-BRONZE_SCHEMA="${PRODUCT}-${CUSTOMER_CODE}_bronze"
+BRONZE_SCHEMA="${PRODUCT}_${CUSTOMER_CODE}_bronze"
+
+echo "➡️ Creating BRONZE schema"
+echo "Schema : ${BRONZE_SCHEMA}"
 
 run_sql "
 CREATE SCHEMA IF NOT EXISTS \`${CATALOG_NAME}\`.\`${BRONZE_SCHEMA}\`
-MANAGED LOCATION '@ext_bronze/${CUSTOMER_CODE}'
+MANAGED LOCATION '@ext_bronze_mcr/${CUSTOMER_CODE}'
 "
 
 run_sql "
@@ -92,10 +69,12 @@ TO \`${GROUP_NAME}\`
 "
 
 # ------------------------------------------------
-# 2️⃣ SILVER & GOLD (MANAGED)
+# 2️⃣ SILVER & GOLD SCHEMAS (MANAGED)
 # ------------------------------------------------
 for LAYER in silver gold; do
-  SCHEMA_NAME="${PRODUCT}-${CUSTOMER_CODE}_${LAYER}"
+  SCHEMA_NAME="${PRODUCT}_${CUSTOMER_CODE}_${LAYER}"
+
+  echo "➡️ Creating ${LAYER} schema : ${SCHEMA_NAME}"
 
   run_sql "
   CREATE SCHEMA IF NOT EXISTS \`${CATALOG_NAME}\`.\`${SCHEMA_NAME}\`
@@ -112,8 +91,9 @@ done
 # 3️⃣ CATALOG ACCESS
 # ------------------------------------------------
 run_sql "
-GRANT USAGE ON CATALOG \`${CATALOG_NAME}\`
+GRANT USAGE
+ON CATALOG \`${CATALOG_NAME}\`
 TO \`${GROUP_NAME}\`
 "
 
-echo "🎉 SETUP COMPLETED SUCCESSFULLY"
+echo "✅ AUTOMATION COMPLETED SUCCESSFULLY"
