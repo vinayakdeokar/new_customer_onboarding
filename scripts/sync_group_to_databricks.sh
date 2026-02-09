@@ -1,82 +1,71 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
-# ===============================
-# REQUIRED ENV VARIABLES
-# ===============================
 : "${DATABRICKS_ACCOUNT_ID:?Missing DATABRICKS_ACCOUNT_ID}"
-: "${DATABRICKS_CLIENT_ID:?Missing DATABRICKS_CLIENT_ID}"
-: "${DATABRICKS_CLIENT_SECRET:?Missing DATABRICKS_CLIENT_SECRET}"
-: "${DATABRICKS_TENANT_ID:?Missing DATABRICKS_TENANT_ID}"
 : "${GROUP_NAME:?Missing GROUP_NAME}"
 : "${WORKSPACE_NAME:?Missing WORKSPACE_NAME}"
 
 HOST="https://accounts.azuredatabricks.net"
 
-echo "🔐 Getting OAuth token from Azure AD (Account Admin SPN)..."
-
-echo "🔐 Getting Databricks Account token via Azure CLI..."
+echo "🔐 Getting Databricks Account token..."
 
 ACCESS_TOKEN=$(az account get-access-token \
   --resource 2ff814a6-3304-4ab8-85cb-cd0e6f879c1d \
   --query accessToken -o tsv)
 
-if [ -z "$ACCESS_TOKEN" ]; then
+if [[ -z "$ACCESS_TOKEN" || "$ACCESS_TOKEN" == "null" ]]; then
   echo "❌ Failed to get Databricks Account token"
   exit 1
 fi
 
-
-if [[ -z "$ACCESS_TOKEN" || "$ACCESS_TOKEN" == "null" ]]; then
-  echo "❌ Failed to get OAuth token"
-  exit 1
-fi
-
-echo "✅ OAuth token acquired"
-
 AUTH_HEADER="Authorization: Bearer $ACCESS_TOKEN"
+echo "✅ Token acquired"
 
-# ===============================
-# 2️⃣ Find group at Databricks ACCOUNT level
-# ===============================
-echo "🔎 Looking for Azure AD group in Databricks Account: $GROUP_NAME"
+# --------------------------------------------------
+# 1️⃣ Check group at Databricks ACCOUNT level (NO CREATE)
+# --------------------------------------------------
+echo "🔎 Checking group at Databricks Account level: $GROUP_NAME"
 
 GROUP_ID=$(curl -s -H "$AUTH_HEADER" \
   "$HOST/api/2.0/accounts/$DATABRICKS_ACCOUNT_ID/scim/v2/Groups?filter=displayName%20eq%20%22$GROUP_NAME%22" \
-  | jq -r '.Resources[0].id')
+  | jq -r '.Resources[0].id // empty')
 
-if [[ -z "$GROUP_ID" || "$GROUP_ID" == "null" ]]; then
-  echo "❌ Group NOT found at Databricks Account level."
-  echo "👉 Ensure Azure Entra ID group exists and SCIM sync is enabled."
+if [[ -z "$GROUP_ID" ]]; then
+  echo "❌ Group NOT present at Databricks Account level"
+  echo "👉 This pipeline does NOT create groups"
+  echo "👉 Ask platform team to pre-sync this Azure Entra ID group"
   exit 1
 fi
 
-echo "✅ Group found"
-echo "   Group ID: $GROUP_ID"
+echo "✅ Group present at account level"
+echo "   ➜ Group ID: $GROUP_ID"
 
-# ===============================
-# 3️⃣ Get Workspace ID
-# ===============================
+# --------------------------------------------------
+# 2️⃣ Resolve Workspace
+# --------------------------------------------------
 echo "🔎 Resolving workspace: $WORKSPACE_NAME"
 
 WORKSPACE_ID=$(curl -s -H "$AUTH_HEADER" \
   "$HOST/api/2.0/accounts/$DATABRICKS_ACCOUNT_ID/workspaces" \
   | jq -r ".workspaces[] | select(.workspace_name==\"$WORKSPACE_NAME\") | .workspace_id")
 
-if [[ -z "$WORKSPACE_ID" || "$WORKSPACE_ID" == "null" ]]; then
+if [[ -z "$WORKSPACE_ID" ]]; then
   echo "❌ Workspace not found: $WORKSPACE_NAME"
   exit 1
 fi
 
 echo "✅ Workspace ID: $WORKSPACE_ID"
 
-# ===============================
-# 4️⃣ Assign group to workspace
-# ===============================
-echo "➡️ Assigning group to workspace (idempotent)"
+# --------------------------------------------------
+# 3️⃣ Assign group to workspace
+# --------------------------------------------------
+echo "➡️ Assigning group to workspace..."
 
-curl -s -X POST -H "$AUTH_HEADER" \
-  "$HOST/api/2.0/accounts/$DATABRICKS_ACCOUNT_ID/workspaces/$WORKSPACE_ID/permissions/groups/$GROUP_ID" \
+curl -s -X POST \
+  -H "$AUTH_HEADER" \
+  -H "Content-Type: application/json" \
+  "$HOST/api/2.0/accounts/$DATABRICKS_ACCOUNT_ID/workspaces/$WORKSPACE_ID/permissions/principals/$GROUP_NAME" \
+  -d '{"permissions":["USER"]}' \
   >/dev/null
 
-echo "🎉 SUCCESS: Group synced & assigned to Databricks workspace"
+echo "🎉 SUCCESS: Group assigned to Databricks workspace"
