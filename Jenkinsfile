@@ -161,15 +161,16 @@ pipeline {
           string(credentialsId: 'DATABRICKS_TENANT_ID', variable: 'DATABRICKS_TENANT_ID')
         ]) {
           sh """
-            export GROUP_NAME="${ACCESS_GROUP}"
-            export WORKSPACE_ID="${WORKSPACE_ID}"
-
+            export GROUP_NAME="${params.ACCESS_GROUP}"
+            export WORKSPACE_ID="${params.WORKSPACE_ID}"
+    
             chmod +x scripts/sync_group_to_databricks.sh
             scripts/sync_group_to_databricks.sh
           """
         }
       }
     }
+    
 
     // --------------------------------------------------
     // UNITY CATALOG ACCESS
