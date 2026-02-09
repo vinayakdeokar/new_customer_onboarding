@@ -96,7 +96,7 @@ if [ "$MODE" = "DEDICATED" ]; then
     run_sql "GRANT USAGE, SELECT ON SCHEMA \`${CATALOG_NAME}\`.\`${SCHEMA_NAME}\` TO \`${GROUP_NAME}\`"
   done
 
-  BRONZE_SCHEMA="${PRODUCT}-${CUSTOMER_CODE}-bronze-001"
+  BRONZE_SCHEMA="${PRODUCT}-${CUSTOMER_CODE}_bronze"
   BRONZE_PATH="${STORAGE_BRONZE_ROOT}/${CUSTOMER_CODE}"
   
   echo "➡️ Attaching external storage to BRONZE schema"
@@ -107,8 +107,6 @@ if [ "$MODE" = "DEDICATED" ]; then
     ALTER SCHEMA \`${CATALOG_NAME}\`.\`${BRONZE_SCHEMA}\`
     SET LOCATION '${BRONZE_PATH}'
   "
-
-
   # -------------------------------
   # 2️⃣ CHECK OR CREATE SQL WAREHOUSE
   # -------------------------------
