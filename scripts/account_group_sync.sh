@@ -40,6 +40,26 @@ if [ -z "$GROUP_ID" ] || [ "$GROUP_ID" == "null" ]; then
 else
   echo "✅ Azure group already linked (Databricks Internal ID: ${GROUP_ID})"
 fi
+#!/bin/bash
+set -e
+
+: "${DATABRICKS_HOST:?Missing}"
+: "${DATABRICKS_ADMIN_TOKEN:?Missing}"
+: "${GROUP_NAME:?Missing}"
+
+echo "🚀 Forcing group into WORKSPACE identity store..."
+
+curl -s -X POST \
+  "${DATABRICKS_HOST}/api/2.0/preview/scim/v2/Groups" \
+  -H "Authorization: Bearer ${DATABRICKS_ADMIN_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"schemas\": [\"urn:ietf:params:scim:schemas:core:2.0:Group\"],
+    \"displayName\": \"${GROUP_NAME}\"
+  }" >/dev/null || true
+
+echo "✅ Group materialized at Workspace level"
+
 
 # # ४. ग्रुपला Workspace मध्ये असाइन करणे (लिंक करणे)
 # echo "🔗 Assigning group '${GROUP_NAME}' to Workspace..."
