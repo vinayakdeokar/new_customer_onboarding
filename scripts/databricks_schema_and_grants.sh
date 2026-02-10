@@ -20,6 +20,7 @@ GROUP_NAME="grp-${PRODUCT}-${CUSTOMER_CODE}-users"
 BRONZE_SCHEMA="${PRODUCT}_${CUSTOMER_CODE}_bronze"
 SILVER_SCHEMA="${PRODUCT}_${CUSTOMER_CODE}_silver"
 GOLD_SCHEMA="${PRODUCT}_${CUSTOMER_CODE}_gold"
+BRONZE_PATH="${STORAGE_BRONZE_ROOT}/${CUSTOMER_CODE}"
 
 # ==================================================
 # HELPER: RUN SQL (SYNC, SAFE JSON)
@@ -62,7 +63,7 @@ echo "Product       : $PRODUCT"
 echo "Customer      : $CUSTOMER_CODE"
 echo "Group         : $GROUP_NAME"
 echo "Catalog       : $CATALOG_NAME"
-echo "Bronze Path   : $STORAGE_BRONZE_ROOT"
+echo "Bronze Path   : ${BRONZE_PATH}"
 echo "------------------------------------------------"
 
 # ==================================================
@@ -70,7 +71,7 @@ echo "------------------------------------------------"
 # ==================================================
 run_sql "
 CREATE SCHEMA IF NOT EXISTS \`${CATALOG_NAME}\`.\`${BRONZE_SCHEMA}\`
-MANAGED LOCATION '${STORAGE_BRONZE_ROOT}'
+MANAGED LOCATION '${BRONZE_PATH}'
 "
 
 # ==================================================
