@@ -39,18 +39,20 @@
 set -e
 
 echo "🔍 Step 1: Fetching Azure Object ID for ${GROUP_NAME}..."
+# Azure CLI वरून ID घेणे
 AZURE_OBJ_ID=$(az ad group show --group "${GROUP_NAME}" --query id --output tsv)
 
 if [ -z "$AZURE_OBJ_ID" ]; then
     echo "❌ ERROR: Azure मध्ये ग्रुप सापडला नाही."
     exit 1
 fi
-echo "✅ Azure Object ID Found: $AZURE_OBJ_ID"
+echo "✅ Azure Object ID: $AZURE_OBJ_ID"
 
-# स्टेप २: अकाउंट लेव्हलला लिंक करणे
-echo "🚀 Step 2: Linking to Databricks Account Level..."
-# आपण -v (verbose) जोडलाय जेणेकरून 401 चं कारण समजेल
-RESPONSE=$(curl -s -X POST "https://accounts.azuredatabricks.net/api/2.0/accounts/${DATABRICKS_ACCOUNT_ID}/scim/v2/Groups" \
+echo "🚀 Step 2: Creating/Syncing Group directly in Workspace..."
+
+# आपण आता 'Workspace SCIM API' वापरतोय जे तुमच्या Token वर चालते
+# हे ग्रुप तयार करेल आणि त्याला Azure ID शी लिंक करेल
+RESPONSE=$(curl -s -X POST "${DATABRICKS_HOST}/api/2.0/preview/scim/v2/Groups" \
   -H "Authorization: Bearer ${DATABRICKS_TOKEN}" \
   -H "Content-Type: application/json" \
   -d "{
@@ -59,25 +61,19 @@ RESPONSE=$(curl -s -X POST "https://accounts.azuredatabricks.net/api/2.0/account
     \"externalId\": \"${AZURE_OBJ_ID}\"
   }")
 
-GROUP_ID=$(echo "$RESPONSE" | jq -r '.id // empty')
-
-if [ -z "$GROUP_ID" ] || [ "$GROUP_ID" == "null" ]; then
-    echo "ℹ️ Group already exists or searching..."
-    GROUP_ID=$(curl -s -X GET "https://accounts.azuredatabricks.net/api/2.0/accounts/${DATABRICKS_ACCOUNT_ID}/scim/v2/Groups?filter=displayName+eq+%22${GROUP_NAME}%22" \
-      -H "Authorization: Bearer ${DATABRICKS_TOKEN}" | jq -r '.Resources[0].id // empty')
+# जर ग्रुप आधीच असेल (Error 409) किंवा नवीन बनला, तर आपण चेक करू
+if echo "$RESPONSE" | grep -q "id"; then
+    echo "🎉 SUCCESS: Group '${GROUP_NAME}' वर्कस्पेसमध्ये ॲड झाला आहे!"
+    echo "ℹ️ Details: $RESPONSE"
+else
+    # जर ग्रुप आधीच असेल तर तो एरर देऊ शकतो, पण ते आपण इग्नोर करू शकतो का ते बघू
+    if echo "$RESPONSE" | grep -q "already exists"; then
+        echo "✅ SUCCESS: Group आधीच वर्कस्पेसमध्ये आहे."
+    else
+        echo "❌ ERROR: Group ॲड करताना काहीतरी चूक झाली."
+        echo "Response: $RESPONSE"
+        exit 1
+    fi
 fi
 
-# स्टेप ३: वर्कस्पेस असाइनमेंट
-echo "🔗 Step 3: Assigning group to Workspace: ${WORKSPACE_ID}..."
-# इथे आपण पूर्ण एरर मेसेज प्रिंट करू
-RESULT=$(curl -s -X PUT "https://accounts.azuredatabricks.net/api/2.0/accounts/${DATABRICKS_ACCOUNT_ID}/workspaces/${WORKSPACE_ID}/permissionassignments/principals/${GROUP_ID}" \
-  -H "Authorization: Bearer ${DATABRICKS_TOKEN}" \
-  -H "Content-Type: application/json" \
-  -d '{ "permissions": ["USER"] }')
-
-if echo "$RESULT" | grep -q "error_code"; then
-    echo "❌ ERROR Detail: $RESULT"
-    exit 1
-fi
-
-echo "🎉 SUCCESS: Automation Complete!"
+echo "✅ Ready for Schema Grant!"
