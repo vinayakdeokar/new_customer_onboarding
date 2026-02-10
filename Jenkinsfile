@@ -208,10 +208,7 @@ pipeline {
       }
   }
 
-    // --------------------------------------------------
-    // UNITY CATALOG ACCESS
-    // --------------------------------------------------
-    stage('Databricks Access Manager') {
+    stage('Schemas & Grants') {
       steps {
         withCredentials([
           string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
@@ -221,21 +218,42 @@ pipeline {
           string(credentialsId: 'STORAGE_BRONZE_ROOT', variable: 'STORAGE_BRONZE_ROOT')
         ]) {
           sh '''
-            chmod +x scripts/databricks_access_manager.sh
-
-            export MODE=DEDICATED
-            export PRODUCT=${PRODUCT}
-            export CUSTOMER_CODE=${CUSTOMER_CODE}
-            export CATALOG_NAME=${CATALOG_NAME}
-            export STORAGE_BRONZE_ROOT=${STORAGE_BRONZE_ROOT}
-
-            echo "DEBUG STORAGE_BRONZE_ROOT=${STORAGE_BRONZE_ROOT}"
-
-            ./scripts/databricks_access_manager.sh
+            chmod +x scripts/databricks_schema_and_grants.sh
+            ./scripts/databricks_schema_and_grants.sh
           '''
         }
       }
     }
+
+
+    // --------------------------------------------------
+    // UNITY CATALOG ACCESS
+    // --------------------------------------------------
+    // stage('Databricks Access Manager') {
+    //   steps {
+    //     withCredentials([
+    //       string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
+    //       string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_ADMIN_TOKEN'),
+    //       string(credentialsId: 'DATABRICKS_SQL_WAREHOUSE_ID', variable: 'DATABRICKS_SQL_WAREHOUSE_ID'),
+    //       string(credentialsId: 'DATABRICKS_CATALOG_NAME', variable: 'CATALOG_NAME'),
+    //       string(credentialsId: 'STORAGE_BRONZE_ROOT', variable: 'STORAGE_BRONZE_ROOT')
+    //     ]) {
+    //       sh '''
+    //         chmod +x scripts/databricks_access_manager.sh
+
+    //         export MODE=DEDICATED
+    //         export PRODUCT=${PRODUCT}
+    //         export CUSTOMER_CODE=${CUSTOMER_CODE}
+    //         export CATALOG_NAME=${CATALOG_NAME}
+    //         export STORAGE_BRONZE_ROOT=${STORAGE_BRONZE_ROOT}
+
+    //         echo "DEBUG STORAGE_BRONZE_ROOT=${STORAGE_BRONZE_ROOT}"
+
+    //         ./scripts/databricks_access_manager.sh
+    //       '''
+    //     }
+    //   }
+    // }
 
   }
 }
