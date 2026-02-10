@@ -138,9 +138,9 @@ pipeline {
             }
         }
 
-        --------------------------------------------------
-        SPN OAUTH SECRET (ACCOUNT LEVEL)
-        --------------------------------------------------
+        // --------------------------------------------------
+        // SPN OAUTH SECRET (ACCOUNT LEVEL)
+        // --------------------------------------------------
         stage('Databricks SPN OAuth Secret (Account Level)') {
             steps {
                 withCredentials([
