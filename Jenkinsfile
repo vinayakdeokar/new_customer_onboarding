@@ -194,25 +194,18 @@ pipeline {
       steps {
           withCredentials([
               string(credentialsId: 'DATABRICKS_ACCOUNT_ID', variable: 'DATABRICKS_ACCOUNT_ID'),
-              string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_TOKEN'),
-              // 'AZURE_GROUP_OBJECT_ID' हा पॅरामीटर तुमच्या जॉबमध्ये असावा लागेल
-              string(credentialsId: 'AZURE_GROUP_OBJECT_ID', variable: 'AZURE_OBJ_ID') 
+              string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_TOKEN')
           ]) {
               sh '''
-                  # १. ग्रुपचे नाव डायनॅमिकली तयार करणे
                   export GROUP_NAME="grp-${PRODUCT}-${CUSTOMER_CODE}-users"
-                  
-                  # २. वर्कस्पेस आयडी (तुमच्या इमेजमधील 7405618110977329)
                   export WORKSPACE_ID="7405618110977329"
   
-                  # ३. स्क्रिप्ट एक्झिक्युट करणे
                   chmod +x scripts/account_group_sync.sh
                   ./scripts/account_group_sync.sh
               '''
           }
       }
   }
-
 
 
 
