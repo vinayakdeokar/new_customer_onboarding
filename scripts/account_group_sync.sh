@@ -41,32 +41,33 @@ else
   echo "✅ Azure group already linked (Databricks Internal ID: ${GROUP_ID})"
 fi
 
-# ४. ग्रुपला Workspace मध्ये असाइन करणे (लिंक करणे)
-echo "🔗 Assigning group '${GROUP_NAME}' to Workspace..."
+# # ४. ग्रुपला Workspace मध्ये असाइन करणे (लिंक करणे)
+# echo "🔗 Assigning group '${GROUP_NAME}' to Workspace..."
 
-# Account-level Groups API वापरून वर्कस्पेसला ग्रुप असाइन करणे
-# टीप: आपण 'PUT' वापरत आहोत जेणेकरून तो ग्रुप वर्कस्पेसच्या लिस्टमध्ये 'Directly Assigned' दिसेल.
-ASSIGN_RESP=$(curl -s -X PUT "${ACCOUNTS_HOST}/api/2.0/accounts/${DATABRICKS_ACCOUNT_ID}/workspaces/${DATABRICKS_WORKSPACE_ID}/permissions/groups/${GROUP_ID}" \
-  -H "${AUTH}" \
-  -H "Content-Type: application/json" \
-  -d "{
-    \"permissions\": [\"MEMBER\"]
-  }")
+# # Account-level Groups API वापरून वर्कस्पेसला ग्रुप असाइन करणे
+# # टीप: आपण 'PUT' वापरत आहोत जेणेकरून तो ग्रुप वर्कस्पेसच्या लिस्टमध्ये 'Directly Assigned' दिसेल.
+# ASSIGN_RESP=$(curl -s -X PUT "${ACCOUNTS_HOST}/api/2.0/accounts/${DATABRICKS_ACCOUNT_ID}/workspaces/${DATABRICKS_WORKSPACE_ID}/permissions/groups/${GROUP_ID}" \
+#   -H "${AUTH}" \
+#   -H "Content-Type: application/json" \
+#   -d "{
+#     \"permissions\": [\"MEMBER\"]
+#   }")
 
-if echo "$ASSIGN_RESP" | grep -q "error"; then
-    echo "❌ Assignment Failed: $ASSIGN_RESP"
-    exit 1
-else
-    echo "✅ Successfully assigned and added to workspace list!"
-fi
+# if echo "$ASSIGN_RESP" | grep -q "error"; then
+#     echo "❌ Assignment Failed: $ASSIGN_RESP"
+#     exit 1
+# else
+#     echo "✅ Successfully assigned and added to workspace list!"
+# fi
 
-echo "⏳ Waiting 30 seconds for UI refresh..."
-sleep 30
+# echo "⏳ Waiting 30 seconds for UI refresh..."
+# sleep 30
 
-# ४. ग्रुपला Workspace मध्ये 'Add' करणे आणि तो आला का हे तपासणे
-echo "🚀 Force-syncing Group to Workspace SCIM list..."
+# ४. ग्रुपला वर्कस्पेसच्या 'Directly Assigned' लिस्टमध्ये ॲड करणे
+echo "🚀 Formally adding Group '${GROUP_NAME}' to Workspace list..."
 
-# SCIM API वापरून ग्रुप वर्कस्पेसमध्ये प्रत्यक्ष नोंदवणे
+# वर्कस्पेस लेव्हलवर ग्रुप 'Create' करण्याचा प्रयत्न करणे. 
+# जरी तो अकाउंट लेव्हलवर असला, तरी हा SCIM कॉल त्याला वर्कस्पेसच्या मुख्य यादीत खेचून आणतो.
 SYNC_RESP=$(curl -s -X POST "${DATABRICKS_HOST}/api/2.0/preview/scim/v2/Groups" \
   -H "Authorization: Bearer ${DATABRICKS_ADMIN_TOKEN}" \
   -H "Content-Type: application/json" \
@@ -76,19 +77,16 @@ SYNC_RESP=$(curl -s -X POST "${DATABRICKS_HOST}/api/2.0/preview/scim/v2/Groups" 
     \"externalId\": \"${AZURE_OBJ_ID}\"
   }")
 
-# ५. व्हेरिफिकेशन (Check if group exists in Workspace list)
-echo "🔎 Verifying if '${GROUP_NAME}' is now visible in Workspace..."
-sleep 10 # सिंक होण्यासाठी १० सेकंद थांबू
-
-# डिस्प्ले नेम ऐवजी थेट ग्रुप सर्च करणे
-CHECK_LIST=$(curl -s -X GET "${DATABRICKS_HOST}/api/2.0/preview/scim/v2/Groups?filter=displayName+eq+%22${GROUP_NAME}%22" \
+# ५. व्हेरिफिकेशन: ग्रुप आता लिस्टमध्ये आला आहे का हे चेक करणे
+echo "🔎 Checking if group is now in Workspace list..."
+CHECK_WS=$(curl -s -X GET "${DATABRICKS_HOST}/api/2.0/preview/scim/v2/Groups?filter=displayName+eq+%22${GROUP_NAME}%22" \
   -H "Authorization: Bearer ${DATABRICKS_ADMIN_TOKEN}")
 
-# ग्रुप सापडला की नाही हे पाहण्यासाठी 'Resources' चेक करणे
-FINAL_CHECK=$(echo "$CHECK_LIST" | jq -r '.Resources[0].displayName // empty')
+IS_ADDED=$(echo "$CHECK_WS" | jq -r '.Resources[0].id // empty')
 
-if [ "$FINAL_CHECK" == "$GROUP_NAME" ]; then
-    echo "🎉 SUCCESS: Group '${GROUP_NAME}' is now verified in Workspace list!"
+if [ -n "$IS_ADDED" ]; then
+    echo "🎉 SUCCESS: Group '${GROUP_NAME}' is now DIRECTLY ADDED to Workspace!"
 else
-    echo "⚠️ WARNING: Verification timed out, but grants succeeded. Group should appear in UI shortly."
+    echo "❌ ERROR: Group still not appearing in Workspace list. Please check Workspace Admin Permissions."
+    exit 1
 fi
