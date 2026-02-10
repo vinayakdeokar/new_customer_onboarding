@@ -41,18 +41,48 @@ else
   echo "✅ Azure group already linked (Databricks Internal ID: ${GROUP_ID})"
 fi
 
-# ४. याच Internal ID चा वापर करून वर्कस्पेसला असाइन करणे
+# ४. ग्रुपला Workspace मध्ये असाइन करणे (लिंक करणे)
 echo "🔗 Assigning group to Workspace: ${DATABRICKS_WORKSPACE_ID}..."
-# टीप: इथे आपण POST वापरून त्याला 'MEMBER' रोल देतोय
-curl -s -X POST "${ACCOUNTS_HOST}/api/2.0/accounts/${DATABRICKS_ACCOUNT_ID}/workspaces/${DATABRICKS_WORKSPACE_ID}/permissions/groups/${GROUP_ID}" \
+
+# आधी आपण हे तपासू की 'GROUP_ID' रिकामं तर नाहीये ना
+if [ -z "$GROUP_ID" ]; then
+  echo "❌ Error: Group ID is empty, cannot assign to workspace."
+  exit 1
+fi
+
+# Assignment साठी 'PATCH' API वापरणे (हे जास्त खात्रीशीर आहे)
+ASSIGN_RESP=$(curl -s -X PATCH "${ACCOUNTS_HOST}/api/2.0/accounts/${DATABRICKS_ACCOUNT_ID}/workspaces/${DATABRICKS_WORKSPACE_ID}" \
   -H "${AUTH}" \
   -H "Content-Type: application/json" \
-  -d "{\"permissions\": [\"MEMBER\"]}" > /dev/null
+  -d "{
+    \"operations\": [
+      {
+        \"op\": \"add\",
+        \"path\": \"/permissions\",
+        \"value\": [
+          {
+            \"group_id\": \"${GROUP_ID}\",
+            \"roles\": [\"MEMBER\"]
+          }
+        ]
+      }
+    ]
+  }")
 
-echo "⏳ Waiting 45 seconds for Identity propagation..."
-sleep 45
+echo "✅ Assignment Response: $ASSIGN_RESP"
 
-echo "🎉 SUCCESS: Azure Entra ID group is now synced with Internal ID!"
+# # ४. याच Internal ID चा वापर करून वर्कस्पेसला असाइन करणे
+# echo "🔗 Assigning group to Workspace: ${DATABRICKS_WORKSPACE_ID}..."
+# # टीप: इथे आपण POST वापरून त्याला 'MEMBER' रोल देतोय
+# curl -s -X POST "${ACCOUNTS_HOST}/api/2.0/accounts/${DATABRICKS_ACCOUNT_ID}/workspaces/${DATABRICKS_WORKSPACE_ID}/permissions/groups/${GROUP_ID}" \
+#   -H "${AUTH}" \
+#   -H "Content-Type: application/json" \
+#   -d "{\"permissions\": [\"MEMBER\"]}" > /dev/null
+
+# echo "⏳ Waiting 45 seconds for Identity propagation..."
+# sleep 45
+
+# echo "🎉 SUCCESS: Azure Entra ID group is now synced with Internal ID!"
 #!/bin/bash
 # set -e
 
