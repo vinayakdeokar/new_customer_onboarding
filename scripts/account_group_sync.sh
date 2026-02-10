@@ -38,8 +38,8 @@
 #!/bin/bash
 set -e
 
-echo "🔍 Step 1: Fetching Azure Object ID for ${GROUP_NAME}..."
-# Azure CLI वरून ID घेणे
+# १. Azure Object ID मिळवणे (हे आधीच चालत होतं)
+echo "🔍 Step 1: Fetching Azure Object ID..."
 AZURE_OBJ_ID=$(az ad group show --group "${GROUP_NAME}" --query id --output tsv)
 
 if [ -z "$AZURE_OBJ_ID" ]; then
@@ -48,12 +48,22 @@ if [ -z "$AZURE_OBJ_ID" ]; then
 fi
 echo "✅ Azure Object ID: $AZURE_OBJ_ID"
 
-echo "🚀 Step 2: Creating/Syncing Group directly in Workspace..."
+# २. [नवीन स्टेप] स्क्रिप्ट रन होतानाच Azure कडून Databricks साठी फ्रेश टोकन घेणे
+# हा UUID (2ff814a6...) Azure Databricks चा युनिव्हर्सल आयडी आहे.
+echo "🔑 Step 2: Generating Fresh Databricks Token via Azure CLI..."
+FRESH_TOKEN=$(az account get-access-token --resource 2ff814a6-3304-4ab8-85cb-cd0e6f879c1d --query accessToken --output tsv)
 
-# आपण आता 'Workspace SCIM API' वापरतोय जे तुमच्या Token वर चालते
-# हे ग्रुप तयार करेल आणि त्याला Azure ID शी लिंक करेल
+if [ -z "$FRESH_TOKEN" ]; then
+    echo "❌ ERROR: Azure CLI वरून टोकन जनरेट करता आला नाही."
+    exit 1
+fi
+
+# ३. वर्कस्पेसमध्ये ग्रुप तयार करणे (SCIM API)
+echo "🚀 Step 3: Creating Group directly in Workspace (${DATABRICKS_HOST})..."
+
+# टीप: इथे आपण $FRESH_TOKEN वापरतोय, जुना $DATABRICKS_TOKEN नाही.
 RESPONSE=$(curl -s -X POST "${DATABRICKS_HOST}/api/2.0/preview/scim/v2/Groups" \
-  -H "Authorization: Bearer ${DATABRICKS_TOKEN}" \
+  -H "Authorization: Bearer ${FRESH_TOKEN}" \
   -H "Content-Type: application/json" \
   -d "{
     \"schemas\": [\"urn:ietf:params:scim:schemas:core:2.0:Group\"],
@@ -61,19 +71,13 @@ RESPONSE=$(curl -s -X POST "${DATABRICKS_HOST}/api/2.0/preview/scim/v2/Groups" \
     \"externalId\": \"${AZURE_OBJ_ID}\"
   }")
 
-# जर ग्रुप आधीच असेल (Error 409) किंवा नवीन बनला, तर आपण चेक करू
+# चेक: ग्रुप तयार झाला किंवा आधीच आहे का?
 if echo "$RESPONSE" | grep -q "id"; then
-    echo "🎉 SUCCESS: Group '${GROUP_NAME}' वर्कस्पेसमध्ये ॲड झाला आहे!"
-    echo "ℹ️ Details: $RESPONSE"
+    echo "🎉 SUCCESS: Group created/synced successfully!"
+elif echo "$RESPONSE" | grep -q "already exists"; then
+    echo "✅ SUCCESS: Group already exists in workspace."
 else
-    # जर ग्रुप आधीच असेल तर तो एरर देऊ शकतो, पण ते आपण इग्नोर करू शकतो का ते बघू
-    if echo "$RESPONSE" | grep -q "already exists"; then
-        echo "✅ SUCCESS: Group आधीच वर्कस्पेसमध्ये आहे."
-    else
-        echo "❌ ERROR: Group ॲड करताना काहीतरी चूक झाली."
-        echo "Response: $RESPONSE"
-        exit 1
-    fi
+    echo "❌ ERROR: Failed to create group."
+    echo "Response: $RESPONSE"
+    exit 1
 fi
-
-echo "✅ Ready for Schema Grant!"
