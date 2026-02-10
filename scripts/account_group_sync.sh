@@ -38,10 +38,12 @@
 #!/bin/bash
 set -e
 
-# १. Azure ग्रुपला Databricks अकाउंटशी लिंक करणे
-echo "🚀 Linking Azure Entra ID Group: ${GROUP_NAME}..."
+# --- पायरी १: Azure ग्रुपला Databricks Account मध्ये 'Link' करणे ---
+# आपण नावावरून ग्रुप शोधण्यापेक्षा थेट 'POST' करतोय. 
+# जर ग्रुप आधीच असेल, तर हा कॉल एरर देणार नाही, फक्त माहिती अपडेट करेल.
+echo "🚀 Linking Azure Group '${GROUP_NAME}' using Object ID..."
 
-GROUP_RESPONSE=$(curl -s -X POST "https://accounts.azuredatabricks.net/api/2.0/accounts/${DATABRICKS_ACCOUNT_ID}/scim/v2/Groups" \
+CREATE_RESPONSE=$(curl -s -X POST "https://accounts.azuredatabricks.net/api/2.0/accounts/${DATABRICKS_ACCOUNT_ID}/scim/v2/Groups" \
   -H "Authorization: Bearer ${DATABRICKS_TOKEN}" \
   -H "Content-Type: application/json" \
   -d "{
@@ -50,18 +52,25 @@ GROUP_RESPONSE=$(curl -s -X POST "https://accounts.azuredatabricks.net/api/2.0/a
     \"externalId\": \"${AZURE_OBJ_ID}\"
   }")
 
-GROUP_ID=$(echo $GROUP_RESPONSE | jq -r '.id // empty')
+# ग्रुपचा अंतर्गत ID (Internal Principal ID) काढणे
+GROUP_ID=$(echo "$CREATE_RESPONSE" | jq -r '.id // empty')
 
-# जर ग्रुप आधीच असेल तर ID मिळवा
-if [ "$GROUP_ID" == "null" ] || [ -z "$GROUP_ID" ]; then
-    GROUP_ID=$(curl -s -H "Authorization: Bearer ${DATABRICKS_TOKEN}" \
-      "https://accounts.azuredatabricks.net/api/2.0/accounts/${DATABRICKS_ACCOUNT_ID}/scim/v2/Groups?filter=displayName+eq+%22${GROUP_NAME}%22" \
-      | jq -r '.Resources[0].id')
+# जर वरील स्टेपमध्ये ID मिळाला नाही (ग्रुप आधीच असेल तर), तर GET करून शोधणे
+if [ -z "$GROUP_ID" ] || [ "$GROUP_ID" == "null" ]; then
+    echo "ℹ️ Group already exists, fetching Internal ID..."
+    GROUP_ID=$(curl -s -X GET "https://accounts.azuredatabricks.net/api/2.0/accounts/${DATABRICKS_ACCOUNT_ID}/scim/v2/Groups?filter=displayName+eq+%22${GROUP_NAME}%22" \
+      -H "Authorization: Bearer ${DATABRICKS_TOKEN}" | jq -r '.Resources[0].id // empty')
 fi
 
-echo "✅ Group ID: $GROUP_ID"
+if [ -z "$GROUP_ID" ] || [ "$GROUP_ID" == "null" ]; then
+    echo "❌ ERROR: Group ID सापडला नाही. Azure Object ID तपासा."
+    exit 1
+fi
 
-# २. ग्रुप वर्कस्पेसला असाइन करणे
+echo "✅ Internal ID Found: $GROUP_ID"
+
+# --- पायरी २: ग्रुपला Workspace मध्ये असाइन करणे ---
+# जोपर्यंत ही स्टेप होत नाही, तोपर्यंत युनिटी कॅटलॉग (Schema) मध्ये हा ग्रुप दिसत नाही.
 echo "🔗 Assigning group to Workspace: ${WORKSPACE_ID}..."
 
 curl -s -X PUT "https://accounts.azuredatabricks.net/api/2.0/accounts/${DATABRICKS_ACCOUNT_ID}/workspaces/${WORKSPACE_ID}/permissionassignments/principals/${GROUP_ID}" \
@@ -69,4 +78,4 @@ curl -s -X PUT "https://accounts.azuredatabricks.net/api/2.0/accounts/${DATABRIC
   -H "Content-Type: application/json" \
   -d '{ "permissions": ["USER"] }'
 
-echo "🎉 Group is now ready in the workspace! Now you can run your Schema Script."
+echo "🎉 SUCCESS: Group आता Workspace मध्ये आहे!"
