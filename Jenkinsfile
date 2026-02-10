@@ -192,17 +192,14 @@ pipeline {
 
     stage('Databricks Account Group Sync') {
       steps {
+          // Azure लॉगिन करण्यासाठी क्रेडेंशियल्स (जर आधीच लॉगिन नसेल तर)
           withCredentials([
               string(credentialsId: 'DATABRICKS_ACCOUNT_ID', variable: 'DATABRICKS_ACCOUNT_ID'),
-              // 'DATABRICKS_SCIM_TOKEN' वापर, याला ग्रुप ॲड करण्याचे अधिकार आहेत
               string(credentialsId: 'DATABRICKS_SCIM_TOKEN', variable: 'DATABRICKS_TOKEN')
           ]) {
               sh '''
                   export GROUP_NAME="grp-${PRODUCT}-${CUSTOMER_CODE}-users"
                   export WORKSPACE_ID="${WORKSPACE_ID}"
-                  
-                  # Azure मधून आलेला Object ID
-                  export AZURE_OBJ_ID="${AZURE_OBJ_ID}"
   
                   chmod +x scripts/account_group_sync.sh
                   ./scripts/account_group_sync.sh
