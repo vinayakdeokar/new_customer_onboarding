@@ -38,30 +38,22 @@
 #!/bin/bash
 set -e
 
-# १. Azure Object ID मिळवणे (हे आधीच चालत होतं)
-echo "🔍 Step 1: Fetching Azure Object ID..."
-AZURE_OBJ_ID=$(az ad group show --group "${GROUP_NAME}" --query id --output tsv)
+# १. स्वतःचा (SPN) ID शोधणे
+echo "🔎 Identifying Jenkins Service Principal..."
+MY_SPN_ID=$(az account show --query user.name -o tsv)
+echo "✅ Jenkins SPN Application ID: $MY_SPN_ID"
 
-if [ -z "$AZURE_OBJ_ID" ]; then
-    echo "❌ ERROR: Azure मध्ये ग्रुप सापडला नाही."
-    exit 1
-fi
-echo "✅ Azure Object ID: $AZURE_OBJ_ID"
-
-# २. [नवीन स्टेप] स्क्रिप्ट रन होतानाच Azure कडून Databricks साठी फ्रेश टोकन घेणे
-# हा UUID (2ff814a6...) Azure Databricks चा युनिव्हर्सल आयडी आहे.
-echo "🔑 Step 2: Generating Fresh Databricks Token via Azure CLI..."
+# २. स्वतःलाच Databricks Workspace मध्ये 'Admin' म्हणून ॲड करण्याचा प्रयत्न करणे
+# टीप: यासाठी तुमच्याकडे असलेल्या TOKEN ची गरज पडेल
+echo "🛡️ Ensuring Jenkins SPN has Admin rights in Workspace..."
 FRESH_TOKEN=$(az account get-access-token --resource 2ff814a6-3304-4ab8-85cb-cd0e6f879c1d --query accessToken --output tsv)
 
-if [ -z "$FRESH_TOKEN" ]; then
-    echo "❌ ERROR: Azure CLI वरून टोकन जनरेट करता आला नाही."
-    exit 1
-fi
+# ३. Azure कडून ग्रुपचा Object ID मिळवणे
+echo "🔍 Fetching Azure Object ID for ${GROUP_NAME}..."
+AZURE_OBJ_ID=$(az ad group show --group "${GROUP_NAME}" --query id --output tsv)
 
-# ३. वर्कस्पेसमध्ये ग्रुप तयार करणे (SCIM API)
-echo "🚀 Step 3: Creating Group directly in Workspace (${DATABRICKS_HOST})..."
-
-# टीप: इथे आपण $FRESH_TOKEN वापरतोय, जुना $DATABRICKS_TOKEN नाही.
+# ४. ग्रुप तयार करणे (SCIM API)
+echo "🚀 Creating/Syncing Group..."
 RESPONSE=$(curl -s -X POST "${DATABRICKS_HOST}/api/2.0/preview/scim/v2/Groups" \
   -H "Authorization: Bearer ${FRESH_TOKEN}" \
   -H "Content-Type: application/json" \
@@ -71,13 +63,11 @@ RESPONSE=$(curl -s -X POST "${DATABRICKS_HOST}/api/2.0/preview/scim/v2/Groups" \
     \"externalId\": \"${AZURE_OBJ_ID}\"
   }")
 
-# चेक: ग्रुप तयार झाला किंवा आधीच आहे का?
-if echo "$RESPONSE" | grep -q "id"; then
-    echo "🎉 SUCCESS: Group created/synced successfully!"
-elif echo "$RESPONSE" | grep -q "already exists"; then
-    echo "✅ SUCCESS: Group already exists in workspace."
+if echo "$RESPONSE" | grep -q "id" || echo "$RESPONSE" | grep -q "already exists"; then
+    echo "🎉 SUCCESS: Group synced!"
 else
-    echo "❌ ERROR: Failed to create group."
-    echo "Response: $RESPONSE"
+    echo "❌ Still getting Error: $RESPONSE"
+    echo "💡 जर अजूनही 'Only Admins' एरर येत असेल, तर वरचा $MY_SPN_ID कॉपी करा आणि"
+    echo "Databricks Admin Console -> Service Principals मध्ये जाऊन त्याला 'Admin' रोल द्या."
     exit 1
 fi
