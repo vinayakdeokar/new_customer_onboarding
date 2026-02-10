@@ -38,10 +38,8 @@
 #!/bin/bash
 set -e
 
-# १. Azure ग्रुपला Databricks Account मध्ये 'Link' करणे
-# आपण नावावरून ग्रुप शोधण्यापेक्षा थेट 'POST' करतोय ज्यामुळे तो लगेच ॲड होतो.
-echo "🚀 Linking Azure Group '${GROUP_NAME}' to Databricks Account..."
-
+# पायरी १: ग्रुपला अकाउंट लेव्हलला 'Force Link' करणे
+echo "🚀 Linking Group to Databricks Account Level..."
 #
 CREATE_RESPONSE=$(curl -s -X POST "https://accounts.azuredatabricks.net/api/2.0/accounts/${DATABRICKS_ACCOUNT_ID}/scim/v2/Groups" \
   -H "Authorization: Bearer ${DATABRICKS_TOKEN}" \
@@ -52,23 +50,22 @@ CREATE_RESPONSE=$(curl -s -X POST "https://accounts.azuredatabricks.net/api/2.0/
     \"externalId\": \"${AZURE_OBJ_ID}\"
   }")
 
-# ग्रुपचा अंतर्गत Principal ID काढणे
+# ग्रुपचा ID मिळवणे
 GROUP_ID=$(echo "$CREATE_RESPONSE" | jq -r '.id // empty')
 
-# जर ग्रुप आधीच असेल, तर सर्च करून ID मिळवणे
+# जर ग्रुप आधीच असेल, तर सर्च करून ID घेणे
 if [ -z "$GROUP_ID" ] || [ "$GROUP_ID" == "null" ]; then
-    echo "ℹ️ Group already linked, fetching existing ID..."
     GROUP_ID=$(curl -s -X GET "https://accounts.azuredatabricks.net/api/2.0/accounts/${DATABRICKS_ACCOUNT_ID}/scim/v2/Groups?filter=displayName+eq+%22${GROUP_NAME}%22" \
       -H "Authorization: Bearer ${DATABRICKS_TOKEN}" | jq -r '.Resources[0].id // empty')
 fi
 
-# २. ग्रुप वर्कस्पेसला असाइन करणे (सर्वात महत्त्वाची पायरी)
-#
-echo "🔗 Assigning group to Workspace: ${WORKSPACE_ID}..."
+echo "✅ Account Group ID: $GROUP_ID"
 
+# पायरी २: आता ग्रुपला वर्कस्पेसला जोडणे
+echo "🔗 Assigning group to Workspace: ${WORKSPACE_ID}"
 curl -s -X PUT "https://accounts.azuredatabricks.net/api/2.0/accounts/${DATABRICKS_ACCOUNT_ID}/workspaces/${WORKSPACE_ID}/permissionassignments/principals/${GROUP_ID}" \
   -H "Authorization: Bearer ${DATABRICKS_TOKEN}" \
   -H "Content-Type: application/json" \
   -d '{ "permissions": ["USER"] }'
 
-echo "🎉 Group assigned! Now your schema script will work perfectly."
+echo "🎉 Done! आता ग्रुप अकाउंट आणि वर्कस्पेस दोन्हीकडे आहे."
