@@ -11,7 +11,8 @@ set -e
 : "${DATABRICKS_HOST:?DATABRICKS_HOST missing}"
 : "${DATABRICKS_ADMIN_TOKEN:?DATABRICKS_ADMIN_TOKEN missing}"
 : "${DATABRICKS_SQL_WAREHOUSE_ID:?DATABRICKS_SQL_WAREHOUSE_ID missing}"
-: "${STORAGE_BRONZE_ROOT:?STORAGE_BRONZE_ROOT missing}"
+#: "${STORAGE_BRONZE_ROOT:?STORAGE_BRONZE_ROOT missing}"
+: "${STORAGE_BRONZE_CONTAINER:?STORAGE_BRONZE_CONTAINER missing}"
 
 # ===============================
 # HELPER: RUN SQL (SYNC)
@@ -49,49 +50,16 @@ run_sql () {
 # ===============================
 GROUP_NAME="grp-${PRODUCT}-${CUSTOMER_CODE}-users"
 BRONZE_SCHEMA="${PRODUCT}_${CUSTOMER_CODE}_bronze"
+BRONZE_PATH="${STORAGE_BRONZE_CONTAINER}/${CUSTOMER_CODE}"
 
 echo "🔐 MODE      : ${MODE}"
 echo "Customer    : ${CUSTOMER_CODE}"
 echo "Group       : ${GROUP_NAME}"
 echo "Catalog     : ${CATALOG_NAME}"
-echo "Bronze Root : ${STORAGE_BRONZE_ROOT}"
+#echo "Bronze Root : ${STORAGE_BRONZE_ROOT}"
+echo "Bronze Path : ${BRONZE_PATH}"
 
-# ===============================================
-# 🛠️ ही स्टेप ॲड कर: ग्रुप सिंक होण्याची वाट बघणे
-# ===============================================
-echo "⏳ Waiting 60 seconds for Identity Provider sync to Unity Catalog..."
-sleep 60
 
-echo "🔥 Pre-warming Unity Catalog principal (first GRANT)..."
-
-# जर पहिल्या प्रयत्नात फेल झालं, तर पुन्हा एकदा ३० सेकंद थांबून ट्राय करण्यासाठी हे 'Retry' लॉजिक
-# run_sql_with_retry () {
-#   local SQL="$1"
-#   local MAX_RETRIES=2
-#   local COUNT=0
-  
-#   until [ $COUNT -ge $MAX_RETRIES ]
-#   do
-#     # तात्पुरतं 'set +e' जेणेकरून फेल्युअरमुळे स्क्रिप्ट लगेच बंद होणार नाही
-#     set +e
-#     run_sql "$SQL"
-#     RESULT=$?
-#     set -e
-    
-#     if [ $RESULT -eq 0 ]; then
-#        break
-#     fi
-    
-#     COUNT=$((COUNT+1))
-#     echo "⚠️ Principal अजून सापडत नाहीये, पुन्हा ३० सेकंद थांबून ट्राय करतोय (Attempt $COUNT)..."
-#     sleep 30
-#   done
-  
-#   if [ $RESULT -ne 0 ]; then
-#     echo "❌ ERROR: $MAX_RETRIES प्रयत्नांनंतरही ग्रुप सापडला नाही."
-#     exit 1
-#   fi
-# }
 run_sql_with_retry () {
   local SQL="$1"
   local MAX_RETRIES=10
@@ -139,17 +107,17 @@ TO \`${GROUP_NAME}\`
 # TO \`${GROUP_NAME}\`
 # "
 
+GRANT READ FILES, WRITE FILES
+ON EXTERNAL LOCATION ext_bronze_mcr
+TO `${GROUP_NAME}`
 
 # ------------------------------------------------
 # 1️⃣ BRONZE SCHEMA (ATTACH TO EXISTING EXTERNAL LOCATION)
 # ------------------------------------------------
 run_sql "
 CREATE SCHEMA IF NOT EXISTS \`${CATALOG_NAME}\`.\`${BRONZE_SCHEMA}\`
-MANAGED LOCATION '${STORAGE_BRONZE_ROOT}'
+MANAGED LOCATION '${BRONZE_PATH}'
 "
-
-
-
 
 run_sql "
 GRANT USAGE, SELECT
