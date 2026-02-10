@@ -22,14 +22,32 @@ SILVER_SCHEMA="${PRODUCT}_${CUSTOMER_CODE}_silver"
 GOLD_SCHEMA="${PRODUCT}_${CUSTOMER_CODE}_gold"
 
 # ==================================================
-# HELPER: RUN SQL
+# HELPER: RUN SQL (SYNC, SAFE JSON)
 # ==================================================
-v
+run_sql () {
+  local SQL="$1"
 
+  PAYLOAD=$(jq -n \
+    --arg wh "$DATABRICKS_SQL_WAREHOUSE_ID" \
+    --arg stmt "$SQL" \
+    '{
+      warehouse_id: $wh,
+      statement: $stmt,
+      wait_timeout: "30s",
+      on_wait_timeout: "CONTINUE"
+    }'
+  )
 
-  STATE=$(echo "$RESP" | jq -r '.status.state // empty')
+  RESP=$(curl -s -X POST \
+    "${DATABRICKS_HOST}/api/2.0/sql/statements/" \
+    -H "Authorization: Bearer ${DATABRICKS_ADMIN_TOKEN}" \
+    -H "Content-Type: application/json" \
+    -d "$PAYLOAD"
+  )
 
-  if [ "$STATE" != "SUCCEEDED" ]; then
+  STATE=$(echo "$RESP" | jq -r '.status.state // "PENDING"')
+
+  if [[ "$STATE" == "FAILED" ]]; then
     echo "❌ SQL FAILED"
     echo "$RESP"
     exit 1
@@ -67,17 +85,15 @@ CREATE SCHEMA IF NOT EXISTS \`${CATALOG_NAME}\`.\`${GOLD_SCHEMA}\`
 "
 
 # ==================================================
-# 3️⃣ GRANTS (NO MAGIC, PURE SQL)
+# 3️⃣ GRANTS
 # ==================================================
 
-# Catalog access
 run_sql "
 GRANT USAGE
 ON CATALOG \`${CATALOG_NAME}\`
 TO \`${GROUP_NAME}\`
 "
 
-# Schema access
 run_sql "
 GRANT USAGE, SELECT
 ON SCHEMA \`${CATALOG_NAME}\`.\`${BRONZE_SCHEMA}\`
