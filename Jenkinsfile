@@ -190,20 +190,17 @@ pipeline {
     //   }
     // }
 
+   
     stage('Databricks Account Group Sync') {
       steps {
           withCredentials([
-              // 'DATABRICKS_HOST' ॲड करा (तुमच्या दुसऱ्या स्टेजमध्ये हे आधीच आहे, तेच इथे वापरा)
-              string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
-              string(credentialsId: 'DATABRICKS_ACCOUNT_ID', variable: 'DATABRICKS_ACCOUNT_ID'),
-              // तुमचे सध्याचे टोकन इथे चालेल! (ADMIN किंवा SCIM, दोन्ही चालतील)
-              string(credentialsId: 'DATABRICKS_SCIM_TOKEN', variable: 'DATABRICKS_TOKEN')
+              // फक्त HOST URL गरजेचा आहे (उदा. https://adb-xxxx.xx.azuredatabricks.net)
+              string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST') 
           ]) {
               sh '''
                   export GROUP_NAME="grp-${PRODUCT}-${CUSTOMER_CODE}-users"
-                  # WORKSPACE_ID आता लागणार नाही, कारण आपण HOST URL वापरतोय
                   
-                  # Azure CLI लॉगिन असणे आवश्यक आहे
+                  # जुना टोकन काढून टाकलाय, स्क्रिप्ट स्वतः Azure कडून टोकन घेईल
                   chmod +x scripts/account_group_sync.sh
                   ./scripts/account_group_sync.sh
               '''
