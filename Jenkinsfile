@@ -194,16 +194,14 @@ pipeline {
       steps {
           withCredentials([
               string(credentialsId: 'DATABRICKS_ACCOUNT_ID', variable: 'DATABRICKS_ACCOUNT_ID'),
-              string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_TOKEN')
+              // 'DATABRICKS_SCIM_TOKEN' वापर, याला ग्रुप ॲड करण्याचे अधिकार आहेत
+              string(credentialsId: 'DATABRICKS_SCIM_TOKEN', variable: 'DATABRICKS_TOKEN')
           ]) {
               sh '''
-                  # तुमच्या इनपुट पॅरामीटर्समधून नाव तयार करणे
                   export GROUP_NAME="grp-${PRODUCT}-${CUSTOMER_CODE}-users"
-                  
-                  # आधीच पॅरामीटरमध्ये असलेला वर्कस्पेस आयडी वापरणे
                   export WORKSPACE_ID="${WORKSPACE_ID}"
-  
-                  # Azure Object ID (हा तुम्हाला पॅरामीटरमध्ये ॲड करावा लागेल)
+                  
+                  # Azure मधून आलेला Object ID
                   export AZURE_OBJ_ID="${AZURE_OBJ_ID}"
   
                   chmod +x scripts/account_group_sync.sh
