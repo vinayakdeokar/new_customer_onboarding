@@ -78,16 +78,17 @@ SYNC_RESP=$(curl -s -X POST "${DATABRICKS_HOST}/api/2.0/preview/scim/v2/Groups" 
 
 # ५. व्हेरिफिकेशन (Check if group exists in Workspace list)
 echo "🔎 Verifying if '${GROUP_NAME}' is now visible in Workspace..."
-sleep 5 # सिंक होण्यासाठी ५ सेकंद थांबू
+sleep 10 # सिंक होण्यासाठी १० सेकंद थांबू
 
-CHECK_LIST=$(curl -s -X GET "${DATABRICKS_HOST}/api/2.0/preview/scim/v2/Groups?filter=displayName+eq+'${GROUP_NAME}'" \
+# डिस्प्ले नेम ऐवजी थेट ग्रुप सर्च करणे
+CHECK_LIST=$(curl -s -X GET "${DATABRICKS_HOST}/api/2.0/preview/scim/v2/Groups?filter=displayName+eq+%22${GROUP_NAME}%22" \
   -H "Authorization: Bearer ${DATABRICKS_ADMIN_TOKEN}")
 
-# ग्रुप सापडला की नाही हे पाहणे
-FINAL_CHECK=$(echo "$CHECK_LIST" | jq -r '.totalResults')
+# ग्रुप सापडला की नाही हे पाहण्यासाठी 'Resources' चेक करणे
+FINAL_CHECK=$(echo "$CHECK_LIST" | jq -r '.Resources[0].displayName // empty')
 
-if [ "$FINAL_CHECK" -gt 0 ]; then
-    echo "🎉 SUCCESS: Group '${GROUP_NAME}' is now visible in Workspace Groups list!"
+if [ "$FINAL_CHECK" == "$GROUP_NAME" ]; then
+    echo "🎉 SUCCESS: Group '${GROUP_NAME}' is now verified in Workspace list!"
 else
-    echo "⚠️ WARNING: Group not found in Workspace list yet. It might take a few minutes to appear in UI."
+    echo "⚠️ WARNING: Verification timed out, but grants succeeded. Group should appear in UI shortly."
 fi
