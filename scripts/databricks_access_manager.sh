@@ -56,6 +56,15 @@ echo "Group       : ${GROUP_NAME}"
 echo "Catalog     : ${CATALOG_NAME}"
 echo "Bronze Root : ${STORAGE_BRONZE_ROOT}"
 
+echo "🔥 Pre-warming Unity Catalog principal (first GRANT)..."
+
+run_sql "
+GRANT USE CATALOG
+ON CATALOG \`${CATALOG_NAME}\`
+TO \`${GROUP_NAME}\`
+"
+
+
 # ------------------------------------------------
 # 1️⃣ BRONZE SCHEMA (ATTACH TO EXISTING EXTERNAL LOCATION)
 # ------------------------------------------------
