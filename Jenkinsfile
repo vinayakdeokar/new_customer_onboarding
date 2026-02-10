@@ -192,11 +192,10 @@ pipeline {
 
     stage('Databricks Account Group Sync') {
       steps {
-          // इथे तुझे सर्व आवश्यक व्हेरिएबल्स 'environment' किंवा 'withCredentials' मध्ये हवेत
           withCredentials([
               string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
               string(credentialsId: 'DATABRICKS_ACCOUNT_ID', variable: 'DATABRICKS_ACCOUNT_ID'),
-              string(credentialsId: 'DATABRICKS_WORKSPACE_ID', variable: 'DATABRICKS_WORKSPACE_ID')
+              string(credentialsId: 'DATABRICKS_WORKSPACE_ID', variable: 'DATABRICKS_WORKSPACE_ID'),
               string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_ADMIN_TOKEN')
           ]) {
               sh '''
@@ -210,6 +209,7 @@ pipeline {
           }
       }
   }
+
 
 
   
