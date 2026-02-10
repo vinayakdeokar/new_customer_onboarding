@@ -162,46 +162,7 @@ pipeline {
             }
         }
 
-        // --------------------------------------------------
-        // GROUP → WORKSPACE SYNC (ACCOUNT LEVEL)
-        // --------------------------------------------------
-        // stage('Databricks Group Workspace Sync') {
-        //     steps {
-        //         withCredentials([
-        //             string(credentialsId: 'DATABRICKS_ACCOUNT_ID', variable: 'DATABRICKS_ACCOUNT_ID'),
-        //             string(credentialsId: 'DATABRICKS_CLIENT_ID', variable: 'DATABRICKS_CLIENT_ID'),
-        //             string(credentialsId: 'DATABRICKS_CLIENT_SECRET', variable: 'DATABRICKS_CLIENT_SECRET'),
-        //             string(credentialsId: 'DATABRICKS_TENANT_ID', variable: 'DATABRICKS_TENANT_ID'),
-        //             string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
-        //             string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_ADMIN_TOKEN')
-        //         ]) {
-        //             sh '''
-        //                 export GROUP_NAME="${ACCESS_GROUP}"
-        //                 export DATABRICKS_HOST="${DATABRICKS_HOST}"
-        //                 export DATABRICKS_ADMIN_TOKEN="${DATABRICKS_ADMIN_TOKEN}"
-        //
-        //                 chmod +x scripts/sync_group_to_databricks.sh
-        //                 ./scripts/sync_group_to_databricks.sh
-        //             '''
-        //         }
-        //     }
-        // }
-
-        // stage('Databricks Account Group Sync') {
-        //     steps {
-        //         withCredentials([
-        //             string(credentialsId: 'DATABRICKS_ACCOUNT_ID', variable: 'DATABRICKS_ACCOUNT_ID')
-        //         ]) {
-        //             sh '''
-        //                 export GROUP_NAME="grp-${PRODUCT}-${CUSTOMER_CODE}-users"
-        //                 export WORKSPACE_ID=7405618110977329
-        //
-        //                 chmod +x scripts/account_group_sync.sh
-        //                 scripts/account_group_sync.sh
-        //             '''
-        //         }
-        //     }
-        // }
+       
 
         stage('Databricks Account Group Sync') {
             steps {
@@ -240,34 +201,6 @@ pipeline {
             }
         }
 
-        // --------------------------------------------------
-        // UNITY CATALOG ACCESS
-        // --------------------------------------------------
-        // stage('Databricks Access Manager') {
-        //     steps {
-        //         withCredentials([
-        //             string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
-        //             string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_ADMIN_TOKEN'),
-        //             string(credentialsId: 'DATABRICKS_SQL_WAREHOUSE_ID', variable: 'DATABRICKS_SQL_WAREHOUSE_ID'),
-        //             string(credentialsId: 'DATABRICKS_CATALOG_NAME', variable: 'CATALOG_NAME'),
-        //             string(credentialsId: 'STORAGE_BRONZE_ROOT', variable: 'STORAGE_BRONZE_ROOT')
-        //         ]) {
-        //             sh '''
-        //                 chmod +x scripts/databricks_access_manager.sh
-        //
-        //                 export MODE=DEDICATED
-        //                 export PRODUCT=${PRODUCT}
-        //                 export CUSTOMER_CODE=${CUSTOMER_CODE}
-        //                 export CATALOG_NAME=${CATALOG_NAME}
-        //                 export STORAGE_BRONZE_ROOT=${STORAGE_BRONZE_ROOT}
-        //
-        //                 echo "DEBUG STORAGE_BRONZE_ROOT=${STORAGE_BRONZE_ROOT}"
-        //
-        //                 ./scripts/databricks_access_manager.sh
-        //             '''
-        //         }
-        //     }
-        // }
 
     }
 }
