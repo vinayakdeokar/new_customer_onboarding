@@ -42,34 +42,26 @@ else
 fi
 
 # ४. ग्रुपला Workspace मध्ये असाइन करणे (लिंक करणे)
-echo "🔗 Assigning group to Workspace: ${DATABRICKS_WORKSPACE_ID}..."
+echo "🔗 Assigning group '${GROUP_NAME}' to Workspace..."
 
-# आधी आपण हे तपासू की 'GROUP_ID' रिकामं तर नाहीये ना
-if [ -z "$GROUP_ID" ]; then
-  echo "❌ Error: Group ID is empty, cannot assign to workspace."
-  exit 1
-fi
-
-# Assignment साठी 'PATCH' API वापरणे (हे जास्त खात्रीशीर आहे)
-ASSIGN_RESP=$(curl -s -X PATCH "${ACCOUNTS_HOST}/api/2.0/accounts/${DATABRICKS_ACCOUNT_ID}/workspaces/${DATABRICKS_WORKSPACE_ID}" \
+# Account-level Groups API वापरून वर्कस्पेसला ग्रुप असाइन करणे
+# टीप: आपण 'PUT' वापरत आहोत जेणेकरून तो ग्रुप वर्कस्पेसच्या लिस्टमध्ये 'Directly Assigned' दिसेल.
+ASSIGN_RESP=$(curl -s -X PUT "${ACCOUNTS_HOST}/api/2.0/accounts/${DATABRICKS_ACCOUNT_ID}/workspaces/${DATABRICKS_WORKSPACE_ID}/permissions/groups/${GROUP_ID}" \
   -H "${AUTH}" \
   -H "Content-Type: application/json" \
   -d "{
-    \"operations\": [
-      {
-        \"op\": \"add\",
-        \"path\": \"/permissions\",
-        \"value\": [
-          {
-            \"group_id\": \"${GROUP_ID}\",
-            \"roles\": [\"MEMBER\"]
-          }
-        ]
-      }
-    ]
+    \"permissions\": [\"MEMBER\"]
   }")
 
-echo "✅ Assignment Response: $ASSIGN_RESP"
+if echo "$ASSIGN_RESP" | grep -q "error"; then
+    echo "❌ Assignment Failed: $ASSIGN_RESP"
+    exit 1
+else
+    echo "✅ Successfully assigned and added to workspace list!"
+fi
+
+echo "⏳ Waiting 30 seconds for UI refresh..."
+sleep 30
 
 # # ४. याच Internal ID चा वापर करून वर्कस्पेसला असाइन करणे
 # echo "🔗 Assigning group to Workspace: ${DATABRICKS_WORKSPACE_ID}..."
