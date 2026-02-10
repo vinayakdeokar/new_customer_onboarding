@@ -1,5 +1,12 @@
 #!/bin/bash
+
+
 set -e
+PRODUCT="$(echo "$1" | xargs)"
+CUSTOMER_CODE="$(echo "$2" | xargs)"
+
+SPN_NAME="sp-${PRODUCT}-${CUSTOMER_CODE}"
+
 
 PRODUCT=$1
 CUSTOMER=$2
