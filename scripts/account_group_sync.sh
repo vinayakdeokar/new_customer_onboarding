@@ -38,59 +38,35 @@
 #!/bin/bash
 set -e
 
-: "${DATABRICKS_ACCOUNT_ID:?Missing DATABRICKS_ACCOUNT_ID}"
-: "${WORKSPACE_ID:?Missing WORKSPACE_ID}"
-: "${GROUP_NAME:?Missing GROUP_NAME}"
+# १. Azure ग्रुपला Databricks अकाउंटशी लिंक करणे
+echo "🚀 Linking Azure Entra ID Group: ${GROUP_NAME}..."
 
-HOST="https://accounts.azuredatabricks.net"
+GROUP_RESPONSE=$(curl -s -X POST "https://accounts.azuredatabricks.net/api/2.0/accounts/${DATABRICKS_ACCOUNT_ID}/scim/v2/Groups" \
+  -H "Authorization: Bearer ${DATABRICKS_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"schemas\": [\"urn:ietf:params:scim:schemas:core:2.0:Group\"],
+    \"displayName\": \"${GROUP_NAME}\",
+    \"externalId\": \"${AZURE_OBJ_ID}\"
+  }")
 
-echo "🔐 Getting Databricks Account token..."
-TOKEN=$(az account get-access-token \
-  --resource 2ff814a6-3304-4ab8-85cb-cd0e6f879c1d \
-  --query accessToken -o tsv)
+GROUP_ID=$(echo $GROUP_RESPONSE | jq -r '.id // empty')
 
-AUTH="Authorization: Bearer $TOKEN"
-
-# --------------------------------------------------
-# 1️⃣ Find ACCOUNT-level group (Azure Entra ID synced)
-# --------------------------------------------------
-echo "🔎 Checking Azure Entra ID group at Databricks ACCOUNT level..."
-
-GROUP_ID=$(curl -s -H "$AUTH" \
-  "$HOST/api/2.0/accounts/$DATABRICKS_ACCOUNT_ID/scim/v2/Groups?filter=displayName%20eq%20%22${GROUP_NAME}%22" \
-  | jq -r '.Resources[0].id // empty')
-
-if [ -z "$GROUP_ID" ]; then
-  echo "❌ Group '$GROUP_NAME' NOT found at Databricks ACCOUNT level"
-  echo "👉 This script will NOT create groups"
-  echo "👉 Ensure Azure Entra ID SCIM provisioning is enabled"
-  exit 1
+# जर ग्रुप आधीच असेल तर ID मिळवा
+if [ "$GROUP_ID" == "null" ] || [ -z "$GROUP_ID" ]; then
+    GROUP_ID=$(curl -s -H "Authorization: Bearer ${DATABRICKS_TOKEN}" \
+      "https://accounts.azuredatabricks.net/api/2.0/accounts/${DATABRICKS_ACCOUNT_ID}/scim/v2/Groups?filter=displayName+eq+%22${GROUP_NAME}%22" \
+      | jq -r '.Resources[0].id')
 fi
 
-echo "✅ Found ACCOUNT-level group"
-echo "   Group ID: $GROUP_ID"
+echo "✅ Group ID: $GROUP_ID"
 
-# --------------------------------------------------
-# 2️⃣ Check if group already attached to workspace
-# --------------------------------------------------
-echo "🔍 Checking if group already attached to workspace..."
+# २. ग्रुप वर्कस्पेसला असाइन करणे
+echo "🔗 Assigning group to Workspace: ${WORKSPACE_ID}..."
 
-ATTACHED=$(curl -s -H "$AUTH" \
-  "$HOST/api/2.0/accounts/$DATABRICKS_ACCOUNT_ID/workspaces/$WORKSPACE_ID/permissions/groups" \
-  | jq -r ".[] | select(.group_id==\"$GROUP_ID\") | .group_id" || true)
+curl -s -X PUT "https://accounts.azuredatabricks.net/api/2.0/accounts/${DATABRICKS_ACCOUNT_ID}/workspaces/${WORKSPACE_ID}/permissionassignments/principals/${GROUP_ID}" \
+  -H "Authorization: Bearer ${DATABRICKS_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{ "permissions": ["USER"] }'
 
-if [ "$ATTACHED" == "$GROUP_ID" ]; then
-  echo "✅ Group already attached to workspace – skipping"
-  exit 0
-fi
-
-# --------------------------------------------------
-# 3️⃣ Attach group to workspace (UI equivalent)
-# --------------------------------------------------
-echo "🔗 Attaching group to workspace..."
-
-curl -s -X POST -H "$AUTH" \
-  "$HOST/api/2.0/accounts/$DATABRICKS_ACCOUNT_ID/workspaces/$WORKSPACE_ID/permissions/groups/$GROUP_ID" \
-  >/dev/null
-
-echo "🎉 Azure Entra ID group attached to Databricks workspace successfully"
+echo "🎉 Group is now ready in the workspace! Now you can run your Schema Script."
