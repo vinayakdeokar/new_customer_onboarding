@@ -38,9 +38,20 @@
 #!/bin/bash
 set -e
 
-# पायरी १: ग्रुपला अकाउंट लेव्हलला 'Force Link' करणे
-echo "🚀 Linking Group to Databricks Account Level..."
-#
+echo "🔍 Step 1: Fetching Azure Object ID for ${GROUP_NAME}..."
+
+# Azure CLI वापरून मॅन्युअली आयडी न टाकता तो ऑटोमॅटिक मिळवणे
+AZURE_OBJ_ID=$(az ad group show --group "${GROUP_NAME}" --query id --output tsv)
+
+if [ -z "$AZURE_OBJ_ID" ]; then
+    echo "❌ ERROR: Azure मध्ये '${GROUP_NAME}' हा ग्रुप सापडला नाही."
+    exit 1
+fi
+
+echo "✅ Azure Object ID Found: $AZURE_OBJ_ID"
+
+# २. ग्रुप अकाउंट लेव्हलला लिंक करणे
+echo "🚀 Step 2: Linking to Databricks Account Level..."
 CREATE_RESPONSE=$(curl -s -X POST "https://accounts.azuredatabricks.net/api/2.0/accounts/${DATABRICKS_ACCOUNT_ID}/scim/v2/Groups" \
   -H "Authorization: Bearer ${DATABRICKS_TOKEN}" \
   -H "Content-Type: application/json" \
@@ -50,22 +61,18 @@ CREATE_RESPONSE=$(curl -s -X POST "https://accounts.azuredatabricks.net/api/2.0/
     \"externalId\": \"${AZURE_OBJ_ID}\"
   }")
 
-# ग्रुपचा ID मिळवणे
 GROUP_ID=$(echo "$CREATE_RESPONSE" | jq -r '.id // empty')
 
-# जर ग्रुप आधीच असेल, तर सर्च करून ID घेणे
-if [ -z "$GROUP_ID" ] || [ "$GROUP_ID" == "null" ]; then
-    GROUP_ID=$(curl -s -X GET "https://accounts.azuredatabricks.net/api/2.0/accounts/${DATABRICKS_ACCOUNT_ID}/scim/v2/Groups?filter=displayName+eq+%22${GROUP_NAME}%22" \
-      -H "Authorization: Bearer ${DATABRICKS_TOKEN}" | jq -r '.Resources[0].id // empty')
-fi
-
-echo "✅ Account Group ID: $GROUP_ID"
-
-# पायरी २: आता ग्रुपला वर्कस्पेसला जोडणे
-echo "🔗 Assigning group to Workspace: ${WORKSPACE_ID}"
-curl -s -X PUT "https://accounts.azuredatabricks.net/api/2.0/accounts/${DATABRICKS_ACCOUNT_ID}/workspaces/${WORKSPACE_ID}/permissionassignments/principals/${GROUP_ID}" \
+# ३. ग्रुप वर्कस्पेसला असाइन करणे
+echo "🔗 Step 3: Assigning group to Workspace: ${WORKSPACE_ID}..."
+HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X PUT "https://accounts.azuredatabricks.net/api/2.0/accounts/${DATABRICKS_ACCOUNT_ID}/workspaces/${WORKSPACE_ID}/permissionassignments/principals/${GROUP_ID}" \
   -H "Authorization: Bearer ${DATABRICKS_TOKEN}" \
   -H "Content-Type: application/json" \
-  -d '{ "permissions": ["USER"] }'
+  -d '{ "permissions": ["USER"] }')
 
-echo "🎉 Done! आता ग्रुप अकाउंट आणि वर्कस्पेस दोन्हीकडे आहे."
+if [ "$HTTP_STATUS" -eq 200 ] || [ "$HTTP_STATUS" -eq 201 ]; then
+    echo "🎉 SUCCESS: Automation Complete! ग्रुप आता स्कीमासाठी तयार आहे."
+else
+    echo "❌ ERROR: Workspace Assignment फेल झाली (Status: $HTTP_STATUS)."
+    exit 1
+fi
