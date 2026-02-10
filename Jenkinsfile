@@ -190,23 +190,34 @@ pipeline {
     //   }
     // }
 
-   
     stage('Databricks Account Group Sync') {
       steps {
+          // इथे तुझे सर्व आवश्यक व्हेरिएबल्स 'environment' किंवा 'withCredentials' मध्ये हवेत
           withCredentials([
-              // फक्त HOST URL गरजेचा आहे (उदा. https://adb-xxxx.xx.azuredatabricks.net)
-              string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST') 
+              string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
+              string(credentialsId: 'DATABRICKS_ACCOUNT_ID', variable: 'DATABRICKS_ACCOUNT_ID'),
+              string(credentialsId: 'DATABRICKS_WORKSPACE_ID', variable: 'DATABRICKS_WORKSPACE_ID')
           ]) {
               sh '''
+                  # ग्रुप नाव तयार करणे
                   export GROUP_NAME="grp-${PRODUCT}-${CUSTOMER_CODE}-users"
-                  
-                  # जुना टोकन काढून टाकलाय, स्क्रिप्ट स्वतः Azure कडून टोकन घेईल
+  
+                  # स्क्रिप्टला एक्झिक्युट परमिशन देणे आणि रन करणे
                   chmod +x scripts/account_group_sync.sh
                   ./scripts/account_group_sync.sh
               '''
           }
       }
   }
+
+
+  
+    
+
+    
+
+   
+    
 
     stage('Schemas & Grants') {
       steps {
