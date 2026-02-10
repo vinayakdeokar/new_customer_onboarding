@@ -197,6 +197,7 @@ pipeline {
               string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
               string(credentialsId: 'DATABRICKS_ACCOUNT_ID', variable: 'DATABRICKS_ACCOUNT_ID'),
               string(credentialsId: 'DATABRICKS_WORKSPACE_ID', variable: 'DATABRICKS_WORKSPACE_ID')
+              string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_ADMIN_TOKEN')
           ]) {
               sh '''
                   # ग्रुप नाव तयार करणे
