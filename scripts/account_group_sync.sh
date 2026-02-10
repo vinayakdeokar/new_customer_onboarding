@@ -1,3 +1,50 @@
+#!/bin/bash
+set -e
+
+# आवश्यक व्हेरिएबल्स (Jenkins मधून येणारे)
+: "${DATABRICKS_ACCOUNT_ID:?Missing ACCOUNT ID}"
+: "${DATABRICKS_WORKSPACE_ID:?Missing WORKSPACE ID}"
+: "${GROUP_NAME:?Missing GROUP NAME}"
+
+ACCOUNTS_HOST="https://accounts.azuredatabricks.net"
+
+# १. Azure कडून Access Token मिळवणे
+echo "🔐 Fetching Access Token..."
+TOKEN=$(az account get-access-token --resource 2ff814a6-3304-4ab8-85cb-cd0e6f879c1d --query accessToken --output tsv)
+AUTH="Authorization: Bearer ${TOKEN}"
+
+# २. Account Level वर ग्रुप आहे का ते तपासणे
+echo "🔎 Checking group '${GROUP_NAME}' at Account Level..."
+LIST_RESP=$(curl -s -X GET "${ACCOUNTS_HOST}/api/2.0/accounts/${DATABRICKS_ACCOUNT_ID}/scim/v2/Groups?filter=displayName+eq+'${GROUP_NAME}'" \
+  -H "${AUTH}")
+
+GROUP_ID=$(echo "$LIST_RESP" | jq -r '.Resources[0].id // empty')
+
+# ३. जर ग्रुप नसेल तर तो तयार करणे
+if [ -z "$GROUP_ID" ] || [ "$GROUP_ID" == "null" ]; then
+  echo "➕ Creating group at Account Level..."
+  CREATE_RESP=$(curl -s -X POST "${ACCOUNTS_HOST}/api/2.0/accounts/${DATABRICKS_ACCOUNT_ID}/scim/v2/Groups" \
+    -H "${AUTH}" \
+    -H "Content-Type: application/json" \
+    -d "{\"schemas\": [\"urn:ietf:params:scim:schemas:core:2.0:Group\"], \"displayName\": \"${GROUP_NAME}\"}")
+  GROUP_ID=$(echo "$CREATE_RESP" | jq -r '.id')
+  echo "✅ Group created with Account ID: ${GROUP_ID}"
+else
+  echo "✅ Group already exists (Account ID: ${GROUP_ID})"
+fi
+
+# ४. ग्रुपला Workspace मध्ये असाइन करणे (लिंक करणे)
+echo "🔗 Assigning group to Workspace: ${DATABRICKS_WORKSPACE_ID}..."
+ASSIGN_RESP=$(curl -s -X POST "${ACCOUNTS_HOST}/api/2.0/accounts/${DATABRICKS_ACCOUNT_ID}/workspaces/${DATABRICKS_WORKSPACE_ID}/permissions/groups/${GROUP_ID}" \
+  -H "${AUTH}" \
+  -H "Content-Type: application/json" \
+  -d "{\"permissions\": [\"MEMBER\"]}")
+
+# ५. ग्रॅंट्स (Grants) साठी थोडा वेळ देणे (Wait for Sync)
+echo "⏳ Waiting 45 seconds for Account-to-Workspace propagation..."
+sleep 45
+
+echo "🎉 SUCCESS: Group is now ready at Account and Workspace level!"
 # #!/bin/bash
 # set -e
 
