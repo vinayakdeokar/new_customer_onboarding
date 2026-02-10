@@ -174,6 +174,23 @@ pipeline {
       }
     }
 
+    stage('Databricks Account Group Sync') {
+      steps {
+        withCredentials([
+          string(credentialsId: 'DATABRICKS_ACCOUNT_ID', variable: 'DATABRICKS_ACCOUNT_ID')
+        ]) {
+          sh '''
+            export GROUP_NAME="grp-${PRODUCT}-${CUSTOMER_CODE}-users"
+            export WORKSPACE_ID=7405618110977329
+    
+            chmod +x scripts/account_group_sync.sh
+            scripts/account_group_sync.sh
+          '''
+        }
+      }
+    }
+
+
 
 
     // --------------------------------------------------
