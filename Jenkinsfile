@@ -192,23 +192,22 @@ pipeline {
 
     stage('Databricks Account Group Sync') {
       steps {
-          // Azure लॉगिन करण्यासाठी क्रेडेंशियल्स (जर आधीच लॉगिन नसेल तर)
           withCredentials([
               string(credentialsId: 'DATABRICKS_ACCOUNT_ID', variable: 'DATABRICKS_ACCOUNT_ID'),
+              // इथे 'DATABRICKS_SCIM_TOKEN' वापरून बघ. 
+              // जर त्यानेही नाही झालं, तर 'DATABRICKS_ADMIN_TOKEN' वापर.
               string(credentialsId: 'DATABRICKS_SCIM_TOKEN', variable: 'DATABRICKS_TOKEN')
           ]) {
               sh '''
                   export GROUP_NAME="grp-${PRODUCT}-${CUSTOMER_CODE}-users"
                   export WORKSPACE_ID="${WORKSPACE_ID}"
-  
+                  # स्क्रिप्टला Azure CLI चं लॉगिन लागेलच
                   chmod +x scripts/account_group_sync.sh
                   ./scripts/account_group_sync.sh
               '''
           }
       }
   }
-
-
 
     // --------------------------------------------------
     // UNITY CATALOG ACCESS
