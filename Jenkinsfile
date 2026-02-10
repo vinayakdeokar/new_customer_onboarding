@@ -197,8 +197,14 @@ pipeline {
               string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_TOKEN')
           ]) {
               sh '''
+                  # तुमच्या इनपुट पॅरामीटर्समधून नाव तयार करणे
                   export GROUP_NAME="grp-${PRODUCT}-${CUSTOMER_CODE}-users"
-                  export WORKSPACE_ID="7405618110977329"
+                  
+                  # आधीच पॅरामीटरमध्ये असलेला वर्कस्पेस आयडी वापरणे
+                  export WORKSPACE_ID="${WORKSPACE_ID}"
+  
+                  # Azure Object ID (हा तुम्हाला पॅरामीटरमध्ये ॲड करावा लागेल)
+                  export AZURE_OBJ_ID="${AZURE_OBJ_ID}"
   
                   chmod +x scripts/account_group_sync.sh
                   ./scripts/account_group_sync.sh
