@@ -65,33 +65,60 @@ sleep 60
 echo "🔥 Pre-warming Unity Catalog principal (first GRANT)..."
 
 # जर पहिल्या प्रयत्नात फेल झालं, तर पुन्हा एकदा ३० सेकंद थांबून ट्राय करण्यासाठी हे 'Retry' लॉजिक
+# run_sql_with_retry () {
+#   local SQL="$1"
+#   local MAX_RETRIES=2
+#   local COUNT=0
+  
+#   until [ $COUNT -ge $MAX_RETRIES ]
+#   do
+#     # तात्पुरतं 'set +e' जेणेकरून फेल्युअरमुळे स्क्रिप्ट लगेच बंद होणार नाही
+#     set +e
+#     run_sql "$SQL"
+#     RESULT=$?
+#     set -e
+    
+#     if [ $RESULT -eq 0 ]; then
+#        break
+#     fi
+    
+#     COUNT=$((COUNT+1))
+#     echo "⚠️ Principal अजून सापडत नाहीये, पुन्हा ३० सेकंद थांबून ट्राय करतोय (Attempt $COUNT)..."
+#     sleep 30
+#   done
+  
+#   if [ $RESULT -ne 0 ]; then
+#     echo "❌ ERROR: $MAX_RETRIES प्रयत्नांनंतरही ग्रुप सापडला नाही."
+#     exit 1
+#   fi
+# }
 run_sql_with_retry () {
   local SQL="$1"
-  local MAX_RETRIES=2
-  local COUNT=0
-  
-  until [ $COUNT -ge $MAX_RETRIES ]
-  do
-    # तात्पुरतं 'set +e' जेणेकरून फेल्युअरमुळे स्क्रिप्ट लगेच बंद होणार नाही
+  local MAX_RETRIES=10
+  local COUNT=1
+
+  while [ $COUNT -le $MAX_RETRIES ]; do
+    echo "⏳ Attempt $COUNT/$MAX_RETRIES for UC principal..."
+
     set +e
     run_sql "$SQL"
     RESULT=$?
     set -e
-    
+
     if [ $RESULT -eq 0 ]; then
-       break
+      echo "✅ UC principal recognised"
+      return 0
     fi
-    
-    COUNT=$((COUNT+1))
-    echo "⚠️ Principal अजून सापडत नाहीये, पुन्हा ३० सेकंद थांबून ट्राय करतोय (Attempt $COUNT)..."
+
+    echo "⚠️ UC principal अजून तयार नाही, 30s थांबतोय..."
     sleep 30
+    COUNT=$((COUNT+1))
   done
-  
-  if [ $RESULT -ne 0 ]; then
-    echo "❌ ERROR: $MAX_RETRIES प्रयत्नांनंतरही ग्रुप सापडला नाही."
-    exit 1
-  fi
+
+  echo "❌ ERROR: UC principal $GROUP_NAME अजूनही ओळखला गेला नाही"
+  exit 1
 }
+
 
 # आता तुझी पहिली GRANT कमांड या नवीन फंक्शनने रन कर
 run_sql_with_retry "
@@ -104,13 +131,13 @@ TO \`${GROUP_NAME}\`
 # पुढचा सर्व 'run_sql' चा कोड आहे तसाच राहू दे...
 # ------------------------------------------------
 
-echo "🔥 Pre-warming Unity Catalog principal (first GRANT)..."
+# echo "🔥 Pre-warming Unity Catalog principal (first GRANT)..."
 
-run_sql "
-GRANT USE CATALOG
-ON CATALOG \`${CATALOG_NAME}\`
-TO \`${GROUP_NAME}\`
-"
+# run_sql "
+# GRANT USE CATALOG
+# ON CATALOG \`${CATALOG_NAME}\`
+# TO \`${GROUP_NAME}\`
+# "
 
 
 # ------------------------------------------------
