@@ -43,17 +43,17 @@ pipeline {
 
     // stages {
 
-    //     // --------------------------------------------------
-    //     // INIT – CLEAN OLD STATE
-    //     // --------------------------------------------------
-    //     stage('Init Workspace') {
-    //         steps {
-    //             sh '''
-    //                 echo "🧹 Cleaning old env state"
-    //                 rm -f db_env.sh
-    //             '''
-    //         }
-    //     }
+        // --------------------------------------------------
+        // INIT – CLEAN OLD STATE
+        // --------------------------------------------------
+        // stage('Init Workspace') {
+        //     steps {
+        //         sh '''
+        //             echo "🧹 Cleaning old env state"
+        //             rm -f db_env.sh
+        //         '''
+        //     }
+        // }
 
         // --------------------------------------------------
         // CHECKOUT
