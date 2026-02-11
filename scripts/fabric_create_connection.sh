@@ -2,25 +2,30 @@
 set -e
 
 echo "🔐 Getting Azure AD Token for Fabric/Power BI..."
+# VNet Gateway शोधण्यासाठी आणि कनेक्शन बनवण्यासाठी हाच रिसोर्स लागतो
 ACCESS_TOKEN=$(az account get-access-token --resource https://analysis.windows.net/powerbi/api --query accessToken -o tsv)
 
 echo "🔐 Fetching SPN secrets from Key Vault..."
 SPN_CLIENT_ID=$(az keyvault secret show --vault-name "$KV_NAME" --name "sp-${PRODUCT}-${CUSTOMER_CODE}-oauth-client-id" --query value -o tsv)
 SPN_SECRET=$(az keyvault secret show --vault-name "$KV_NAME" --name "sp-${PRODUCT}-${CUSTOMER_CODE}-oauth-secret" --query value -o tsv)
 
-echo "🔎 Finding Gateway ID for: vnwt-db-fab-fabric-sub..."
-# सर्व गेटवेची यादी मिळवून आपल्या गेटवेचा ID शोधणे
-GATEWAY_LIST=$(curl -s -H "Authorization: Bearer $ACCESS_TOKEN" "https://api.powerbi.com/v1.0/myorg/gateways")
+echo "🔎 Finding VNet Gateway ID for: vnwt-db-fab-fabric-sub..."
+# VNet Gateways साठी विशेष 'v2' एंडपॉईंट वापरणे
+GATEWAY_LIST=$(curl -s -X GET "https://api.powerbi.com/v1.0/myorg/gateways" \
+  -H "Authorization: Bearer $ACCESS_TOKEN")
+
+# नावावरून गेटवे आयडी शोधणे
 GATEWAY_ID=$(echo "$GATEWAY_LIST" | jq -r '.value[] | select(.name=="vnwt-db-fab-fabric-sub") | .id')
 
 if [ -z "$GATEWAY_ID" ] || [ "$GATEWAY_ID" == "null" ]; then
-  echo "❌ Error: Could not find Gateway ID for 'vnwt-db-fab-fabric-sub'. Please check if it exists in Fabric."
+  echo "❌ Error: Could not find Gateway ID for 'vnwt-db-fab-fabric-sub'."
+  echo "Response received: $GATEWAY_LIST"
   exit 1
 fi
 
-echo "🚀 Gateway ID Found: $GATEWAY_ID. Creating VNet Connection..."
+echo "🚀 VNet Gateway ID Found: $GATEWAY_ID. Creating Connection..."
 
-# VNet Gateway कनेक्शनसाठी पेलोड
+# कनेक्शन पेलोड: Virtual Network साठी
 cat <<EOF > vnet_payload.json
 {
     "dataSourceType": "AzureDatabricks",
@@ -36,7 +41,7 @@ cat <<EOF > vnet_payload.json
 }
 EOF
 
-# प्रत्यक्ष कनेक्शन तयार करण्याचा कॉल
+# गेटवेमध्ये 'Datasource' (Connection) तयार करणे
 HTTP_RESPONSE=$(curl -s -w "%{http_code}" -o response.json \
   -X POST "https://api.powerbi.com/v1.0/myorg/gateways/${GATEWAY_ID}/datasources" \
   -H "Authorization: Bearer $ACCESS_TOKEN" \
@@ -44,7 +49,7 @@ HTTP_RESPONSE=$(curl -s -w "%{http_code}" -o response.json \
   -d @vnet_payload.json)
 
 if [ "$HTTP_RESPONSE" -eq 201 ]; then
-  echo "✅ Fabric VNet Connection Created Successfully!"
+  echo "✅ Fabric VNet Connection Created Successfully for ${CUSTOMER_CODE}!"
 else
   echo "❌ Failed to create VNet connection. HTTP Status: $HTTP_RESPONSE"
   cat response.json
