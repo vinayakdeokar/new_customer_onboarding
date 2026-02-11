@@ -43,7 +43,18 @@ fi
 # Azure checks
 # -------------------------------
 echo "Checking Azure Entra ID SPN: ${SPN_NAME}"
-az ad sp list --display-name "${SPN_NAME}" --query "[].appId" -o tsv | grep -q .
+#az ad sp list --display-name "${SPN_NAME}" --query "[].appId" -o tsv | grep -q .
+SPN_APP_ID=$(az ad sp list \
+  --display-name "${SPN_NAME}" \
+  --query "[].appId" -o tsv)
+
+if [ -z "$SPN_APP_ID" ]; then
+  echo "❌ Azure SPN not found: ${SPN_NAME}"
+  exit 1
+fi
+
+echo "✅ Azure SPN exists"
+
 
 echo "Checking Azure Entra ID Group: ${GROUP_NAME}"
 az ad group show --group "${GROUP_NAME}" >/dev/null
