@@ -1,25 +1,28 @@
 #!/bin/bash
 set -e
 
-# १. तुझा मूळ गेटवे ID (जो आपण आधी वापरला होता)
-# हा ID चुकला तरी आपण तोच वापरणार आहोत कारण डिस्कव्हरी काम करत नाहीये
+# १. पॅरामीटर्स (तुझ्या स्क्रीनशॉटवरून घेतलेले)
 GATEWAY_ID="223ca510-82c0-456f-b5ba-de6ff5c01fd2"
+# वर्कस्पेस आयडी
+GROUP_ID="9f656d64-9fd4-4c38-8a27-be73e5f36836"
 
 echo "----------------------------------------------------------------"
-echo "🚀 FORCING CONNECTION CREATION - THE LAST ATTEMPT"
+echo "🚀 CREATING CONNECTION VIA FABRIC COMPATIBLE API"
 echo "----------------------------------------------------------------"
 
-# २. टोकन मिळवणे (Resource: Power BI API)
+# २. टोकन मिळवणे
 MANAGER_TOKEN=$(az account get-access-token --resource https://analysis.windows.net/powerbi/api --query accessToken -o tsv)
 
-# ३. पेलोड - VNet साठी 'credentialDetails' मध्ये GATEWAY_ID की असणे अनिवार्य आहे
-# आपण 'v2.0' एंडपॉईंटचा प्रयत्न करूया जो 'gatewayClusters' साठी जास्त फ्लेक्सिबल आहे
-cat <<EOF > final_vnet_payload.json
+# ३. पेलोड (येथेच आधी चूक होत होती - connectionDetails हा 'String' हवा)
+# डेटाब्रिक्ससाठी 'server' आणि 'httppath' असे की-वर्ड्स लागतात
+CONNECTION_JSON="{\"server\":\"${DATABRICKS_HOST}\",\"httppath\":\"${DATABRICKS_SQL_PATH}\"}"
+
+# ४. फायनल पेलोड तयार करणे
+cat <<EOF > fabric_payload.json
 {
     "datasourceName": "${CUSTOMER_CODE}",
-    "datasourceType": "Extension",
-    "extensionIdentifier": "Databricks",
-    "connectionDetails": "{\"host\":\"${DATABRICKS_HOST}\",\"httpPath\":\"${DATABRICKS_SQL_PATH}\"}",
+    "dataSourceType": "Databricks",
+    "connectionDetails": $(echo -n $CONNECTION_JSON | jq -R .),
     "credentialDetails": {
         "credentialType": "Basic",
         "credentials": "{\"credentialData\":[{\"name\":\"username\",\"value\":\"${CUST_CLIENT_ID}\"},{\"name\":\"password\",\"value\":\"${CUST_SECRET}\"}]}",
@@ -30,27 +33,18 @@ cat <<EOF > final_vnet_payload.json
 }
 EOF
 
-# ४. API कॉल - 'v1.0' ऐवजी आपण 'v2.0' ट्राई करूया (जर v1.0 ४०४ देत असेल)
-echo "📡 Sending Request to Gateway Clusters API..."
+# ५. 'gatewayClusters' API वापरून कॉल करणे
+echo "📡 Sending Request to Gateway Clusters..."
 HTTP_STATUS=$(curl -s -w "%{http_code}" -o response.json \
   -X POST "https://api.powerbi.com/v1.0/myorg/gatewayClusters/${GATEWAY_ID}/datasources" \
   -H "Authorization: Bearer $MANAGER_TOKEN" \
   -H "Content-Type: application/json" \
-  -d @final_vnet_payload.json)
+  -d @fabric_payload.json)
 
 if [ "$HTTP_STATUS" -eq 201 ] || [ "$HTTP_STATUS" -eq 200 ]; then
     echo "🎉 SUCCESS: Connection '$CUSTOMER_CODE' created!"
 else
     echo "❌ FAILED: Status $HTTP_STATUS"
-    echo "📄 Error Details:"
     cat response.json
-    
-    # जर अजूनही ४०४ आला, तर आपण 'gateways' एंडपॉईंट वापरून बघूया (Fallback)
-    echo "🔄 Attempting Fallback to Gateways API..."
-    curl -s -o response_fallback.json -X POST "https://api.powerbi.com/v1.0/myorg/gateways/${GATEWAY_ID}/datasources" \
-      -H "Authorization: Bearer $MANAGER_TOKEN" \
-      -H "Content-Type: application/json" \
-      -d @final_vnet_payload.json
-    cat response_fallback.json
     exit 1
 fi
