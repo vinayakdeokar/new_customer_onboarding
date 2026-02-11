@@ -74,6 +74,28 @@ echo "✅ SUCCESS: OAuth secret generated using TEMP token"
 echo "-------------------------------------------------------"
 
 # --------------------------------------------------
+# 5A. Fetch Client ID (Application ID) from Databricks
+# --------------------------------------------------
+
+echo "🔎 Fetching Client ID (Application ID) from Databricks..."
+
+SPN_RESPONSE=$(curl -sf -X GET \
+  -H "Authorization: Bearer $DB_TOKEN" \
+  "$ACCOUNTS_BASE_URL/api/2.0/accounts/$DATABRICKS_ACCOUNT_ID/servicePrincipals/$DATABRICKS_INTERNAL_ID")
+
+CLIENT_ID=$(echo "$SPN_RESPONSE" | jq -r '.applicationId // empty')
+
+if [ -z "$CLIENT_ID" ]; then
+  echo "❌ Failed to fetch Client ID from Databricks"
+  echo "Response: $SPN_RESPONSE"
+  exit 1
+fi
+
+echo "✅ Client ID fetched"
+echo "   Client ID: $CLIENT_ID"
+
+
+# --------------------------------------------------
 # 6. Store OAuth secret in Azure Key Vault (ROTATION)
 # --------------------------------------------------
 
@@ -119,4 +141,47 @@ echo "-------------------------------------------------------"
 echo "✅ Key Vault rotation complete"
 echo "   Only latest secret version is ENABLED"
 echo "-------------------------------------------------------"
+
+# --------------------------------------------------
+# 7. Store Client ID in Azure Key Vault (ROTATION)
+# --------------------------------------------------
+
+CLIENT_ID_SECRET_NAME="${TARGET_SPN_DISPLAY_NAME}-client-id"
+
+echo "🔐 Rotating Client ID in Azure Key Vault"
+echo "   Vault : $KV_NAME"
+echo "   Name  : $CLIENT_ID_SECRET_NAME"
+
+NEW_CLIENT_VERSION_ID=$(az keyvault secret set \
+  --vault-name "$KV_NAME" \
+  --name "$CLIENT_ID_SECRET_NAME" \
+  --value "$CLIENT_ID" \
+  --query "id" -o tsv)
+
+echo "✅ New Client ID version created"
+echo "   New Version ID: $NEW_CLIENT_VERSION_ID"
+
+OLD_CLIENT_VERSIONS=$(az keyvault secret list-versions \
+  --vault-name "$KV_NAME" \
+  --name "$CLIENT_ID_SECRET_NAME" \
+  --query "[?attributes.enabled==\`true\` && id!='$NEW_CLIENT_VERSION_ID'].id" \
+  -o tsv)
+
+if [ -n "$OLD_CLIENT_VERSIONS" ]; then
+  echo "🛑 Disabling old Client ID versions..."
+  for VERSION_ID in $OLD_CLIENT_VERSIONS; do
+    az keyvault secret set-attributes \
+      --id "$VERSION_ID" \
+      --enabled false \
+      --output none
+    echo "   Disabled: ...${VERSION_ID: -8}"
+  done
+else
+  echo "ℹ️ No old Client ID versions found to disable"
+fi
+
+echo "-------------------------------------------------------"
+echo "✅ Client ID stored successfully"
+echo "-------------------------------------------------------"
+
 
