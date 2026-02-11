@@ -125,84 +125,84 @@ pipeline {
         // --------------------------------------------------
         // SPN SETUP (WORKSPACE)
         // --------------------------------------------------
-        // stage('Databricks SPN Setup') {
-        //     steps {
-        //         withCredentials([
-        //             string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
-        //             string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_ADMIN_TOKEN')
-        //         ]) {
-        //             sh '''
-        //                 chmod +x scripts/databricks_login_and_add_spn.sh
-        //                 scripts/databricks_login_and_add_spn.sh "${PRODUCT}" "${CUSTOMER_CODE}"
-        //             '''
-        //         }
-        //     }
-        // }
+        stage('Databricks SPN Setup') {
+            steps {
+                withCredentials([
+                    string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
+                    string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_ADMIN_TOKEN')
+                ]) {
+                    sh '''
+                        chmod +x scripts/databricks_login_and_add_spn.sh
+                        scripts/databricks_login_and_add_spn.sh "${PRODUCT}" "${CUSTOMER_CODE}"
+                    '''
+                }
+            }
+        }
 
         // --------------------------------------------------
         // SPN OAUTH SECRET (ACCOUNT LEVEL)
         // --------------------------------------------------
-        // stage('Databricks SPN OAuth Secret (Account Level)') {
-        //     steps {
-        //         withCredentials([
-        //             string(credentialsId: 'DATABRICKS_ACCOUNT_ID', variable: 'DATABRICKS_ACCOUNT_ID'),
-        //             string(credentialsId: 'AZURE_TENANT_ID', variable: 'AZURE_TENANT_ID')
-        //         ]) {
-        //             sh """
-        //                 export TARGET_SPN_DISPLAY_NAME="${params.SPN_NAME}"
+        stage('Databricks SPN OAuth Secret (Account Level)') {
+            steps {
+                withCredentials([
+                    string(credentialsId: 'DATABRICKS_ACCOUNT_ID', variable: 'DATABRICKS_ACCOUNT_ID'),
+                    string(credentialsId: 'AZURE_TENANT_ID', variable: 'AZURE_TENANT_ID')
+                ]) {
+                    sh """
+                        export TARGET_SPN_DISPLAY_NAME="${params.SPN_NAME}"
 
-        //                 echo "Using SPN: \$TARGET_SPN_DISPLAY_NAME"
+                        echo "Using SPN: \$TARGET_SPN_DISPLAY_NAME"
 
-        //                 chmod +x scripts/dbx_spn_discover.sh
-        //                 chmod +x scripts/dbx_spn_generate_secret.sh
+                        chmod +x scripts/dbx_spn_discover.sh
+                        chmod +x scripts/dbx_spn_generate_secret.sh
 
-        //                 scripts/dbx_spn_discover.sh
-        //                 scripts/dbx_spn_generate_secret.sh
-        //             """
-        //         }
-        //     }
-        // }
+                        scripts/dbx_spn_discover.sh
+                        scripts/dbx_spn_generate_secret.sh
+                    """
+                }
+            }
+        }
 
         // --------------------------------------------------
         // ACCOUNT GROUP SYNC
         // --------------------------------------------------
-        // stage('Databricks Account Group Sync') {
-        //     steps {
-        //         withCredentials([
-        //             string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
-        //             string(credentialsId: 'DATABRICKS_ACCOUNT_ID', variable: 'DATABRICKS_ACCOUNT_ID'),
-        //             string(credentialsId: 'DATABRICKS_WORKSPACE_ID', variable: 'DATABRICKS_WORKSPACE_ID'),
-        //             string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_ADMIN_TOKEN')
-        //         ]) {
-        //             sh '''
-        //                 export GROUP_NAME="grp-${PRODUCT}-${CUSTOMER_CODE}-users"
+        stage('Databricks Account Group Sync') {
+            steps {
+                withCredentials([
+                    string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
+                    string(credentialsId: 'DATABRICKS_ACCOUNT_ID', variable: 'DATABRICKS_ACCOUNT_ID'),
+                    string(credentialsId: 'DATABRICKS_WORKSPACE_ID', variable: 'DATABRICKS_WORKSPACE_ID'),
+                    string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_ADMIN_TOKEN')
+                ]) {
+                    sh '''
+                        export GROUP_NAME="grp-${PRODUCT}-${CUSTOMER_CODE}-users"
 
-        //                 chmod +x scripts/account_group_sync.sh
-        //                 ./scripts/account_group_sync.sh
-        //             '''
-        //         }
-        //     }
-        // }
+                        chmod +x scripts/account_group_sync.sh
+                        ./scripts/account_group_sync.sh
+                    '''
+                }
+            }
+        }
 
         // --------------------------------------------------
         // SCHEMAS & GRANTS
         // --------------------------------------------------
-        // stage('Schemas & Grants') {
-        //     steps {
-        //         withCredentials([
-        //             string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
-        //             string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_ADMIN_TOKEN'),
-        //             string(credentialsId: 'DATABRICKS_SQL_WAREHOUSE_ID', variable: 'DATABRICKS_SQL_WAREHOUSE_ID'),
-        //             string(credentialsId: 'DATABRICKS_CATALOG_NAME', variable: 'CATALOG_NAME'),
-        //             string(credentialsId: 'STORAGE_BRONZE_ROOT', variable: 'STORAGE_BRONZE_ROOT')
-        //         ]) {
-        //             sh '''
-        //                 chmod +x scripts/databricks_schema_and_grants.sh
-        //                 ./scripts/databricks_schema_and_grants.sh
-        //             '''
-        //         }
-        //     }
-        // }
+        stage('Schemas & Grants') {
+            steps {
+                withCredentials([
+                    string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
+                    string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_ADMIN_TOKEN'),
+                    string(credentialsId: 'DATABRICKS_SQL_WAREHOUSE_ID', variable: 'DATABRICKS_SQL_WAREHOUSE_ID'),
+                    string(credentialsId: 'DATABRICKS_CATALOG_NAME', variable: 'CATALOG_NAME'),
+                    string(credentialsId: 'STORAGE_BRONZE_ROOT', variable: 'STORAGE_BRONZE_ROOT')
+                ]) {
+                    sh '''
+                        chmod +x scripts/databricks_schema_and_grants.sh
+                        ./scripts/databricks_schema_and_grants.sh
+                    '''
+                }
+            }
+        }
 
         // --------------------------------------------------
         // FABRIC DATABRICKS CONNECTION
