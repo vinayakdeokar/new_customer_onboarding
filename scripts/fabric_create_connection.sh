@@ -12,7 +12,7 @@ SPN_SECRET=$(az keyvault secret show --vault-name "$KV_NAME" --name "sp-${PRODUC
 echo "🔎 Deep Searching for VNet Gateway ID: vnwt-db-fab-fabric-sub..."
 
 # 'Admin' स्तरावरून सर्व गेटवे शोधण्यासाठी हा API वापरणे आवश्यक आहे
-GATEWAY_LIST=$(curl -s -X GET "https://api.powerbi.com/v1.0/myorg/admin/gateways" \
+GATEWAY_LIST=$(curl -s -X GET "https://api.powerbi.com/v2.0/myorg/admin/gateways" \
   -H "Authorization: Bearer $MANAGER_ACCESS_TOKEN")
 
 # नावावरून VNet गेटवेचा ID काढणे
@@ -21,7 +21,7 @@ GATEWAY_ID=$(echo "$GATEWAY_LIST" | jq -r '.value[] | select(.name=="vnwt-db-fab
 # जर वरील लिस्टमध्ये सापडला नाही, तर मॅन्युअल सर्च (Fallback)
 if [ -z "$GATEWAY_ID" ] || [ "$GATEWAY_ID" == "null" ]; then
     echo "⚠️ Admin API list empty, trying discoverable gateways..."
-    GATEWAY_LIST_V2=$(curl -s -H "Authorization: Bearer $MANAGER_ACCESS_TOKEN" "https://api.powerbi.com/v1.0/myorg/gateways")
+    GATEWAY_LIST_V2=$(curl -s -H "Authorization: Bearer $MANAGER_ACCESS_TOKEN" "https://api.powerbi.com/v2.0/myorg/gateways")
     GATEWAY_ID=$(echo "$GATEWAY_LIST_V2" | jq -r '.value[] | select(.name=="vnwt-db-fab-fabric-sub") | .id')
 fi
 
@@ -35,7 +35,7 @@ echo "✅ Gateway ID Found: $GATEWAY_ID"
 
 # १. मॅनेजरने कस्टमर SPN ला परवानगी देणे
 echo "🔗 Assigning Customer SPN to Gateway..."
-curl -s -X POST "https://api.powerbi.com/v1.0/myorg/gateways/${GATEWAY_ID}/users" \
+curl -s -X POST "https://api.powerbi.com/v2.0/myorg/gateways/${GATEWAY_ID}/users" \
   -H "Authorization: Bearer $MANAGER_ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
   -d "{
@@ -62,7 +62,7 @@ cat <<EOF > vnet_payload.json
 EOF
 
 HTTP_RESPONSE=$(curl -s -w "%{http_code}" -o response.json \
-  -X POST "https://api.powerbi.com/v1.0/myorg/gateways/${GATEWAY_ID}/datasources" \
+  -X POST "https://api.powerbi.com/v2.0/myorg/gateways/${GATEWAY_ID}/datasources" \
   -H "Authorization: Bearer $MANAGER_ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
   -d @vnet_payload.json)
@@ -109,7 +109,7 @@ fi
 # echo "🚀 Creating Fabric VNet Databricks Connection..."
 
 # HTTP_RESPONSE=$(curl -s -w "%{http_code}" -o response.json \
-#   -X POST "https://api.powerbi.com/v1.0/myorg/connections" \
+#   -X POST "https://api.powerbi.com/v2.0/myorg/connections" \
 #   -H "Authorization: Bearer $ACCESS_TOKEN" \
 #   -H "Content-Type: application/json" \
 #   -d "{
