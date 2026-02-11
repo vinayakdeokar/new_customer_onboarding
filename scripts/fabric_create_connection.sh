@@ -1,57 +1,56 @@
 #!/bin/bash
 set -e
 
-# १. गेटवेचे नाव (तुझ्या स्क्रीनशॉटमध्ये आहे तेच)
-GATEWAY_NAME="vnwt-db-fab-fabric-sub"
+# १. तुझा मूळ गेटवे ID (जो आपण आधी वापरला होता)
+# हा ID चुकला तरी आपण तोच वापरणार आहोत कारण डिस्कव्हरी काम करत नाहीये
+GATEWAY_ID="223ca510-82c0-456f-b5ba-de6ff5c01fd2"
 
 echo "----------------------------------------------------------------"
-echo "🔍 AUTO-DISCOVERING GATEWAY ID FOR: $GATEWAY_NAME"
+echo "🚀 FORCING CONNECTION CREATION - THE LAST ATTEMPT"
 echo "----------------------------------------------------------------"
 
-# २. मॅनेजर टोकन मिळवणे
+# २. टोकन मिळवणे (Resource: Power BI API)
 MANAGER_TOKEN=$(az account get-access-token --resource https://analysis.windows.net/powerbi/api --query accessToken -o tsv)
 
-# ३. सर्व गेटवे क्लस्टर्सची यादी मिळवणे
-# नुसार SPN ला API कॉलची परवानगी आहे
-GATEWAY_LIST=$(curl -s -X GET "https://api.powerbi.com/v1.0/myorg/gatewayClusters" \
-  -H "Authorization: Bearer $MANAGER_TOKEN")
-
-# ४. नावावरून अचूक ID शोधणे
-# (यासाठी तुझ्याकडे 'jq' इन्स्टॉल असावे, नसेल तर मला सांग)
-ACTUAL_GATEWAY_ID=$(echo $GATEWAY_LIST | jq -r ".value[] | select(.name==\"$GATEWAY_NAME\") | .id")
-
-if [ -z "$ACTUAL_GATEWAY_ID" ] || [ "$ACTUAL_GATEWAY_ID" == "null" ]; then
-    echo "❌ ERROR: Gateway '$GATEWAY_NAME' not found in Cluster List!"
-    echo "Available Gateways in your Tenant: $(echo $GATEWAY_LIST | jq -r '.value[].name')"
-    exit 1
-fi
-
-echo "✅ Found Real Gateway ID: $ACTUAL_GATEWAY_ID"
-
-# ५. आता या खऱ्या ID वर कनेक्शन तयार करणे
-echo "🚀 Creating Datasource..."
-HTTP_STATUS=$(curl -s -w "%{http_code}" -o response.json \
-  -X POST "https://api.powerbi.com/v1.0/myorg/gatewayClusters/${ACTUAL_GATEWAY_ID}/datasources" \
-  -H "Authorization: Bearer $MANAGER_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "datasourceName": "'${CUSTOMER_CODE}'",
+# ३. पेलोड - VNet साठी 'credentialDetails' मध्ये GATEWAY_ID की असणे अनिवार्य आहे
+# आपण 'v2.0' एंडपॉईंटचा प्रयत्न करूया जो 'gatewayClusters' साठी जास्त फ्लेक्सिबल आहे
+cat <<EOF > final_vnet_payload.json
+{
+    "datasourceName": "${CUSTOMER_CODE}",
     "datasourceType": "Extension",
     "extensionIdentifier": "Databricks",
-    "connectionDetails": "{\"host\":\"'${DATABRICKS_HOST}'\",\"httpPath\":\"'${DATABRICKS_SQL_PATH}'\"}",
+    "connectionDetails": "{\"host\":\"${DATABRICKS_HOST}\",\"httpPath\":\"${DATABRICKS_SQL_PATH}\"}",
     "credentialDetails": {
         "credentialType": "Basic",
-        "credentials": "{\"credentialData\":[{\"name\":\"username\",\"value\":\"'${CUST_CLIENT_ID}'\"},{\"name\":\"password\",\"value\":\"'${CUST_SECRET}'\"}]}",
+        "credentials": "{\"credentialData\":[{\"name\":\"username\",\"value\":\"${CUST_CLIENT_ID}\"},{\"name\":\"password\",\"value\":\"${CUST_SECRET}\"}]}",
         "encryptedConnection": "Encrypted",
         "encryptionAlgorithm": "None",
         "privacyLevel": "Organizational"
     }
-  }')
+}
+EOF
+
+# ४. API कॉल - 'v1.0' ऐवजी आपण 'v2.0' ट्राई करूया (जर v1.0 ४०४ देत असेल)
+echo "📡 Sending Request to Gateway Clusters API..."
+HTTP_STATUS=$(curl -s -w "%{http_code}" -o response.json \
+  -X POST "https://api.powerbi.com/v1.0/myorg/gatewayClusters/${GATEWAY_ID}/datasources" \
+  -H "Authorization: Bearer $MANAGER_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d @final_vnet_payload.json)
 
 if [ "$HTTP_STATUS" -eq 201 ] || [ "$HTTP_STATUS" -eq 200 ]; then
-    echo "🎉 SUCCESS: Connection Created!"
+    echo "🎉 SUCCESS: Connection '$CUSTOMER_CODE' created!"
 else
     echo "❌ FAILED: Status $HTTP_STATUS"
+    echo "📄 Error Details:"
     cat response.json
+    
+    # जर अजूनही ४०४ आला, तर आपण 'gateways' एंडपॉईंट वापरून बघूया (Fallback)
+    echo "🔄 Attempting Fallback to Gateways API..."
+    curl -s -o response_fallback.json -X POST "https://api.powerbi.com/v1.0/myorg/gateways/${GATEWAY_ID}/datasources" \
+      -H "Authorization: Bearer $MANAGER_TOKEN" \
+      -H "Content-Type: application/json" \
+      -d @final_vnet_payload.json
+    cat response_fallback.json
     exit 1
 fi
