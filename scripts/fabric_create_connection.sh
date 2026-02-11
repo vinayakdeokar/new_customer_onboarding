@@ -2,6 +2,10 @@
 set -e
 
 echo "🔐 Getting Azure AD Token for Fabric..."
+echo "----- DEBUG IDENTITY -----"
+az account show
+echo "--------------------------"
+
 
 ACCESS_TOKEN=$(az account get-access-token --resource https://analysis.windows.net/powerbi/api --query accessToken -o tsv)
 
