@@ -1,84 +1,63 @@
 #!/bin/bash
 set -e
 
+# १. तुझ्या कडून मिळालेला गेटवे क्लस्टर आयडी
+GATEWAY_CLUSTER_ID="223ca510-82c0-456f-b5ba-de6ff5c01fd2"
+
 echo "----------------------------------------------------------------"
-echo "🔍 LISTING ALL GATEWAYS & SELECTING: vnwt-db-fab-fabric-sub"
+echo "🚀 AUTOMATING VNET CONNECTION FOR: $CUSTOMER_CODE"
 echo "----------------------------------------------------------------"
 
-# १. मॅनेजर टोकन मिळवणे (ज्याला गेटवे ॲडमिन अधिकार आहेत)
-echo "🔐 Getting Manager Token..."
+# २. मॅनेजर टोकन मिळवणे (spn-key-vault-jenk कडून)
 MANAGER_TOKEN=$(az account get-access-token --resource https://analysis.windows.net/powerbi/api --query accessToken -o tsv)
 
-# २. सर्व उपलब्ध गेटवेची यादी तपासणे
-echo "🔎 Fetching Gateway List..."
-GATEWAY_LIST=$(curl -s -X GET "https://api.powerbi.com/v1.0/myorg/gateways" \
-  -H "Authorization: Bearer $MANAGER_TOKEN")
-
-# लिस्ट रिकामी असेल तर ॲडमिन एंडपॉईंट वापरून बघणे
-if [ "$(echo "$GATEWAY_LIST" | jq '.value | length')" -eq 0 ]; then
-    echo "⚠️ User list empty, trying Admin list..."
-    GATEWAY_LIST=$(curl -s -X GET "https://api.powerbi.com/v1.0/myorg/admin/gateways" \
-      -H "Authorization: Bearer $MANAGER_TOKEN")
-fi
-
-# पूर्ण लिस्ट डिस्प्ले करणे (डिबगिंगसाठी)
-echo "📋 Available Gateways in Fabric:"
-echo "$GATEWAY_LIST" | jq -r '.value[] | "- Name: \(.name) | ID: \(.id) | Type: \(.type)"'
-
-# ३. 'vnwt-db-fab-fabric-sub' नावाचा गेटवे शोधणे
-TARGET_NAME="vnwt-db-fab-fabric-sub"
-GATEWAY_ID=$(echo "$GATEWAY_LIST" | jq -r --arg n "$TARGET_NAME" '.value[] | select(.name==$n) | .id')
-
-if [ -z "$GATEWAY_ID" ] || [ "$GATEWAY_ID" == "null" ]; then
-    echo "❌ ERROR: Target gateway '$TARGET_NAME' not found in the list above."
-    exit 1
-fi
-
-echo "✅ Selected Gateway ID: $GATEWAY_ID"
-
-# ४. आता कस्टमर SPN ला अधिकार देणे
-echo "🔐 Fetching Customer SPN Secrets for $CUSTOMER_CODE..."
+# ३. की-वॉल्टमधून कस्टमर SPN चे क्रेडेंशियल्स काढणे
 CUST_CLIENT_ID=$(az keyvault secret show --vault-name "$KV_NAME" --name "sp-${PRODUCT}-${CUSTOMER_CODE}-oauth-client-id" --query value -o tsv)
 CUST_SECRET=$(az keyvault secret show --vault-name "$KV_NAME" --name "sp-${PRODUCT}-${CUSTOMER_CODE}-oauth-secret" --query value -o tsv)
 
-echo "🔗 Assigning Customer SPN as Admin/User to the gateway..."
-curl -s -X POST "https://api.powerbi.com/v1.0/myorg/gateways/${GATEWAY_ID}/users" \
-  -H "Authorization: Bearer $MANAGER_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d "{
-    \"identifier\": \"${CUST_CLIENT_ID}\",
-    \"principalType\": \"App\",
-    \"datasourceAccessRight\": \"Admin\"
-  }"
-
-# ५. नवीन कनेक्शन (Datasource) तयार करणे
-echo "🚀 Creating VNet Connection: $CUSTOMER_CODE"
-
-cat <<EOF > payload.json
+# ४. पेलोड तयार करणे (जसा तू मॅन्युअली पाठवला आहेस)
+cat <<EOF > vnet_datasource_payload.json
 {
-    "dataSourceType": "AzureDatabricks",
-    "connectionDetails": "{\"serverHostName\":\"${DATABRICKS_HOST}\",\"httpPath\":\"${DATABRICKS_SQL_PATH}\"}",
-    "credentialDetails": {
-        "credentialType": "OAuth2",
-        "credentials": "{\"clientId\":\"${CUST_CLIENT_ID}\",\"clientSecret\":\"${CUST_SECRET}\",\"tenantId\":\"${AZURE_TENANT_ID}\"}",
-        "encryptedConnection": true,
-        "encryptionAlgorithm": "None",
-        "privacyLevel": "Private"
+    "datasourceName": "${CUSTOMER_CODE}",
+    "datasourceType": "Extension",
+    "connectionDetails": "{\"host\":\"${DATABRICKS_HOST}\",\"httpPath\":\"${DATABRICKS_SQL_PATH}\"}",
+    "singleSignOnType": "None",
+    "mashupTestConnectionDetails": {
+        "functionName": "Databricks.Catalogs",
+        "moduleName": "Databricks",
+        "moduleVersion": "2.0.7",
+        "parameters": [
+            { "name": "host", "type": "text", "isRequired": true, "value": "${DATABRICKS_HOST}" },
+            { "name": "httpPath", "type": "text", "isRequired": true, "value": "${DATABRICKS_SQL_PATH}" }
+        ]
     },
-    "displayName": "${CUSTOMER_CODE}"
+    "referenceDatasource": false,
+    "credentialDetails": {
+        "${GATEWAY_CLUSTER_ID}": {
+            "credentialType": "Basic",
+            "credentials": "{\"credentialData\":[{\"name\":\"username\",\"value\":\"${CUST_CLIENT_ID}\"},{\"name\":\"password\",\"value\":\"${CUST_SECRET}\"}]}",
+            "encryptedConnection": "Any",
+            "privacyLevel": "Organizational",
+            "skipTestConnection": true,
+            "encryptionAlgorithm": "NONE",
+            "credentialSources": []
+        }
+    }
 }
 EOF
 
-HTTP_CODE=$(curl -s -w "%{http_code}" -o response.json \
-  -X POST "https://api.powerbi.com/v1.0/myorg/gateways/${GATEWAY_ID}/datasources" \
+# ५. API कॉल करून कनेक्शन तयार करणे
+echo "📡 Sending request to Fabric API v2.0..."
+HTTP_STATUS=$(curl -s -w "%{http_code}" -o response.json \
+  -X POST "https://api.powerbi.com/v2.0/myorg/me/gatewayClusters/${GATEWAY_CLUSTER_ID}/datasources" \
   -H "Authorization: Bearer $MANAGER_TOKEN" \
   -H "Content-Type: application/json" \
-  -d @payload.json)
+  -d @vnet_datasource_payload.json)
 
-if [ "$HTTP_CODE" -eq 201 ]; then
-    echo "🎉 SUCCESS: Connection created successfully for ${CUSTOMER_CODE}!"
+if [ "$HTTP_STATUS" -eq 201 ] || [ "$HTTP_STATUS" -eq 200 ]; then
+    echo "🎉 SUCCESS: VNet Connection created for $CUSTOMER_CODE!"
 else
-    echo "❌ FAILED. Status: $HTTP_CODE"
+    echo "❌ FAILED: Status $HTTP_STATUS"
     cat response.json
     exit 1
 fi
