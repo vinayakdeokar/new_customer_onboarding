@@ -39,6 +39,29 @@ fi
 
 echo "✅ Temporary account token obtained"
 
+echo "🔎 Checking existing OAuth secrets..."
+
+SECRETS_RESPONSE=$(curl -s \
+  -H "Authorization: Bearer $DB_TOKEN" \
+  "$ACCOUNTS_BASE_URL/api/2.0/accounts/$DATABRICKS_ACCOUNT_ID/servicePrincipals/$DATABRICKS_INTERNAL_ID/credentials/secrets")
+
+SECRET_COUNT=$(echo "$SECRETS_RESPONSE" | jq '.secrets | length')
+
+echo "Existing secret count: $SECRET_COUNT"
+
+if [ "$SECRET_COUNT" -ge 2 ]; then
+  echo "🛑 Maximum secrets reached. Deleting oldest secret..."
+
+  OLDEST_SECRET_ID=$(echo "$SECRETS_RESPONSE" | jq -r '.secrets | sort_by(.create_time)[0].id')
+
+  curl -s -X DELETE \
+    -H "Authorization: Bearer $DB_TOKEN" \
+    "$ACCOUNTS_BASE_URL/api/2.0/accounts/$DATABRICKS_ACCOUNT_ID/servicePrincipals/$DATABRICKS_INTERNAL_ID/credentials/secrets/$OLDEST_SECRET_ID"
+
+  echo "✅ Oldest secret deleted"
+fi
+
+
 # --------------------------------------------------
 # 3. Create OAuth secret (Account-level API)
 # --------------------------------------------------
