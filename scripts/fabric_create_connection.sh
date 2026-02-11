@@ -3,15 +3,13 @@ set -e
 
 echo "🔐 Getting Azure AD Token for Fabric..."
 
-ACCESS_TOKEN=$(az account get-access-token \
-  --resource https://analysis.windows.net/powerbi/api \
-
-  --query accessToken -o tsv)
+ACCESS_TOKEN=$(az account get-access-token --resource https://analysis.windows.net/powerbi/api --query accessToken -o tsv)
 
 if [ -z "$ACCESS_TOKEN" ]; then
   echo "❌ Failed to get Azure token"
   exit 1
 fi
+
 
 echo "🔐 Fetching SPN secrets from Key Vault..."
 
