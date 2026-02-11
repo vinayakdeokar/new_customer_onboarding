@@ -4,7 +4,8 @@ set -e
 echo "🔐 Getting Azure AD Token for Fabric..."
 
 ACCESS_TOKEN=$(az account get-access-token \
-  --resource https://api.fabric.microsoft.com \
+  --resource https://analysis.windows.net/powerbi/api
+
   --query accessToken -o tsv)
 
 if [ -z "$ACCESS_TOKEN" ]; then
