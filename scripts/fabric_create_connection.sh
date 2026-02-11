@@ -14,7 +14,9 @@ echo "🔎 Deep Searching for VNet Gateway ID: vnwt-db-fab-fabric-sub..."
 # 'Admin' स्तरावरून सर्व गेटवे शोधण्यासाठी हा API वापरणे आवश्यक आहे
 GATEWAY_LIST=$(curl -s -X GET "https://api.powerbi.com/v2.0/myorg/admin/gateways" \
   -H "Authorization: Bearer $MANAGER_ACCESS_TOKEN")
-
+echo "#############################################"
+echo $GATEWAY_LIST
+echo "#############################################"
 # नावावरून VNet गेटवेचा ID काढणे
 GATEWAY_ID=$(echo "$GATEWAY_LIST" | jq -r '.value[] | select(.name=="vnwt-db-fab-fabric-sub") | .id')
 
