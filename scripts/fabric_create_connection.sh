@@ -5,7 +5,7 @@ set -e
 GATEWAY_ID="223ca510-82c0-456f-b5ba-de6ff5c01fd2"
 
 echo "----------------------------------------------------------------"
-echo "🚀 FIXING API SCHEMA FOR: $CUSTOMER_CODE"
+echo "🚀 REPAIRING CONNECTION STRING FOR: $CUSTOMER_CODE"
 echo "----------------------------------------------------------------"
 
 # २. मॅनेजर टोकन
@@ -15,14 +15,15 @@ MANAGER_TOKEN=$(az account get-access-token --resource https://analysis.windows.
 CUST_CLIENT_ID=$(az keyvault secret show --vault-name "$KV_NAME" --name "sp-${PRODUCT}-${CUSTOMER_CODE}-oauth-client-id" --query value -o tsv)
 CUST_SECRET=$(az keyvault secret show --vault-name "$KV_NAME" --name "sp-${PRODUCT}-${CUSTOMER_CODE}-oauth-secret" --query value -o tsv)
 
-# ४. अधिकृत पेलोड (V1.0 Schema - Strict Correction)
-# 'dataSourceName' वापरा (कारण एररने Name field मागितली आहे)
-# 'dataSourceType' 'Extension' ठेवा (कारण तो VNet कनेक्टर आहे)
+# ४. अधिकृत पेलोड (V1.0 Strict Connection String)
+# बदल १: 'host' च्या ऐवजी 'serverHostName' वापरले आहे.
+# बदल २: 'extensionIdentifier' ॲड केले आहे.
 cat <<EOF > final_v1_payload.json
 {
     "dataSourceName": "${CUSTOMER_CODE}",
     "dataSourceType": "Extension",
-    "connectionDetails": "{\"host\":\"${DATABRICKS_HOST}\",\"httpPath\":\"${DATABRICKS_SQL_PATH}\"}",
+    "extensionIdentifier": "AzureDatabricks",
+    "connectionDetails": "{\"serverHostName\":\"${DATABRICKS_HOST}\",\"httpPath\":\"${DATABRICKS_SQL_PATH}\"}",
     "credentialDetails": {
         "credentialType": "Basic",
         "credentials": "{\"credentialData\":[{\"name\":\"username\",\"value\":\"${CUST_CLIENT_ID}\"},{\"name\":\"password\",\"value\":\"${CUST_SECRET}\"}]}",
