@@ -35,7 +35,7 @@ fi
 echo "🚀 Creating Fabric VNet Databricks Connection..."
 
 HTTP_RESPONSE=$(curl -s -w "%{http_code}" -o response.json \
-  -X POST "https://api.fabric.microsoft.com/v1/connections" \
+  -X POST "https://api.powerbi.com/v1.0/myorg/connections" \
   -H "Authorization: Bearer $ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
   -d "{
@@ -55,6 +55,7 @@ HTTP_RESPONSE=$(curl -s -w "%{http_code}" -o response.json \
     \"privacyLevel\": \"Private\",
     \"allowCreateArtifact\": true
   }")
+
 
 if [ "$HTTP_RESPONSE" -eq 201 ]; then
   echo "✅ Fabric VNet Connection Created Successfully"
