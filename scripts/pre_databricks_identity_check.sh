@@ -8,11 +8,11 @@ CUSTOMER_CODE="$(echo "$2" | xargs)"
 SPN_NAME="sp-${PRODUCT}-${CUSTOMER_CODE}"
 
 
-PRODUCT=$1
-CUSTOMER=$2
+# PRODUCT=$1
+# CUSTOMER=$2
 
-SPN_NAME="sp-${PRODUCT}-${CUSTOMER}"
-GROUP_NAME="grp-${PRODUCT}-${CUSTOMER}-users"
+# SPN_NAME="sp-${PRODUCT}-${CUSTOMER}"
+# GROUP_NAME="grp-${PRODUCT}-${CUSTOMER}-users"
 
 KV_NAME="kv-databricks-fab"
 KV_SECRET_NAME="sp-${PRODUCT}-${CUSTOMER}-oauth-secret"
