@@ -1,7 +1,8 @@
-epipeline {
+pipeline {
     agent any
 
     parameters {
+
         string(
             name: 'CUSTOMER_CODE',
             description: 'Customer code like vinayak-003'
@@ -162,8 +163,9 @@ epipeline {
             }
         }
 
-       
-
+        // --------------------------------------------------
+        // ACCOUNT GROUP SYNC
+        // --------------------------------------------------
         stage('Databricks Account Group Sync') {
             steps {
                 withCredentials([
@@ -173,10 +175,8 @@ epipeline {
                     string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_ADMIN_TOKEN')
                 ]) {
                     sh '''
-                        # ग्रुप नाव तयार करणे
                         export GROUP_NAME="grp-${PRODUCT}-${CUSTOMER_CODE}-users"
 
-                        # स्क्रिप्टला एक्झिक्युट परमिशन देणे आणि रन करणे
                         chmod +x scripts/account_group_sync.sh
                         ./scripts/account_group_sync.sh
                     '''
@@ -184,6 +184,9 @@ epipeline {
             }
         }
 
+        // --------------------------------------------------
+        // SCHEMAS & GRANTS
+        // --------------------------------------------------
         stage('Schemas & Grants') {
             steps {
                 withCredentials([
@@ -204,7 +207,7 @@ epipeline {
         // --------------------------------------------------
         // FABRIC DATABRICKS CONNECTION
         // --------------------------------------------------
-        stage('Fabric VNet Databricks Connection') {
+        stage('Fabric Databricks Connection') {
             steps {
                 withCredentials([
                     string(credentialsId: 'AZURE_TENANT_ID', variable: 'AZURE_TENANT_ID'),
@@ -212,14 +215,21 @@ epipeline {
                     string(credentialsId: 'DATABRICKS_SQL_PATH', variable: 'DATABRICKS_SQL_PATH')
                 ]) {
                     sh '''
+                        echo "Starting Fabric Connection Creation..."
+
+                        export PRODUCT="${PRODUCT}"
+                        export CUSTOMER_CODE="${CUSTOMER_CODE}"
+                        export KV_NAME="${KV_NAME}"
+                        export AZURE_TENANT_ID="${AZURE_TENANT_ID}"
+                        export DATABRICKS_HOST="${DATABRICKS_HOST}"
+                        export DATABRICKS_SQL_PATH="${DATABRICKS_SQL_PATH}"
+
                         chmod +x scripts/fabric_create_connection.sh
                         ./scripts/fabric_create_connection.sh
                     '''
                 }
             }
         }
-
-
 
     }
 }
