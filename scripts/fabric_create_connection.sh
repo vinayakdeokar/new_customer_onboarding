@@ -1,24 +1,38 @@
 #!/bin/bash
 set -e
 
-# १. पॅरामीटर्स
-GATEWAY_ID="223ca510-82c0-456f-b5ba-de6ff5c01fd2"
-TENANT_ID="${AZURE_TENANT_ID}"
+# १. गेटवेचे नाव (तुझ्या स्क्रीनशॉटप्रमाणे)
+GATEWAY_NAME="vnwt-db-fab-fabric-sub"
 
 echo "----------------------------------------------------------------"
-echo "🎯 FINALIZING CONNECTION FOR: $CUSTOMER_CODE"
+echo "🔍 AUTO-DISCOVERING GATEWAY ID FOR: $GATEWAY_NAME"
 echo "----------------------------------------------------------------"
 
-# २. मॅनेजर टोकन (SPN कडून)
+# २. मॅनेजर टोकन मिळवणे
 MANAGER_TOKEN=$(az account get-access-token --resource https://analysis.windows.net/powerbi/api --query accessToken -o tsv)
 
-# ३. की-वॉल्टमधून क्रेडेंशियल्स
+# ३. खऱ्या Gateway ID चा शोध घेणे (List API वापरून)
+# SPN ला ॲडमिन राईट्स असल्याने त्याला ही लिस्ट दिसेल
+GATEWAY_LIST=$(curl -s -X GET "https://api.powerbi.com/v1.0/myorg/gatewayClusters" \
+  -H "Authorization: Bearer $MANAGER_TOKEN")
+
+# नावावरून ID फिल्टर करणे
+ACTUAL_GATEWAY_ID=$(echo $GATEWAY_LIST | jq -r ".value[] | select(.name==\"$GATEWAY_NAME\") | .id")
+
+if [ -z "$ACTUAL_GATEWAY_ID" ] || [ "$ACTUAL_GATEWAY_ID" == "null" ]; then
+    echo "❌ ERROR: Gateway '$GATEWAY_NAME' not found in your tenant!"
+    echo "Available Gateways: $(echo $GATEWAY_LIST | jq -r '.value[].name')"
+    exit 1
+fi
+
+echo "✅ Found Gateway ID: $ACTUAL_GATEWAY_ID"
+
+# ४. क्रेडेंशियल्स की-वॉल्टमधून मिळवणे
 CUST_CLIENT_ID=$(az keyvault secret show --vault-name "$KV_NAME" --name "sp-${PRODUCT}-${CUSTOMER_CODE}-oauth-client-id" --query value -o tsv)
 CUST_SECRET=$(az keyvault secret show --vault-name "$KV_NAME" --name "sp-${PRODUCT}-${CUSTOMER_CODE}-oauth-secret" --query value -o tsv)
 
-# ४. पेलोड (VNet Gateway साठी 'server' आणि 'path' हेच की-वर्ड्स लागतात)
-# टीप: VNet साठी dataSourceType 'Extension' आणि extensionIdentifier 'Databricks' असावा.
-cat <<EOF > final_vnet_payload.json
+# ५. पेलोड तयार करणे
+cat <<EOF > auto_vnet_payload.json
 {
     "dataSourceName": "${CUSTOMER_CODE}",
     "dataSourceType": "Extension",
@@ -34,22 +48,18 @@ cat <<EOF > final_vnet_payload.json
 }
 EOF
 
-# ५. 'gatewayClusters' API वापरणे (VNet साठी हाच एकमेव मार्ग आहे)
-echo "📡 Sending Request to Gateway Clusters API..."
-
-# टीप: आपण 'myorg' वापरूया कारण SPN ला टॅनंट ॲक्सेस आहे
+# ६. फायनल API कॉल
+echo "🚀 Creating Datasource on Cluster: $ACTUAL_GATEWAY_ID"
 HTTP_STATUS=$(curl -s -w "%{http_code}" -o response.json \
-  -X POST "https://api.powerbi.com/v1.0/myorg/gatewayClusters/${GATEWAY_ID}/datasources" \
+  -X POST "https://api.powerbi.com/v1.0/myorg/gatewayClusters/${ACTUAL_GATEWAY_ID}/datasources" \
   -H "Authorization: Bearer $MANAGER_TOKEN" \
   -H "Content-Type: application/json" \
-  -d @final_vnet_payload.json)
+  -d @auto_vnet_payload.json)
 
-# ६. निकाल तपासणे
 if [ "$HTTP_STATUS" -eq 201 ] || [ "$HTTP_STATUS" -eq 200 ]; then
-    echo "🎉 SUCCESS: Connection '$CUSTOMER_CODE' created on VNet Gateway!"
+    echo "🎉 SUCCESS: Connection '$CUSTOMER_CODE' is LIVE!"
 else
     echo "❌ FAILED: Status $HTTP_STATUS"
-    echo "🔍 Error Response:"
     cat response.json
     exit 1
 fi
