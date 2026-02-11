@@ -1,16 +1,16 @@
 #!/bin/bash
 set -e
 
-# १. व्हॅल्यूज क्लिन करणे (सर्वात महत्त्वाचे)
-# डेटाब्रिक्स होस्टमध्ये https:// नको, फक्त URL हवी (उदा. adb-xxx.azuredatabricks.net)
+# १. डेटा क्लिनिंग (Host मधून https:// काढून टाकणे)
 CLEAN_HOST=$(echo "$DATABRICKS_HOST" | sed -e 's|^https://||' -e 's|/$||')
+# Path मधून सुरुवातीचा स्लॅश काढून व्यवस्थित फॉरमॅट करणे
 CLEAN_PATH=$(echo "$DATABRICKS_SQL_PATH" | sed -e 's|^/||')
 CLEAN_PATH="/$CLEAN_PATH"
 
 GATEWAY_ID="223ca510-82c0-456f-b5ba-de6ff5c01fd2"
 
 echo "----------------------------------------------------------------"
-echo "🌐 PROVISIONING CONNECTION FOR: $CUSTOMER_CODE"
+echo "🛠️ PROVISIONING GATEWAY DATASOURCE: $CUSTOMER_CODE"
 echo "----------------------------------------------------------------"
 
 # २. मॅनेजर टोकन मिळवणे
@@ -20,14 +20,14 @@ MANAGER_TOKEN=$(az account get-access-token --resource https://analysis.windows.
 CUST_CLIENT_ID=$(az keyvault secret show --vault-name "$KV_NAME" --name "sp-${PRODUCT}-${CUSTOMER_CODE}-oauth-client-id" --query value -o tsv)
 CUST_SECRET=$(az keyvault secret show --vault-name "$KV_NAME" --name "sp-${PRODUCT}-${CUSTOMER_CODE}-oauth-secret" --query value -o tsv)
 
-# ४. अचूक पेलोड (VNet Gateway + Databricks Official Schema)
-# टीप: 'host' (LOWERCASE) आणि 'httpPath' (CAMELCASE) हेच की-वर्ड्स हवेत.
-cat <<EOF > accurate_payload.json
+# ४. गेटवे API साठीचा 'अचूक' पेलोड
+# बदल: dataSourceType 'AzureDatabricks' वापरला आहे (Extension नाही)
+# बदल: Keys 'server' आणि 'path' वापरल्या आहेत (Gateway API ला हेच हवे असते)
+cat <<EOF > final_gateway_payload.json
 {
     "dataSourceName": "${CUSTOMER_CODE}",
-    "dataSourceType": "Extension",
-    "extensionIdentifier": "AzureDatabricks",
-    "connectionDetails": "{\"host\":\"${CLEAN_HOST}\",\"httpPath\":\"${CLEAN_PATH}\"}",
+    "dataSourceType": "AzureDatabricks",
+    "connectionDetails": "{\"server\":\"${CLEAN_HOST}\",\"path\":\"${CLEAN_PATH}\"}",
     "credentialDetails": {
         "credentialType": "Basic",
         "credentials": "{\"credentialData\":[{\"name\":\"username\",\"value\":\"${CUST_CLIENT_ID}\"},{\"name\":\"password\",\"value\":\"${CUST_SECRET}\"}]}",
@@ -39,20 +39,20 @@ cat <<EOF > accurate_payload.json
 EOF
 
 # ५. अधिकृत v1.0 API कॉल
-echo "📡 Executing Official Microsoft REST API Call..."
+echo "📡 Calling Gateway API: v1.0/myorg/gateways/${GATEWAY_ID}/datasources"
 
 HTTP_STATUS=$(curl -s -w "%{http_code}" -o response.json \
   -X POST "https://api.powerbi.com/v1.0/myorg/gateways/${GATEWAY_ID}/datasources" \
   -H "Authorization: Bearer $MANAGER_TOKEN" \
   -H "Content-Type: application/json" \
-  -d @accurate_payload.json)
+  -d @final_gateway_payload.json)
 
-# ६. रिस्पॉन्स चेक करणे
+# ६. रिझल्ट तपासणे
 if [ "$HTTP_STATUS" -eq 201 ] || [ "$HTTP_STATUS" -eq 200 ]; then
-    echo "🎉 SUCCESS: Connection '$CUSTOMER_CODE' is now LIVE in Fabric!"
+    echo "🎉 SUCCESS: Connection '$CUSTOMER_CODE' is created on Gateway!"
 else
-    echo "❌ CRITICAL FAILURE: Status $HTTP_STATUS"
-    echo "🔍 Error Details:"
+    echo "❌ ERROR: Status $HTTP_STATUS"
+    echo "📄 Response Body:"
     cat response.json
     exit 1
 fi
