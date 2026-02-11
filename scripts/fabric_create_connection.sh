@@ -1,43 +1,51 @@
 #!/bin/bash
 set -e
 
-# १. मॅनेजर SPN कडून टोकन मिळवणे (ज्याला गेटवेवर Admin अधिकार आहेत)
-echo "🔐 Getting Manager Token for Gateway Admin tasks..."
+echo "🔐 Getting Manager Token..."
+# मॅनेजर SPN चा वापर करून टोकन मिळवणे
 MANAGER_ACCESS_TOKEN=$(az account get-access-token --resource https://analysis.windows.net/powerbi/api --query accessToken -o tsv)
 
-# २. की-वॉल्टमधून नवीन कस्टमर SPN चे डिटेल्स काढणे
-echo "🔐 Fetching Customer SPN secrets from Key Vault..."
+echo "🔐 Fetching Customer SPN details from Key Vault..."
 SPN_CLIENT_ID=$(az keyvault secret show --vault-name "$KV_NAME" --name "sp-${PRODUCT}-${CUSTOMER_CODE}-oauth-client-id" --query value -o tsv)
 SPN_SECRET=$(az keyvault secret show --vault-name "$KV_NAME" --name "sp-${PRODUCT}-${CUSTOMER_CODE}-oauth-secret" --query value -o tsv)
 
-# ३. गेटवेचा ID शोधणे
-echo "🔎 Finding VNet Gateway ID for: vnwt-db-fab-fabric-sub..."
-GATEWAY_LIST=$(curl -s -X GET "https://api.powerbi.com/v1.0/myorg/gateways" \
+echo "🔎 Deep Searching for VNet Gateway ID: vnwt-db-fab-fabric-sub..."
+
+# 'Admin' स्तरावरून सर्व गेटवे शोधण्यासाठी हा API वापरणे आवश्यक आहे
+GATEWAY_LIST=$(curl -s -X GET "https://api.powerbi.com/v1.0/myorg/admin/gateways" \
   -H "Authorization: Bearer $MANAGER_ACCESS_TOKEN")
 
+# नावावरून VNet गेटवेचा ID काढणे
 GATEWAY_ID=$(echo "$GATEWAY_LIST" | jq -r '.value[] | select(.name=="vnwt-db-fab-fabric-sub") | .id')
 
+# जर वरील लिस्टमध्ये सापडला नाही, तर मॅन्युअल सर्च (Fallback)
 if [ -z "$GATEWAY_ID" ] || [ "$GATEWAY_ID" == "null" ]; then
-  echo "❌ Error: Manager SPN cannot see the gateway."
+    echo "⚠️ Admin API list empty, trying discoverable gateways..."
+    GATEWAY_LIST_V2=$(curl -s -H "Authorization: Bearer $MANAGER_ACCESS_TOKEN" "https://api.powerbi.com/v1.0/myorg/gateways")
+    GATEWAY_ID=$(echo "$GATEWAY_LIST_V2" | jq -r '.value[] | select(.name=="vnwt-db-fab-fabric-sub") | .id')
+fi
+
+if [ -z "$GATEWAY_ID" ] || [ "$GATEWAY_ID" == "null" ]; then
+  echo "❌ CRITICAL ERROR: Gateway 'vnwt-db-fab-fabric-sub' is not visible even to Manager SPN."
+  echo "Please ensure the SPN is added in 'Manage Users' as Admin in Fabric portal."
   exit 1
 fi
 
-# ४. (सर्वात महत्त्वाचे) मॅनेजरने कस्टमर SPN ला गेटवेवर अधिकार देणे
-echo "🔗 Manager SPN adding Customer SPN (${CUSTOMER_CODE}) as a Gateway User..."
+echo "✅ Gateway ID Found: $GATEWAY_ID"
+
+# १. मॅनेजरने कस्टमर SPN ला परवानगी देणे
+echo "🔗 Assigning Customer SPN to Gateway..."
 curl -s -X POST "https://api.powerbi.com/v1.0/myorg/gateways/${GATEWAY_ID}/users" \
   -H "Authorization: Bearer $MANAGER_ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
   -d "{
     \"identifier\": \"${SPN_CLIENT_ID}\",
     \"principalType\": \"App\",
-    \"datasourceAccessRight\": \"ConnectionCreator\"
+    \"datasourceAccessRight\": \"Admin\"
   }"
 
-echo "✅ Permissions granted to Customer SPN."
-
-# ५. आता कस्टमर SPN चे क्रेडेंशियल्स वापरून कनेक्शन तयार करणे
-echo "🚀 Creating Fabric VNet Databricks Connection for ${CUSTOMER_CODE}..."
-
+# २. कनेक्शन तयार करणे
+echo "🚀 Creating VNet Connection..."
 cat <<EOF > vnet_payload.json
 {
     "dataSourceType": "AzureDatabricks",
@@ -60,9 +68,9 @@ HTTP_RESPONSE=$(curl -s -w "%{http_code}" -o response.json \
   -d @vnet_payload.json)
 
 if [ "$HTTP_RESPONSE" -eq 201 ]; then
-  echo "🎉 SUCCESS: Fabric VNet Connection Created for ${CUSTOMER_CODE}!"
+  echo "🎉 SUCCESS: Connection Created for ${CUSTOMER_CODE}!"
 else
-  echo "❌ Failed. Status: $HTTP_RESPONSE"
+  echo "❌ Failed Status: $HTTP_RESPONSE"
   cat response.json
   exit 1
 fi
