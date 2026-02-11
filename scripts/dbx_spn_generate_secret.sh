@@ -125,7 +125,10 @@ echo "-------------------------------------------------------"
 
 : "${KV_NAME:?missing Key Vault name}"
 
-SECRET_NAME="${TARGET_SPN_DISPLAY_NAME}-oauth-secret"
+CLEAN_SPN_NAME="$(echo "$TARGET_SPN_DISPLAY_NAME" | xargs)"
+SECRET_NAME="${CLEAN_SPN_NAME}-oauth-secret"
+
+#SECRET_NAME="${TARGET_SPN_DISPLAY_NAME}-oauth-secret"
 
 echo "🔐 Rotating secret in Azure Key Vault"
 echo "   Vault : $KV_NAME"
