@@ -41,6 +41,8 @@ echo "   App ID     : $APP_ID"
 # Persist values for next stage
 echo "export DATABRICKS_INTERNAL_ID=$INTERNAL_ID" > db_env.sh
 #echo "export TARGET_SPN_DISPLAY_NAME=$TARGET_SPN_DISPLAY_NAME" >> db_env.sh
-echo "export TARGET_SPN_DISPLAY_NAME=\"$TARGET_SPN_DISPLAY_NAME\"" >> db_env.sh
+echo "export TARGET_SPN_DISPLAY_NAME=\"$(echo "$TARGET_SPN_DISPLAY_NAME" | xargs)\"" >> db_env.sh
+
+#echo "export TARGET_SPN_DISPLAY_NAME=\"$TARGET_SPN_DISPLAY_NAME\"" >> db_env.sh
 
 
