@@ -1,9 +1,4 @@
 #!/bin/bash
-set -e
-
-# १. गेटवे आयडी
-GATEWAY_ID="223ca510-82c0-456f-b5ba-de6ff5c01fd2"
-
 echo "----------------------------------------------------------------"
 echo "🔐 CHECKING PERMISSIONS FOR: $CUSTOMER_CODE"
 echo "----------------------------------------------------------------"
@@ -12,50 +7,47 @@ MANAGER_TOKEN=$(az account get-access-token --resource https://analysis.windows.
 echo "🔍 Token is issued to App ID:"
 echo $MANAGER_TOKEN | cut -d. -f2 | base64 -d 2>/dev/null | grep -oP '"appid":"\K[^"]+'
 
-# २. मॅनेजर टोकन मिळवणे
+#!/bin/bash
+set -e
+
+# १. तुझा Tenant ID आणि Gateway ID
+TENANT_ID="${AZURE_TENANT_ID}" # तुझा ॲक्चुअल टॅनंट आयडी इथे हवा
+GATEWAY_ID="223ca510-82c0-456f-b5ba-de6ff5c01fd2"
+
+echo "----------------------------------------------------------------"
+echo "🔍 DIAGNOSING 401 FOR: $CUSTOMER_CODE"
+echo "----------------------------------------------------------------"
+
+# २. टोकन मिळवण्याची नवीन पद्धत (Scope आधारित)
+# आपण Power BI चा अधिकृत .default स्कोप वापरूया
 MANAGER_TOKEN=$(az account get-access-token --resource https://analysis.windows.net/powerbi/api --query accessToken -o tsv)
 
-if [ -z "$MANAGER_TOKEN" ]; then
-    echo "❌ ERROR: Failed to get Access Token. Check 'az login'."
+# ३. टोकन बरोबर आहे की नाही हे तपासण्यासाठी 'List Gateways' करून बघूया
+echo "📡 Testing API Access (List Gateways)..."
+TEST_STATUS=$(curl -s -w "%{http_code}" -o test_res.json \
+  -X GET "https://api.powerbi.com/v1.0/myorg/gateways" \
+  -H "Authorization: Bearer $MANAGER_TOKEN")
+
+if [ "$TEST_STATUS" -ne 200 ]; then
+    echo "❌ CRITICAL: SPN cannot even list gateways. Status: $TEST_STATUS"
+    cat test_res.json
     exit 1
 fi
 
-# ३. की-वॉल्टमधून क्रेडेंशियल्स
-CUST_CLIENT_ID=$(az keyvault secret show --vault-name "$KV_NAME" --name "sp-${PRODUCT}-${CUSTOMER_CODE}-oauth-client-id" --query value -o tsv)
-CUST_SECRET=$(az keyvault secret show --vault-name "$KV_NAME" --name "sp-${PRODUCT}-${CUSTOMER_CODE}-oauth-secret" --query value -o tsv)
+# ४. आता कनेक्शन बनवण्याचा प्रयत्न (Explicit Tenant ID सह)
+echo "🚀 Creating Datasource for $CUSTOMER_CODE..."
 
-# ४. पेलोड (VNet Gateway Standard Schema)
-cat <<EOF > vnet_payload.json
-{
-    "datasourceName": "${CUSTOMER_CODE}",
-    "datasourceType": "Extension",
-    "connectionDetails": "{\"host\":\"${DATABRICKS_HOST}\",\"httpPath\":\"${DATABRICKS_SQL_PATH}\"}",
-    "credentialDetails": {
-        "${GATEWAY_ID}": {
-            "credentialType": "Basic",
-            "credentials": "{\"credentialData\":[{\"name\":\"username\",\"value\":\"${CUST_CLIENT_ID}\"},{\"name\":\"password\",\"value\":\"${CUST_SECRET}\"}]}",
-            "encryptedConnection": "Any",
-            "privacyLevel": "Organizational",
-            "skipTestConnection": true,
-            "encryptionAlgorithm": "NONE"
-        }
-    }
-}
-EOF
-
-# ५. API कॉल (VNet साठी v2.0 हाच मार्ग आहे)
-echo "📡 Requesting Fabric API (v2.0)..."
+# टीप: आपण 'myorg' च्या ऐवजी थेट $TENANT_ID वापरत आहोत
 HTTP_STATUS=$(curl -s -w "%{http_code}" -o response.json \
-  -X POST "https://api.powerbi.com/v2.0/myorg/gatewayClusters/${GATEWAY_ID}/datasources" \
+  -X POST "https://api.powerbi.com/v1.0/${TENANT_ID}/gateways/${GATEWAY_ID}/datasources" \
   -H "Authorization: Bearer $MANAGER_TOKEN" \
   -H "Content-Type: application/json" \
-  -d @vnet_payload.json)
+  -d @vnet_official_payload.json)
 
 if [ "$HTTP_STATUS" -eq 201 ] || [ "$HTTP_STATUS" -eq 200 ]; then
-    echo "🎉 SUCCESS: Connection created for $CUSTOMER_CODE!"
+    echo "🎉 SUCCESS: Connection created!"
 else
     echo "❌ FAILED: Status $HTTP_STATUS"
-    echo "🔍 Possible Reason: Service Principal is not an Admin on the Gateway."
     cat response.json
     exit 1
 fi
