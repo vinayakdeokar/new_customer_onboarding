@@ -1,21 +1,33 @@
 #!/bin/bash
-
-
 set -e
+
 PRODUCT="$(echo "$1" | xargs)"
-CUSTOMER_CODE="$(echo "$2" | xargs)"
-
-SPN_NAME="sp-${PRODUCT}-${CUSTOMER_CODE}"
-
-
-PRODUCT=$1
-CUSTOMER=$2
+CUSTOMER="$(echo "$2" | xargs)"
 
 SPN_NAME="sp-${PRODUCT}-${CUSTOMER}"
 GROUP_NAME="grp-${PRODUCT}-${CUSTOMER}-users"
 
 KV_NAME="kv-databricks-fab"
 KV_SECRET_NAME="sp-${PRODUCT}-${CUSTOMER}-oauth-secret"
+
+# #!/bin/bash
+
+
+# set -e
+# PRODUCT="$(echo "$1" | xargs)"
+# CUSTOMER_CODE="$(echo "$2" | xargs)"
+
+# SPN_NAME="sp-${PRODUCT}-${CUSTOMER_CODE}"
+
+
+# PRODUCT=$1
+# CUSTOMER=$2
+
+# SPN_NAME="sp-${PRODUCT}-${CUSTOMER}"
+# GROUP_NAME="grp-${PRODUCT}-${CUSTOMER}-users"
+
+# KV_NAME="kv-databricks-fab"
+# KV_SECRET_NAME="sp-${PRODUCT}-${CUSTOMER}-oauth-secret"
 
 echo "----- PRE-DATABRICKS IDENTITY CHECK -----"
 
