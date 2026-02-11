@@ -83,7 +83,8 @@ SPN_RESPONSE=$(curl -sf -X GET \
   -H "Authorization: Bearer $DB_TOKEN" \
   "$ACCOUNTS_BASE_URL/api/2.0/accounts/$DATABRICKS_ACCOUNT_ID/servicePrincipals/$DATABRICKS_INTERNAL_ID")
 
-CLIENT_ID=$(echo "$SPN_RESPONSE" | jq -r '.applicationId // empty')
+CLIENT_ID=$(echo "$SPN_RESPONSE" | jq -r '.appId // empty')
+
 
 if [ -z "$CLIENT_ID" ]; then
   echo "❌ Failed to fetch Client ID from Databricks"
