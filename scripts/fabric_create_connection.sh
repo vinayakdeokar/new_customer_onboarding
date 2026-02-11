@@ -13,6 +13,18 @@ if [ -z "$MANAGER_ACCESS_TOKEN" ]; then
   exit 1
 fi
 
+echo "🔍 Listing Fabric Connections..."
+
+FABRIC_TOKEN=$(az account get-access-token \
+  --resource https://analysis.windows.net/powerbi/api \
+  --query accessToken -o tsv)
+
+curl -s -X GET \
+  "https://api.fabric.microsoft.com/v1/connections" \
+  -H "Authorization: Bearer $FABRIC_TOKEN" \
+  -H "Content-Type: application/json" | jq .
+
+
 echo "🔐 Fetching Customer SPN details from Key Vault..."
 
 SPN_CLIENT_ID=$(az keyvault secret show \
