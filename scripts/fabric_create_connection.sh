@@ -46,18 +46,47 @@ cat <<EOF > vnet_datasource_payload.json
 }
 EOF
 
-# ५. API कॉल करून कनेक्शन तयार करणे
-echo "📡 Sending request to Fabric API v2.0..."
+# ५. अधिकृत फॅब्रिक API कॉल (Service Principal साठी योग्य)
+echo "📡 Sending request to Official Fabric Admin API..."
+
+# 'me' ऐवजी थेट 'gateways' एंडपॉईंट वापरणे
 HTTP_STATUS=$(curl -s -w "%{http_code}" -o response.json \
-  -X POST "https://api.powerbi.com/v2.0/myorg/me/gatewayClusters/${GATEWAY_CLUSTER_ID}/datasources" \
+  -X POST "https://api.powerbi.com/v1.0/myorg/gateways/${GATEWAY_CLUSTER_ID}/datasources" \
   -H "Authorization: Bearer $MANAGER_TOKEN" \
   -H "Content-Type: application/json" \
   -d @vnet_datasource_payload.json)
 
 if [ "$HTTP_STATUS" -eq 201 ] || [ "$HTTP_STATUS" -eq 200 ]; then
-    echo "🎉 SUCCESS: VNet Connection created for $CUSTOMER_CODE!"
+    echo "🎉 SUCCESS: VNet Connection created for $CUSTOMER_CODE using Official API!"
 else
     echo "❌ FAILED: Status $HTTP_STATUS"
     cat response.json
-    exit 1
+    # जर वरील API फेल झाला, तर हा Group-specific API वापरून बघ (कारण तुझा गेटवे ग्रुपमध्ये आहे)
+    echo "🔄 Trying Group-specific Official API..."
+    HTTP_STATUS_GRP=$(curl -s -w "%{http_code}" -o response.json \
+      -X POST "https://api.powerbi.com/v1.0/myorg/groups/9f656d64-9fd4-4c38-8a27-be73e5f36836/gateways/${GATEWAY_CLUSTER_ID}/datasources" \
+      -H "Authorization: Bearer $MANAGER_TOKEN" \
+      -H "Content-Type: application/json" \
+      -d @vnet_datasource_payload.json)
+    
+    if [ "$HTTP_STATUS_GRP" -eq 201 ]; then
+        echo "🎉 SUCCESS: Connection created via Group API!"
+    else
+        exit 1
+    fi
 fi
+# # ५. API कॉल करून कनेक्शन तयार करणे
+# echo "📡 Sending request to Fabric API v2.0..."
+# HTTP_STATUS=$(curl -s -w "%{http_code}" -o response.json \
+#   -X POST "https://api.powerbi.com/v2.0/myorg/me/gatewayClusters/${GATEWAY_CLUSTER_ID}/datasources" \
+#   -H "Authorization: Bearer $MANAGER_TOKEN" \
+#   -H "Content-Type: application/json" \
+#   -d @vnet_datasource_payload.json)
+
+# if [ "$HTTP_STATUS" -eq 201 ] || [ "$HTTP_STATUS" -eq 200 ]; then
+#     echo "🎉 SUCCESS: VNet Connection created for $CUSTOMER_CODE!"
+# else
+#     echo "❌ FAILED: Status $HTTP_STATUS"
+#     cat response.json
+#     exit 1
+# fi
