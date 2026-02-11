@@ -96,27 +96,7 @@ echo "-------------------------------------------------------"
 echo "✅ SUCCESS: OAuth secret generated using TEMP token"
 echo "-------------------------------------------------------"
 
-# # --------------------------------------------------
-# # 5A. Fetch Client ID (Application ID) from Databricks
-# # --------------------------------------------------
 
-# echo "🔎 Fetching Client ID (Application ID) from Databricks..."
-
-# SPN_RESPONSE=$(curl -sf -X GET \
-#   -H "Authorization: Bearer $DB_TOKEN" \
-#   "$ACCOUNTS_BASE_URL/api/2.0/accounts/$DATABRICKS_ACCOUNT_ID/servicePrincipals/$DATABRICKS_INTERNAL_ID")
-
-# CLIENT_ID=$(echo "$SPN_RESPONSE" | jq -r '.appId // empty')
-
-
-# if [ -z "$CLIENT_ID" ]; then
-#   echo "❌ Failed to fetch Client ID from Databricks"
-#   echo "Response: $SPN_RESPONSE"
-#   exit 1
-# fi
-
-# echo "✅ Client ID fetched"
-# echo "   Client ID: $CLIENT_ID"
 
 
 # --------------------------------------------------
@@ -169,25 +149,28 @@ echo "✅ Key Vault rotation complete"
 echo "   Only latest secret version is ENABLED"
 echo "-------------------------------------------------------"
 
-# # --------------------------------------------------
-# # 7. Store Client ID in Azure Key Vault (ROTATION)
-# # --------------------------------------------------
+# --------------------------------------------------
+# 7. Store Client ID in Azure Key Vault
+# --------------------------------------------------
 
-# CLIENT_ID="$DATABRICKS_INTERNAL_ID"
-# CLIENT_ID_SECRET_NAME="${TARGET_SPN_DISPLAY_NAME}-client-id"
+: "${DATABRICKS_APP_ID:?missing Client ID}"
 
-# echo "🔐 Storing Client ID in Azure Key Vault"
-# echo "   Vault : $KV_NAME"
-# echo "   Name  : $CLIENT_ID_SECRET_NAME"
+CLEAN_SPN_NAME="$(echo "$TARGET_SPN_DISPLAY_NAME" | xargs)"
+CLIENT_ID_SECRET_NAME="${CLEAN_SPN_NAME}-client-id"
 
-# NEW_CLIENT_VERSION_ID=$(az keyvault secret set \
-#   --vault-name "$KV_NAME" \
-#   --name "$CLIENT_ID_SECRET_NAME" \
-#   --value "$CLIENT_ID" \
-#   --query "id" -o tsv)
+echo "🔐 Storing Client ID in Azure Key Vault"
+echo "   Vault : $KV_NAME"
+echo "   Name  : $CLIENT_ID_SECRET_NAME"
 
-# echo "-------------------------------------------------------"
-# echo "✅ Client ID stored successfully"
-# echo "-------------------------------------------------------"
+NEW_CLIENT_VERSION_ID=$(az keyvault secret set \
+  --vault-name "$KV_NAME" \
+  --name "$CLIENT_ID_SECRET_NAME" \
+  --value "$DATABRICKS_APP_ID" \
+  --query "id" -o tsv)
 
+echo "✅ Client ID stored successfully"
+echo "   Version ID: $NEW_CLIENT_VERSION_ID"
 
+echo "-------------------------------------------------------"
+echo "✅ Client ID storage complete"
+echo "-------------------------------------------------------"
