@@ -44,22 +44,36 @@ fi
 
 echo "🔎 Searching for VNet Gateway: ${GATEWAY_NAME}"
 
-# IMPORTANT: Do NOT use admin/gateways
-GATEWAY_LIST=$(curl -s \
+echo "📡 Calling Power BI Gateways API..."
+
+GATEWAY_LIST=$(curl -s -w "\nHTTP_STATUS:%{http_code}\n" \
   -H "Authorization: Bearer $MANAGER_ACCESS_TOKEN" \
   https://api.powerbi.com/v2.0/myorg/gateways)
 
-echo "$GATEWAY_LIST" | jq .
+echo "================ RAW RESPONSE ================"
+echo "$GATEWAY_LIST"
+echo "=============================================="
 
-GATEWAY_ID=$(echo "$GATEWAY_LIST" | jq -r \
+HTTP_STATUS=$(echo "$GATEWAY_LIST" | grep HTTP_STATUS | cut -d':' -f2)
+JSON_BODY=$(echo "$GATEWAY_LIST" | sed '/HTTP_STATUS/d')
+
+echo "HTTP Status: $HTTP_STATUS"
+
+echo "Parsed JSON:"
+echo "$JSON_BODY" | jq .
+
+GATEWAY_ID=$(echo "$JSON_BODY" | jq -r \
   --arg NAME "$GATEWAY_NAME" \
-  '.value[] | select(.name==$NAME) | .id')
+  '.value[]? | select(.name==$NAME) | .id')
 
 if [ -z "$GATEWAY_ID" ] || [ "$GATEWAY_ID" == "null" ]; then
-  echo "❌ Gateway '${GATEWAY_NAME}' not found."
-  echo "➡ Ensure Jenkins SPN is added in Manage Users of the VNet gateway."
+  echo "❌ Gateway '${GATEWAY_NAME}' not found in API response."
+  echo "➡ This means Fabric VNet gateway is NOT exposed via Power BI REST API."
   exit 1
 fi
+
+echo "✅ Gateway ID Found: $GATEWAY_ID"
+
 
 echo "✅ Gateway ID Found: $GATEWAY_ID"
 
