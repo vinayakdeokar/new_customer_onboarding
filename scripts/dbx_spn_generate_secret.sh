@@ -143,25 +143,25 @@ echo "✅ Key Vault rotation complete"
 echo "   Only latest secret version is ENABLED"
 echo "-------------------------------------------------------"
 
-# --------------------------------------------------
-# 7. Store Client ID in Azure Key Vault (ROTATION)
-# --------------------------------------------------
+# # --------------------------------------------------
+# # 7. Store Client ID in Azure Key Vault (ROTATION)
+# # --------------------------------------------------
 
-CLIENT_ID="$DATABRICKS_INTERNAL_ID"
-CLIENT_ID_SECRET_NAME="${TARGET_SPN_DISPLAY_NAME}-client-id"
+# CLIENT_ID="$DATABRICKS_INTERNAL_ID"
+# CLIENT_ID_SECRET_NAME="${TARGET_SPN_DISPLAY_NAME}-client-id"
 
-echo "🔐 Storing Client ID in Azure Key Vault"
-echo "   Vault : $KV_NAME"
-echo "   Name  : $CLIENT_ID_SECRET_NAME"
+# echo "🔐 Storing Client ID in Azure Key Vault"
+# echo "   Vault : $KV_NAME"
+# echo "   Name  : $CLIENT_ID_SECRET_NAME"
 
-NEW_CLIENT_VERSION_ID=$(az keyvault secret set \
-  --vault-name "$KV_NAME" \
-  --name "$CLIENT_ID_SECRET_NAME" \
-  --value "$CLIENT_ID" \
-  --query "id" -o tsv)
+# NEW_CLIENT_VERSION_ID=$(az keyvault secret set \
+#   --vault-name "$KV_NAME" \
+#   --name "$CLIENT_ID_SECRET_NAME" \
+#   --value "$CLIENT_ID" \
+#   --query "id" -o tsv)
 
-echo "-------------------------------------------------------"
-echo "✅ Client ID stored successfully"
-echo "-------------------------------------------------------"
+# echo "-------------------------------------------------------"
+# echo "✅ Client ID stored successfully"
+# echo "-------------------------------------------------------"
 
 
