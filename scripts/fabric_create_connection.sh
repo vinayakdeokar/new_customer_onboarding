@@ -1,70 +1,34 @@
 #!/bin/bash
 set -e
 
-#!/bin/bash
-set -e
-
-echo "----------------------------------------------------------------"
-echo "🔍 DISCOVERING ACCURATE GATEWAY ID"
-echo "----------------------------------------------------------------"
-
-# १. टोकन मिळवणे
-MANAGER_TOKEN=$(az account get-access-token --resource https://analysis.windows.net/powerbi/api --query accessToken -o tsv)
-
-# २. उपलब्ध सर्व गेटवे क्लस्टर्सची यादी मिळवणे
-# आपण 'v1.0/myorg/gatewayClusters' वापरणार आहोत जो VNet साठी योग्य आहे
-echo "📡 Fetching list of available gateways..."
-RESPONSE=$(curl -s -X GET "https://api.powerbi.com/v1.0/myorg/gatewayClusters" \
-  -H "Authorization: Bearer $MANAGER_TOKEN")
-
-# ३. यादी प्रिंट करणे जेणेकरून आपल्याला चूक कळेल
-echo "📄 API Response:"
-echo $RESPONSE | jq .
-
-# ४. गेटवे नावावरून ID फिल्टर करणे
-GATEWAY_NAME="vnwt-db-fab-fabric-sub"
-FOUND_ID=$(echo $RESPONSE | jq -r ".value[] | select(.name==\"$GATEWAY_NAME\") | .id")
-
-if [ "$FOUND_ID" != "null" ] && [ -n "$FOUND_ID" ]; then
-    echo "✅ FOUND IT! The correct Gateway ID is: $FOUND_ID"
-else
-    echo "❌ ERROR: Gateway name '$GATEWAY_NAME' not found in the list."
-    echo "💡 Check if your SPN (spn-key-vault-jenk) is added as an 'Admin' on this specific gateway."
-fi
-
-# --- 1. CONFIGURATION ---
-# तुझे कन्फर्म झालेले डिटेल्स
+# --- १. CONFIGURATION ---
+# तुझ्या स्क्रीनशॉटनुसार हे आयडी आणि नावे फिक्स आहेत
 WORKSPACE_ID="9f656d64-9fd4-4c38-8a27-be73e5f36836"
 GATEWAY_ID="223ca510-82c0-456f-b5ba-de6ff5c01fd2"
-CUSTOMER_CODE="vinayak-005"  # अचूक नाव
+CUSTOMER_CODE="vinayak-005"  
 CONNECTION_NAME="conn_db_${CUSTOMER_CODE}"
 
 echo "----------------------------------------------------------------"
-echo "🚀 DIRECT API CONNECTION SETUP (NO CLI INSTALL NEEDED)"
+echo "🎯 STARTING DEPLOYMENT FOR: $CONNECTION_NAME"
 echo "----------------------------------------------------------------"
 
-# --- 2. CREDENTIALS ---
-echo "🔑 Fetching credentials..."
+# --- २. CREDENTIALS FETCHING ---
+echo "🔑 Fetching Databricks OAuth credentials from Key Vault..."
+# टीप: आपण 'vinayak-005' वापरत आहोत कारण पोर्टलवर तेच नाव आहे
 CUST_CLIENT_ID=$(az keyvault secret show --vault-name "$KV_NAME" --name "sp-${PRODUCT}-${CUSTOMER_CODE}-oauth-client-id" --query value -o tsv)
 CUST_SECRET=$(az keyvault secret show --vault-name "$KV_NAME" --name "sp-${PRODUCT}-${CUSTOMER_CODE}-oauth-secret" --query value -o tsv)
 
-# --- 3. PAYLOAD PREPARATION (THE SECRET SAUCE) ---
-# Databricks साठी connectionDetails हे JSON Object नसून 'JSON String' लागते.
-# आपण ते आधीच Stringify करत आहोत.
-SERVER_VAL="${DATABRICKS_HOST}"
-HTTP_PATH_VAL="${DATABRICKS_SQL_PATH}"
+# --- ३. PAYLOAD PREPARATION ---
+# VNet Databricks साठी connectionDetails हे स्ट्रिंग फॉरमॅटमध्ये असणे अनिवार्य आहे.
+CONN_DETAILS_JSON="{\"server\":\"${DATABRICKS_HOST}\",\"httpPath\":\"${DATABRICKS_SQL_PATH}\"}"
 
-# Connection String बनवणे (हे खूप महत्त्वाचे आहे)
-CONN_DETAILS_STRING="{\"server\":\"$SERVER_VAL\",\"httpPath\":\"$HTTP_PATH_VAL\"}"
-
-# मुख्य JSON फाइल बनवणे
-cat <<EOF > api_payload.json
+# फायनल JSON पेलोड तयार करणे
+cat <<EOF > fabric_payload.json
 {
-    "datasourceName": "${CUSTOMER_CODE}",
+    "datasourceName": "${CONNECTION_NAME}",
     "dataSourceType": "Extension",
     "extensionIdentifier": "Databricks",
-    "gatewayId": "${GATEWAY_ID}",
-    "connectionDetails": "$CONN_DETAILS_STRING",
+    "connectionDetails": $(echo -n "$CONN_DETAILS_JSON" | jq -R .),
     "credentialDetails": {
         "credentialType": "Basic",
         "credentials": "{\"credentialData\":[{\"name\":\"username\",\"value\":\"${CUST_CLIENT_ID}\"},{\"name\":\"password\",\"value\":\"${CUST_SECRET}\"}]}",
@@ -75,31 +39,31 @@ cat <<EOF > api_payload.json
 }
 EOF
 
-# --- 4. EXECUTION ---
-echo "📡 Sending Request to Power BI/Fabric Gateway API..."
+# --- ४. EXECUTION (Using Fabric/Power BI API) ---
+echo "📡 Sending Request to Gateway Clusters API..."
+# आपण 'Tenant.ReadWrite.All' स्कोप वापरत आहोत
 MANAGER_TOKEN=$(az account get-access-token --resource https://analysis.windows.net/powerbi/api --query accessToken -o tsv)
 
-# आपण 'gatewayClusters' API वापरत आहोत कारण ते VNet साठी आहे
-# जर 404 आला तर स्क्रिप्ट थांबणार नाही, आपण Output बघू
-HTTP_CODE=$(curl -s -o response.json -w "%{http_code}" \
+# VNet गेटवेसाठी gatewayClusters एंडपॉईंट सर्वात रिलायबल आहे
+HTTP_STATUS=$(curl -s -o response.json -w "%{http_code}" \
   -X POST "https://api.powerbi.com/v1.0/myorg/gatewayClusters/${GATEWAY_ID}/datasources" \
   -H "Authorization: Bearer $MANAGER_TOKEN" \
   -H "Content-Type: application/json" \
-  -d @api_payload.json)
+  -d @fabric_payload.json)
 
+# --- ५. RESULT CHECKING ---
 echo "----------------------------------------------------------------"
-if [ "$HTTP_CODE" -eq 201 ] || [ "$HTTP_CODE" -eq 200 ]; then
-    echo "🎉 SUCCESS: Connection '$CUSTOMER_CODE' created successfully!"
-    echo "✅ Status Code: $HTTP_CODE"
-    exit 0
+if [ "$HTTP_STATUS" -eq 201 ] || [ "$HTTP_STATUS" -eq 200 ]; then
+    echo "🎉 SUCCESS: Connection '$CONNECTION_NAME' is now active!"
+    echo "✅ Status Code: $HTTP_STATUS"
+    rm fabric_payload.json response.json
 else
-    echo "❌ FAILED: Status Code $HTTP_CODE"
-    echo "📄 Response from Server:"
+    echo "❌ FAILED: Status Code $HTTP_STATUS"
+    echo "📄 Error Details from Fabric:"
     cat response.json
     echo ""
     echo "----------------------------------------------------------------"
-    echo "💡 TROUBLESHOOTING:"
-    echo "1. If 404: The Gateway ID might be wrong. Check URL in Fabric Portal."
-    echo "2. If 400: The JSON payload format is incorrect."
+    echo "💡 PRO-TIP: If still 404, double-check that 'sp-m360-vinayak-005' 
+          has 'Network Contributor' role on VNet 'vnwt-db-fab'."
     exit 1
 fi
