@@ -1,60 +1,66 @@
 #!/bin/bash
 set -e
 
-# १. डेटा क्लिनिंग (अत्यंत महत्त्वाचे)
-# Host मधून https:// काढून टाकणे
-CLEAN_HOST=$(echo "$DATABRICKS_HOST" | sed -e 's|^https://||' -e 's|/$||')
-# Path स्लॅशने सुरू झालाच पाहिजे
-CLEAN_PATH=$(echo "$DATABRICKS_SQL_PATH" | sed -e 's|^/||')
-CLEAN_PATH="/$CLEAN_PATH"
-
+# १. पॅरामीटर्स (DNS चेक करण्यासाठी ping वापरून पाहूया)
 GATEWAY_ID="223ca510-82c0-456f-b5ba-de6ff5c01fd2"
 
 echo "----------------------------------------------------------------"
-echo "🚀 FINAL ATTEMPT: OFFICIAL EXTENSION SCHEMA FOR $CUSTOMER_CODE"
+echo "🚀 PROVISIONING VNET CONNECTION (OFFICIAL CLUSTER API): $CUSTOMER_CODE"
 echo "----------------------------------------------------------------"
 
-# २. मॅनेजर टोकन मिळवणे
+# २. टोकन मिळवणे
 MANAGER_TOKEN=$(az account get-access-token --resource https://analysis.windows.net/powerbi/api --query accessToken -o tsv)
 
-# ३. की-वॉल्टमधून क्रेडेंशियल्स मिळवणे
+# ३. क्रेडेंशियल्स मिळवणे
 CUST_CLIENT_ID=$(az keyvault secret show --vault-name "$KV_NAME" --name "sp-${PRODUCT}-${CUSTOMER_CODE}-oauth-client-id" --query value -o tsv)
 CUST_SECRET=$(az keyvault secret show --vault-name "$KV_NAME" --name "sp-${PRODUCT}-${CUSTOMER_CODE}-oauth-secret" --query value -o tsv)
 
-# ४. अधिकृत Gateway API v1.0 पेलोड
-# dataSourceType: "Extension" (कारण हा नेटिव्ह टाईप नाही)
-# extensionIdentifier: "Databricks" (हेच ते गुपित नाव आहे)
-cat <<EOF > final_accurate_payload.json
+# ४. पेलोड - हा तोच पेलोड आहे जो VNet Gateway साठी 'Actual' आहे
+# टीप: VNet Gateway साठी 'credentialDetails' मध्ये GATEWAY_ID की म्हणून लागतो.
+cat <<EOF > vnet_official_payload.json
 {
-    "dataSourceName": "${CUSTOMER_CODE}",
-    "dataSourceType": "Extension",
-    "extensionIdentifier": "Databricks",
-    "connectionDetails": "{\"host\":\"${CLEAN_HOST}\",\"httpPath\":\"${CLEAN_PATH}\"}",
+    "datasourceName": "${CUSTOMER_CODE}",
+    "datasourceType": "Extension",
+    "connectionDetails": "{\"host\":\"${DATABRICKS_HOST}\",\"httpPath\":\"${DATABRICKS_SQL_PATH}\"}",
+    "singleSignOnType": "None",
+    "mashupTestConnectionDetails": {
+        "functionName": "Databricks.Catalogs",
+        "moduleName": "Databricks",
+        "moduleVersion": "2.0.7",
+        "parameters": [
+            { "name": "host", "type": "text", "isRequired": true, "value": "${DATABRICKS_HOST}" },
+            { "name": "httpPath", "type": "text", "isRequired": true, "value": "${DATABRICKS_SQL_PATH}" }
+        ]
+    },
     "credentialDetails": {
-        "credentialType": "Basic",
-        "credentials": "{\"credentialData\":[{\"name\":\"username\",\"value\":\"${CUST_CLIENT_ID}\"},{\"name\":\"password\",\"value\":\"${CUST_SECRET}\"}]}",
-        "encryptedConnection": "Encrypted",
-        "encryptionAlgorithm": "None",
-        "privacyLevel": "Organizational"
+        "${GATEWAY_ID}": {
+            "credentialType": "Basic",
+            "credentials": "{\"credentialData\":[{\"name\":\"username\",\"value\":\"${CUST_CLIENT_ID}\"},{\"name\":\"password\",\"value\":\"${CUST_SECRET}\"}]}",
+            "encryptedConnection": "Any",
+            "privacyLevel": "Organizational",
+            "skipTestConnection": true,
+            "encryptionAlgorithm": "NONE",
+            "credentialSources": []
+        }
     }
 }
 EOF
 
-# ५. अधिकृत API कॉल
-echo "📡 Target: https://api.powerbi.com/v1.0/myorg/gateways/${GATEWAY_ID}/datasources"
+# ५. 'gatewayClusters' एंडपॉईंट (VNet साठी हाच अधिकृत आहे)
+# आपण '/me/' काढले आहे, जे SPN साठी जास्त प्रोफेशनल आहे.
+echo "📡 Sending Request to Gateway Clusters API..."
 
 HTTP_STATUS=$(curl -s -w "%{http_code}" -o response.json \
-  -X POST "https://api.powerbi.com/v1.0/myorg/gateways/${GATEWAY_ID}/datasources" \
+  -X POST "https://api.powerbi.com/v2.0/myorg/gatewayClusters/${GATEWAY_ID}/datasources" \
   -H "Authorization: Bearer $MANAGER_TOKEN" \
   -H "Content-Type: application/json" \
-  -d @final_accurate_payload.json)
+  -d @vnet_official_payload.json)
 
-# ६. निकाल तपासणे
+# ६. निकाल
 if [ "$HTTP_STATUS" -eq 201 ] || [ "$HTTP_STATUS" -eq 200 ]; then
-    echo "🎉 SUCCESS: Connection '$CUSTOMER_CODE' is officially created!"
+    echo "🎉 SUCCESS: Connection '$CUSTOMER_CODE' created on VNet Gateway!"
 else
-    echo "❌ ERROR: Status $HTTP_STATUS"
-    echo "📄 Response Details:"
+    echo "❌ FAILED: Status $HTTP_STATUS"
     cat response.json
     exit 1
 fi
