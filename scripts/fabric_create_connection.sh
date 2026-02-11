@@ -1,28 +1,26 @@
 #!/bin/bash
 set -e
 
-echo "🔐 Getting Azure AD Token for Power BI/Fabric..."
-# VNet/Gateway API साठी Power BI चा रिसोर्स वापरणे आवश्यक आहे
+echo "🔐 Getting Azure AD Token for Fabric/Power BI..."
 ACCESS_TOKEN=$(az account get-access-token --resource https://analysis.windows.net/powerbi/api --query accessToken -o tsv)
-
-if [ -z "$ACCESS_TOKEN" ]; then
-  echo "❌ Failed to get Azure token"
-  exit 1
-fi
 
 echo "🔐 Fetching SPN secrets from Key Vault..."
 SPN_CLIENT_ID=$(az keyvault secret show --vault-name "$KV_NAME" --name "sp-${PRODUCT}-${CUSTOMER_CODE}-oauth-client-id" --query value -o tsv)
 SPN_SECRET=$(az keyvault secret show --vault-name "$KV_NAME" --name "sp-${PRODUCT}-${CUSTOMER_CODE}-oauth-secret" --query value -o tsv)
 
-echo "🚀 Creating Fabric VNet Databricks Connection..."
+echo "🔎 Finding Gateway ID for: vnwt-db-fab-fabric-sub..."
+# सर्व गेटवेची यादी मिळवून आपल्या गेटवेचा ID शोधणे
+GATEWAY_LIST=$(curl -s -H "Authorization: Bearer $ACCESS_TOKEN" "https://api.powerbi.com/v1.0/myorg/gateways")
+GATEWAY_ID=$(echo "$GATEWAY_LIST" | jq -r '.value[] | select(.name=="vnwt-db-fab-fabric-sub") | .id')
 
-# VNet Gateway साठी हाच एंडपॉईंट काम करतो
-GATEWAY_URL="https://api.powerbi.com/v1.0/myorg/gateways"
+if [ -z "$GATEWAY_ID" ] || [ "$GATEWAY_ID" == "null" ]; then
+  echo "❌ Error: Could not find Gateway ID for 'vnwt-db-fab-fabric-sub'. Please check if it exists in Fabric."
+  exit 1
+fi
 
-# तुझ्या स्क्रीनशॉटनुसार पेलोड
-# Gateway Cluster Name: vnwt-db-fab-fabric-sub
-# Connection Type: AzureDatabricks
-# Privacy Level: Private
+echo "🚀 Gateway ID Found: $GATEWAY_ID. Creating VNet Connection..."
+
+# VNet Gateway कनेक्शनसाठी पेलोड
 cat <<EOF > vnet_payload.json
 {
     "dataSourceType": "AzureDatabricks",
@@ -38,13 +36,9 @@ cat <<EOF > vnet_payload.json
 }
 EOF
 
-# टीप: VNet गेटवेवर कनेक्शन बनवण्यासाठी आधी त्या गेटवेचा ID शोधणे आवश्यक असते.
-# जर 'vnwt-db-fab-fabric-sub' चा ID माहित असेल तर तो खाली वापरा.
-# इथे आपण थेट गेटवे क्लस्टरला 'Push' करण्याचा प्रयत्न करत आहोत.
-GATEWAY_ID="तुम्ही_तुमच्या_गेटवेचा_ID_इथे_टाका"
-
+# प्रत्यक्ष कनेक्शन तयार करण्याचा कॉल
 HTTP_RESPONSE=$(curl -s -w "%{http_code}" -o response.json \
-  -X POST "${GATEWAY_URL}/${GATEWAY_ID}/datasources" \
+  -X POST "https://api.powerbi.com/v1.0/myorg/gateways/${GATEWAY_ID}/datasources" \
   -H "Authorization: Bearer $ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
   -d @vnet_payload.json)
