@@ -150,13 +150,13 @@ echo "   Only latest secret version is ENABLED"
 echo "-------------------------------------------------------"
 
 # --------------------------------------------------
-# 7. Store Client ID in Azure Key Vault
+# 7. Store Client ID in Azure Key Vault (Same SPN)
 # --------------------------------------------------
 
 : "${DATABRICKS_APP_ID:?missing Client ID}"
 
 CLEAN_SPN_NAME="$(echo "$TARGET_SPN_DISPLAY_NAME" | xargs)"
-CLIENT_ID_SECRET_NAME="${CLEAN_SPN_NAME}-client-id"
+CLIENT_ID_SECRET_NAME="${CLEAN_SPN_NAME}-oauth-client-id"
 
 echo "🔐 Storing Client ID in Azure Key Vault"
 echo "   Vault : $KV_NAME"
@@ -174,3 +174,4 @@ echo "   Version ID: $NEW_CLIENT_VERSION_ID"
 echo "-------------------------------------------------------"
 echo "✅ Client ID storage complete"
 echo "-------------------------------------------------------"
+------"
