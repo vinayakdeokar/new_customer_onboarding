@@ -204,7 +204,7 @@ epipeline {
         // --------------------------------------------------
         // FABRIC DATABRICKS CONNECTION
         // --------------------------------------------------
-        stage('Fabric Databricks Connection') {
+        stage('Fabric VNet Databricks Connection') {
             steps {
                 withCredentials([
                     string(credentialsId: 'AZURE_TENANT_ID', variable: 'AZURE_TENANT_ID'),
@@ -212,15 +212,6 @@ epipeline {
                     string(credentialsId: 'DATABRICKS_SQL_PATH', variable: 'DATABRICKS_SQL_PATH')
                 ]) {
                     sh '''
-                        echo "Starting Fabric Connection Creation..."
-        
-                        export PRODUCT="${PRODUCT}"
-                        export CUSTOMER_CODE="${CUSTOMER_CODE}"
-                        export KV_NAME="${KV_NAME}"
-                        export AZURE_TENANT_ID="${AZURE_TENANT_ID}"
-                        export DATABRICKS_HOST="${DATABRICKS_HOST}"
-                        export DATABRICKS_SQL_PATH="${DATABRICKS_SQL_PATH}"
-        
                         chmod +x scripts/fabric_create_connection.sh
                         ./scripts/fabric_create_connection.sh
                     '''
