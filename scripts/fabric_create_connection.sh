@@ -1,6 +1,37 @@
 #!/bin/bash
 set -e
 
+#!/bin/bash
+set -e
+
+echo "----------------------------------------------------------------"
+echo "🔍 DISCOVERING ACCURATE GATEWAY ID"
+echo "----------------------------------------------------------------"
+
+# १. टोकन मिळवणे
+MANAGER_TOKEN=$(az account get-access-token --resource https://analysis.windows.net/powerbi/api --query accessToken -o tsv)
+
+# २. उपलब्ध सर्व गेटवे क्लस्टर्सची यादी मिळवणे
+# आपण 'v1.0/myorg/gatewayClusters' वापरणार आहोत जो VNet साठी योग्य आहे
+echo "📡 Fetching list of available gateways..."
+RESPONSE=$(curl -s -X GET "https://api.powerbi.com/v1.0/myorg/gatewayClusters" \
+  -H "Authorization: Bearer $MANAGER_TOKEN")
+
+# ३. यादी प्रिंट करणे जेणेकरून आपल्याला चूक कळेल
+echo "📄 API Response:"
+echo $RESPONSE | jq .
+
+# ४. गेटवे नावावरून ID फिल्टर करणे
+GATEWAY_NAME="vnwt-db-fab-fabric-sub"
+FOUND_ID=$(echo $RESPONSE | jq -r ".value[] | select(.name==\"$GATEWAY_NAME\") | .id")
+
+if [ "$FOUND_ID" != "null" ] && [ -n "$FOUND_ID" ]; then
+    echo "✅ FOUND IT! The correct Gateway ID is: $FOUND_ID"
+else
+    echo "❌ ERROR: Gateway name '$GATEWAY_NAME' not found in the list."
+    echo "💡 Check if your SPN (spn-key-vault-jenk) is added as an 'Admin' on this specific gateway."
+fi
+
 # --- 1. CONFIGURATION ---
 # तुझे कन्फर्म झालेले डिटेल्स
 WORKSPACE_ID="9f656d64-9fd4-4c38-8a27-be73e5f36836"
