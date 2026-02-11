@@ -8,6 +8,10 @@ echo "----------------------------------------------------------------"
 echo "🔐 CHECKING PERMISSIONS FOR: $CUSTOMER_CODE"
 echo "----------------------------------------------------------------"
 
+MANAGER_TOKEN=$(az account get-access-token --resource https://analysis.windows.net/powerbi/api --query accessToken -o tsv)
+echo "🔍 Token is issued to App ID:"
+echo $MANAGER_TOKEN | cut -d. -f2 | base64 -d 2>/dev/null | grep -oP '"appid":"\K[^"]+'
+
 # २. मॅनेजर टोकन मिळवणे
 MANAGER_TOKEN=$(az account get-access-token --resource https://analysis.windows.net/powerbi/api --query accessToken -o tsv)
 
