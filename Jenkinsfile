@@ -109,32 +109,35 @@ pipeline {
             }
         }
 
-        stage('Install Node Dependencies') {
-            steps {
-                sh '''
-                    npm install
-                    npx playwright install chromium
-                '''
-            }
-        }
-
-
-        // --------------------------------------------------
-        // FABRIC DATABRICKS CONNECTION
-        // --------------------------------------------------
-       // --------------------------------------------------
         stage('Fabric Databricks Connection') {
             steps {
                 withCredentials([
+                    string(credentialsId: 'AZURE_CLIENT_ID', variable: 'AZURE_CLIENT_ID'),
+                    string(credentialsId: 'AZURE_CLIENT_SECRET', variable: 'AZURE_CLIENT_SECRET'),
                     string(credentialsId: 'AZURE_TENANT_ID', variable: 'AZURE_TENANT_ID'),
+                    string(credentialsId: 'AZURE_SUBSCRIPTION_ID', variable: 'AZURE_SUBSCRIPTION_ID'),
                     string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
                     string(credentialsId: 'DATABRICKS_SQL_PATH', variable: 'DATABRICKS_SQL_PATH')
                 ]) {
                     sh '''
                         echo "===================================="
                         echo "🚀 STARTING FABRIC CONNECTION STAGE"
+                        echo "Customer: ${CUSTOMER_CODE}"
                         echo "===================================="
         
+                        # --------------------------------------------------
+                        # Azure Login (Service Principal)
+                        # --------------------------------------------------
+                        az login --service-principal \
+                          --username "$AZURE_CLIENT_ID" \
+                          --password "$AZURE_CLIENT_SECRET" \
+                          --tenant "$AZURE_TENANT_ID" > /dev/null
+        
+                        az account set --subscription "$AZURE_SUBSCRIPTION_ID"
+        
+                        # --------------------------------------------------
+                        # Export required variables
+                        # --------------------------------------------------
                         export PRODUCT="${PRODUCT}"
                         export CUSTOMER_CODE="${CUSTOMER_CODE}"
                         export KV_NAME="${KV_NAME}"
@@ -142,6 +145,12 @@ pipeline {
                         export DATABRICKS_HOST="${DATABRICKS_HOST}"
                         export DATABRICKS_SQL_PATH="${DATABRICKS_SQL_PATH}"
         
+                        echo "Using Host: $DATABRICKS_HOST"
+                        echo "Using SQL Path: $DATABRICKS_SQL_PATH"
+        
+                        # --------------------------------------------------
+                        # Run Fabric Script
+                        # --------------------------------------------------
                         chmod +x scripts/fabric_create_connection.sh
                         ./scripts/fabric_create_connection.sh
                     '''
@@ -149,6 +158,10 @@ pipeline {
             }
         }
 
+
+        
+
+        
 
                 
 
