@@ -59,17 +59,30 @@ fi
 # --------------------------------------------------
 # Step 5️⃣ Create SPN in Databricks
 # --------------------------------------------------
-echo "➕ Adding Azure SPN to Databricks workspace..."
+
+echo "➕ Adding Azure SPN at Databricks Account level..."
 
 HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
   -X POST \
-  "$DATABRICKS_HOST/api/2.0/preview/scim/v2/ServicePrincipals" \
-  -H "Authorization: Bearer $DATABRICKS_ADMIN_TOKEN" \
+  "https://accounts.azuredatabricks.net/api/2.0/accounts/$DATABRICKS_ACCOUNT_ID/servicePrincipals" \
+  -H "Authorization: Bearer $DATABRICKS_ACCOUNT_TOKEN" \
   -H "Content-Type: application/json" \
   -d "{
-        \"applicationId\": \"$SPN_CLIENT_ID\",
-        \"displayName\": \"$SPN_NAME\"
+        \"application_id\": \"$SPN_CLIENT_ID\"
       }")
+
+
+# echo "➕ Adding Azure SPN to Databricks workspace..."
+
+# HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+#   -X POST \
+#   "$DATABRICKS_HOST/api/2.0/preview/scim/v2/ServicePrincipals" \
+#   -H "Authorization: Bearer $DATABRICKS_ADMIN_TOKEN" \
+#   -H "Content-Type: application/json" \
+#   -d "{
+#         \"applicationId\": \"$SPN_CLIENT_ID\",
+#         \"displayName\": \"$SPN_NAME\"
+#       }")
 
 if [ "$HTTP_CODE" = "201" ]; then
   echo "🎉 SPN successfully added to Databricks"
