@@ -84,6 +84,20 @@ HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
 #         \"displayName\": \"$SPN_NAME\"
 #       }")
 
+curl -X POST \
+"https://accounts.azuredatabricks.net/api/2.0/accounts/$DATABRICKS_ACCOUNT_ID/servicePrincipals" \
+-H "Authorization: Bearer $DATABRICKS_ACCOUNT_TOKEN" \
+-H "Content-Type: application/json" \
+-d "{\"application_id\": \"$SPN_CLIENT_ID\"}"
+ACCOUNT_SPN_ID=$(curl -s \
+-H "Authorization: Bearer $DATABRICKS_ACCOUNT_TOKEN" \
+"https://accounts.azuredatabricks.net/api/2.0/accounts/$DATABRICKS_ACCOUNT_ID/servicePrincipals" \
+| jq -r ".service_principals[] | select(.application_id==\"$SPN_CLIENT_ID\") | .id")
+curl -X PATCH \
+"https://accounts.azuredatabricks.net/api/2.0/accounts/$DATABRICKS_ACCOUNT_ID/workspaces/$DATABRICKS_WORKSPACE_ID/servicePrincipals/$ACCOUNT_SPN_ID" \
+-H "Authorization: Bearer $DATABRICKS_ACCOUNT_TOKEN"
+
+
 if [ "$HTTP_CODE" = "201" ]; then
   echo "🎉 SPN successfully added to Databricks"
 elif [ "$HTTP_CODE" = "409" ]; then
