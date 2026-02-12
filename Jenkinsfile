@@ -211,8 +211,6 @@ pipeline {
                 }
             }
         }
-        
-
         stage('Update Customer Metadata') {
             when {
                 expression { currentBuild.currentResult == 'SUCCESS' }
@@ -235,21 +233,25 @@ pipeline {
                             ${CUSTOMER_CODE} \
                             ${ENV}
         
-                        # Set authenticated remote for push
-                        git remote set-url origin https://${GIT_USERNAME}:${GIT_TOKEN}@github.com/vinayakdeokar/new_customer_onboarding.git
+                        git config user.name "jenkins-bot"
+                        git config user.email "jenkins@automation.local"
         
                         git add metadata/customers/customers.json
+        
                         if git diff --cached --quiet; then
-                            echo "No changes to commit"
+                            echo "No metadata changes detected"
                         else
                             git commit -m "Auto-added structured metadata for ${CUSTOMER_CODE}"
-                            git push origin main
+                            git push https://${GIT_USERNAME}:${GIT_TOKEN}@github.com/vinayakdeokar/new_customer_onboarding.git HEAD:main
                         fi
-
+                        """
                     }
                 }
             }
         }
+
+        
+
 
 
     }
