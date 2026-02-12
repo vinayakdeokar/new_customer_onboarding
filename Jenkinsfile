@@ -127,19 +127,23 @@ pipeline {
             steps {
                 withCredentials([
                     string(credentialsId: 'FABRIC_USER', variable: 'FABRIC_USER'),
-                    string(credentialsId: 'FABRIC_PASS', variable: 'FABRIC_PASS')
+                    string(credentialsId: 'FABRIC_PASS', variable: 'FABRIC_PASS'),
+                    string(credentialsId: 'FABRIC_WORKSPACE_ID', variable: 'FABRIC_WORKSPACE_ID')
                 ]) {
                     sh '''
                         echo "===================================="
                         echo "🚀 STARTING FABRIC UI AUTOMATION"
+                        echo "Customer: ${CUSTOMER_CODE}"
                         echo "===================================="
         
-                        # Export main vars
+                        # Export required variables
                         export CUSTOMER_CODE="${CUSTOMER_CODE}"
                         export DATABRICKS_HOST="${DATABRICKS_HOST}"
                         export DATABRICKS_SQL_PATH="${DATABRICKS_SQL_PATH}"
+                        export FABRIC_WORKSPACE_ID="${FABRIC_WORKSPACE_ID}"
         
-                        # Fetch SPN secrets from KeyVault
+                        echo "🔐 Fetching SPN credentials from KeyVault..."
+        
                         export SPN_CLIENT_ID=$(az keyvault secret show \
                           --vault-name ${KV_NAME} \
                           --name sp-${PRODUCT}-${CUSTOMER_CODE}-oauth-client-id \
@@ -155,11 +159,14 @@ pipeline {
                             exit 1
                         fi
         
+                        echo "🚀 Launching Playwright automation..."
+        
                         node scripts/fabric_ui_create_connection.js
                     '''
                 }
             }
         }
+
 
                 
 
