@@ -1,62 +1,51 @@
 #!/bin/bash
-set -e
 
 PRODUCT=$1
-CUSTOMER=$2
-ENV=$3
+CUSTOMER_CODE=$2
+ENVIRONMENT=$3
 
-SPN_NAME="sp-${PRODUCT}-${CUSTOMER}"
-GROUP_NAME="grp-${PRODUCT}-${CUSTOMER}-users"
-CATALOG_NAME="medicareadv"
+FILE="metadata/customers/customers.json"
 
-BRONZE_SCHEMA="${PRODUCT}_${CUSTOMER}_bronze"
-SILVER_SCHEMA="${PRODUCT}_${CUSTOMER}_silver"
-GOLD_SCHEMA="${PRODUCT}_${CUSTOMER}_gold"
+GROUP="grp-${PRODUCT}-${CUSTOMER_CODE}-users"
+SPN="sp-${PRODUCT}-${CUSTOMER_CODE}"
 
-JSON_FILE="metadata/customers/customers.json"
+# Check if already exists
+EXISTS=$(jq -r --arg cc "$CUSTOMER_CODE" \
+  '.customers[] | select(.customer_code==$cc)' "$FILE")
 
-TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+if [ -n "$EXISTS" ]; then
+  echo "⚠️ Customer already exists in JSON"
+  exit 0
+fi
 
-echo "Updating metadata JSON..."
+# Build new JSON object
+NEW_ENTRY=$(jq -n \
+  --arg cc "$CUSTOMER_CODE" \
+  --arg prod "$PRODUCT" \
+  --arg env "$ENVIRONMENT" \
+  --arg grp "$GROUP" \
+  --arg spn "$SPN" \
+  '{
+    customer_code: $cc,
+    product: $prod,
+    environment: $env,
+    group: $grp,
+    group_permissions: [
+      "USE_CATALOG",
+      "USE_SCHEMA",
+      "SELECT",
+      "EXECUTE",
+      "READ_VOLUME"
+    ],
+    spn: $spn,
+    spn_permissions: [
+      "CAN_USE"
+    ]
+  }')
 
-jq --arg customer "$CUSTOMER" \
-   --arg product "$PRODUCT" \
-   --arg env "$ENV" \
-   --arg spn "$SPN_NAME" \
-   --arg group "$GROUP_NAME" \
-   --arg catalog "$CATALOG_NAME" \
-   --arg bronze "$BRONZE_SCHEMA" \
-   --arg silver "$SILVER_SCHEMA" \
-   --arg gold "$GOLD_SCHEMA" \
-   --arg time "$TIMESTAMP" '
-.customers[$customer] = {
-  product: $product,
-  environment: $env,
-  spn_name: $spn,
-  group_name: $group,
-  catalog_name: $catalog,
-  schemas: {
-    bronze: $bronze,
-    silver: $silver,
-    gold: $gold
-  },
-  permissions: [
-    "USE SCHEMA",
-    "SELECT",
-    "EXECUTE",
-    "READ VOLUME"
-  ],
-  created_at: $time
-}
-' "$JSON_FILE" > tmp.json
+# Append safely (NO overwrite of whole file)
+jq --argjson newCustomer "$NEW_ENTRY" \
+  '.customers += [$newCustomer]' \
+  "$FILE" > tmp.json && mv tmp.json "$FILE"
 
-mv tmp.json "$JSON_FILE"
-
-git config user.email "jenkins@automation.com"
-git config user.name "Jenkins Automation"
-
-git add "$JSON_FILE"
-git commit -m "Auto-added structured metadata for $CUSTOMER"
-git push origin main
-
-echo "Metadata updated successfully"
+echo "✅ Customer appended successfully"
