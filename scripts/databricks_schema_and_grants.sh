@@ -50,7 +50,8 @@ run_sql () {
 
   if [[ "$STATE" == "FAILED" ]]; then
     echo "❌ SQL FAILED"
-    echo "✔ SQL executed successfully"
+    echo "$RESP"
+
     exit 1
   fi
 }
