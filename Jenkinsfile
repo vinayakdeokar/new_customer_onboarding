@@ -123,45 +123,27 @@ pipeline {
         // FABRIC DATABRICKS CONNECTION
         // --------------------------------------------------
        // --------------------------------------------------
-        stage('Fabric UI Connection') {
+        stage('Fabric Databricks Connection') {
             steps {
                 withCredentials([
-                    string(credentialsId: 'FABRIC_USER', variable: 'FABRIC_USER'),
-                    string(credentialsId: 'FABRIC_PASS', variable: 'FABRIC_PASS'),
-                    string(credentialsId: 'FABRIC_WORKSPACE_ID', variable: 'FABRIC_WORKSPACE_ID')
+                    string(credentialsId: 'AZURE_TENANT_ID', variable: 'AZURE_TENANT_ID'),
+                    string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
+                    string(credentialsId: 'DATABRICKS_SQL_PATH', variable: 'DATABRICKS_SQL_PATH')
                 ]) {
                     sh '''
                         echo "===================================="
-                        echo "🚀 STARTING FABRIC UI AUTOMATION"
-                        echo "Customer: ${CUSTOMER_CODE}"
+                        echo "🚀 STARTING FABRIC CONNECTION STAGE"
                         echo "===================================="
         
-                        # Export required variables
+                        export PRODUCT="${PRODUCT}"
                         export CUSTOMER_CODE="${CUSTOMER_CODE}"
+                        export KV_NAME="${KV_NAME}"
+                        export AZURE_TENANT_ID="${AZURE_TENANT_ID}"
                         export DATABRICKS_HOST="${DATABRICKS_HOST}"
                         export DATABRICKS_SQL_PATH="${DATABRICKS_SQL_PATH}"
-                        export FABRIC_WORKSPACE_ID="${FABRIC_WORKSPACE_ID}"
         
-                        echo "🔐 Fetching SPN credentials from KeyVault..."
-        
-                        export SPN_CLIENT_ID=$(az keyvault secret show \
-                          --vault-name ${KV_NAME} \
-                          --name sp-${PRODUCT}-${CUSTOMER_CODE}-oauth-client-id \
-                          --query value -o tsv)
-        
-                        export SPN_SECRET=$(az keyvault secret show \
-                          --vault-name ${KV_NAME} \
-                          --name sp-${PRODUCT}-${CUSTOMER_CODE}-oauth-secret \
-                          --query value -o tsv)
-        
-                        if [ -z "$SPN_CLIENT_ID" ] || [ -z "$SPN_SECRET" ]; then
-                            echo "❌ Failed to fetch SPN credentials"
-                            exit 1
-                        fi
-        
-                        echo "🚀 Launching Playwright automation..."
-        
-                        node scripts/fabric_ui_create_connection.js
+                        chmod +x scripts/fabric_create_connection.sh
+                        ./scripts/fabric_create_connection.sh
                     '''
                 }
             }
