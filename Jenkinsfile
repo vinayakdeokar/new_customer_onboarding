@@ -238,39 +238,40 @@ pipeline {
                 expression { currentBuild.currentResult == 'SUCCESS' }
             }
             steps {
-                script {
-                    withCredentials([usernamePassword(
-                        credentialsId: 'github-pat',
-                        usernameVariable: 'GIT_USERNAME',
-                        passwordVariable: 'GIT_TOKEN'
-                    )]) {
+                withCredentials([usernamePassword(
+                    credentialsId: 'github-pat',
+                    usernameVariable: 'GIT_USERNAME',
+                    passwordVariable: 'GIT_TOKEN'
+                )]) {
         
-                        sh """
-                        echo "Updating structured customer metadata..."
+                    sh '''
+                    set -e
         
-                        chmod +x scripts/update_metadata.sh
+                    echo "✔ Updating customer metadata..."
         
-                        ./scripts/update_metadata.sh \
-                            ${PRODUCT} \
-                            ${CUSTOMER_CODE} \
-                            ${ENV}
+                    chmod +x scripts/update_metadata.sh
+                    ./scripts/update_metadata.sh $PRODUCT $CUSTOMER_CODE $ENV > /dev/null 2>&1
         
-                        git config user.name "jenkins-bot"
-                        git config user.email "jenkins@automation.local"
+                    git config user.name "jenkins-bot"
+                    git config user.email "jenkins@automation.local"
         
-                        git add metadata/customers/customers.json
+                    git add metadata/customers/customers.json
         
-                        if git diff --cached --quiet; then
-                            echo "No metadata changes detected"
-                        else
-                            git commit -m "Auto-added structured metadata for ${CUSTOMER_CODE}"
-                            git push https://${GIT_USERNAME}:${GIT_TOKEN}@github.com/vinayakdeokar/new_customer_onboarding.git HEAD:main
-                        fi
-                        """
-                    }
+                    if git diff --cached --quiet; then
+                        echo "✔ No metadata changes"
+                        exit 0
+                    fi
+        
+                    git commit -m "Auto-added customer $CUSTOMER_CODE" > /dev/null 2>&1
+        
+                    git push https://$GIT_USERNAME:$GIT_TOKEN@github.com/vinayakdeokar/new_customer_onboarding.git HEAD:main > /dev/null 2>&1
+        
+                    echo "✔ Metadata pushed to Git"
+                    '''
                 }
             }
         }
+
 
         
 
