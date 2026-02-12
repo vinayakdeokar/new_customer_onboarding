@@ -122,7 +122,7 @@ NEW_VERSION_ID=$(az keyvault secret set \
   --query "id" -o tsv)
 
 echo "✅ New secret version created"
-echo "   New Version ID: $NEW_VERSION_ID"
+echo "✔ OAuth secret rotated successfully"
 
 # --- B. Disable ALL older enabled versions
 OLD_VERSIONS=$(az keyvault secret list-versions \
@@ -169,7 +169,6 @@ NEW_CLIENT_VERSION_ID=$(az keyvault secret set \
   --query "id" -o tsv)
 
 echo "✅ Client ID stored successfully"
-echo "   Version ID: $NEW_CLIENT_VERSION_ID"
 
 echo "-------------------------------------------------------"
 echo "✅ Client ID storage complete"
