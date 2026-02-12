@@ -1,0 +1,7 @@
+{
+  "name": "fabric-automation",
+  "version": "1.0.0",
+  "dependencies": {
+    "playwright": "^1.58.2"
+  }
+}
