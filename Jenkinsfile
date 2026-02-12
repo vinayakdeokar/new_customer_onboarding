@@ -225,7 +225,7 @@ pipeline {
                     export GATEWAY_ID="34377033-6f6f-433a-9a66-3095e996f65c"
                     export DB_HTTP_PATH="/sql/1.0/warehouses/559747c78f71249c"
                 
-                    ./fabric_connection.sh
+                    ./scripts/fabric_connection.sh
                     '''
                 }
 
