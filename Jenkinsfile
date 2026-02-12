@@ -214,21 +214,21 @@ pipeline {
 
         stage('Create Fabric Connection') {
             steps {
-                withCredentials([usernamePassword(
-                    credentialsId: 'db-spn-creds',
-                    usernameVariable: 'DB_USER',
-                    passwordVariable: 'DB_PASS'
-                )]) {
-        
+                withCredentials([
+                    string(credentialsId: 'AZURE_CLIENT_ID', variable: 'DB_USER'),
+                    string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DB_PASS'),
+                    string(credentialsId: 'DATABRICKS_HOST', variable: 'DB_HOST')
+                ]) {
+                
                     sh '''
                     export DISPLAY_NAME="db-vnet-automation-spn"
                     export GATEWAY_ID="34377033-6f6f-433a-9a66-3095e996f65c"
-                    export DB_HOST="adb-7405609173671370.10.azuredatabricks.net"
                     export DB_HTTP_PATH="/sql/1.0/warehouses/559747c78f71249c"
-        
+                
                     ./fabric_connection.sh
                     '''
                 }
+
             }
         }
 
