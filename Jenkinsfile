@@ -2,6 +2,7 @@ pipeline {
     agent any
 
     parameters {
+
         string(
             name: 'CUSTOMER_CODE',
             description: 'Customer code like vinayak-003'
@@ -40,7 +41,19 @@ pipeline {
         KV_NAME = 'kv-databricks-fab'
     }
 
-    stages {
+    // stages {
+
+        // --------------------------------------------------
+        // INIT – CLEAN OLD STATE
+        // --------------------------------------------------
+        // stage('Init Workspace') {
+        //     steps {
+        //         sh '''
+        //             echo "🧹 Cleaning old env state"
+        //             rm -f db_env.sh
+        //         '''
+        //     }
+        // }
 
         // --------------------------------------------------
         // CHECKOUT
@@ -109,62 +122,114 @@ pipeline {
             }
         }
 
+        // // --------------------------------------------------
+        // // SPN SETUP (WORKSPACE)
+        // // --------------------------------------------------
+        // stage('Databricks SPN Setup') {
+        //     steps {
+        //         withCredentials([
+        //             string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
+        //             string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_ADMIN_TOKEN')
+        //         ]) {
+        //             sh '''
+        //                 chmod +x scripts/databricks_login_and_add_spn.sh
+        //                 scripts/databricks_login_and_add_spn.sh "${PRODUCT}" "${CUSTOMER_CODE}"
+        //             '''
+        //         }
+        //     }
+        // }
+
+        // // --------------------------------------------------
+        // // SPN OAUTH SECRET (ACCOUNT LEVEL)
+        // // --------------------------------------------------
+        // stage('Databricks SPN OAuth Secret (Account Level)') {
+        //     steps {
+        //         withCredentials([
+        //             string(credentialsId: 'DATABRICKS_ACCOUNT_ID', variable: 'DATABRICKS_ACCOUNT_ID'),
+        //             string(credentialsId: 'AZURE_TENANT_ID', variable: 'AZURE_TENANT_ID')
+        //         ]) {
+        //             sh """
+        //                 export TARGET_SPN_DISPLAY_NAME="${params.SPN_NAME}"
+
+        //                 echo "Using SPN: \$TARGET_SPN_DISPLAY_NAME"
+
+        //                 chmod +x scripts/dbx_spn_discover.sh
+        //                 chmod +x scripts/dbx_spn_generate_secret.sh
+
+        //                 scripts/dbx_spn_discover.sh
+        //                 scripts/dbx_spn_generate_secret.sh
+        //             """
+        //         }
+        //     }
+        // }
+
+        // // --------------------------------------------------
+        // // ACCOUNT GROUP SYNC
+        // // --------------------------------------------------
+        // stage('Databricks Account Group Sync') {
+        //     steps {
+        //         withCredentials([
+        //             string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
+        //             string(credentialsId: 'DATABRICKS_ACCOUNT_ID', variable: 'DATABRICKS_ACCOUNT_ID'),
+        //             string(credentialsId: 'DATABRICKS_WORKSPACE_ID', variable: 'DATABRICKS_WORKSPACE_ID'),
+        //             string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_ADMIN_TOKEN')
+        //         ]) {
+        //             sh '''
+        //                 export GROUP_NAME="grp-${PRODUCT}-${CUSTOMER_CODE}-users"
+
+        //                 chmod +x scripts/account_group_sync.sh
+        //                 ./scripts/account_group_sync.sh
+        //             '''
+        //         }
+        //     }
+        // }
+
+        // // --------------------------------------------------
+        // // SCHEMAS & GRANTS
+        // // --------------------------------------------------
+        // stage('Schemas & Grants') {
+        //     steps {
+        //         withCredentials([
+        //             string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
+        //             string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_ADMIN_TOKEN'),
+        //             string(credentialsId: 'DATABRICKS_SQL_WAREHOUSE_ID', variable: 'DATABRICKS_SQL_WAREHOUSE_ID'),
+        //             string(credentialsId: 'DATABRICKS_CATALOG_NAME', variable: 'CATALOG_NAME'),
+        //             string(credentialsId: 'STORAGE_BRONZE_ROOT', variable: 'STORAGE_BRONZE_ROOT')
+        //         ]) {
+        //             sh '''
+        //                 chmod +x scripts/databricks_schema_and_grants.sh
+        //                 ./scripts/databricks_schema_and_grants.sh
+        //             '''
+        //         }
+        //     }
+        // }
+
+        // --------------------------------------------------
+        // FABRIC DATABRICKS CONNECTION
+        // --------------------------------------------------
         stage('Fabric Databricks Connection') {
             steps {
                 withCredentials([
-                    string(credentialsId: 'AZURE_CLIENT_ID', variable: 'AZURE_CLIENT_ID'),
-                    string(credentialsId: 'AZURE_CLIENT_SECRET', variable: 'AZURE_CLIENT_SECRET'),
                     string(credentialsId: 'AZURE_TENANT_ID', variable: 'AZURE_TENANT_ID'),
-                    string(credentialsId: 'AZURE_SUBSCRIPTION_ID', variable: 'AZURE_SUBSCRIPTION_ID'),
                     string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
                     string(credentialsId: 'DATABRICKS_SQL_PATH', variable: 'DATABRICKS_SQL_PATH')
                 ]) {
                     sh '''
-                        echo "===================================="
-                        echo "🚀 STARTING FABRIC CONNECTION STAGE"
-                        echo "Customer: ${CUSTOMER_CODE}"
-                        echo "===================================="
-        
-                        # --------------------------------------------------
-                        # Azure Login (Service Principal)
-                        # --------------------------------------------------
-                        az login --service-principal \
-                          --username "$AZURE_CLIENT_ID" \
-                          --password "$AZURE_CLIENT_SECRET" \
-                          --tenant "$AZURE_TENANT_ID" > /dev/null
-        
-                        az account set --subscription "$AZURE_SUBSCRIPTION_ID"
-        
-                        # --------------------------------------------------
-                        # Export required variables
-                        # --------------------------------------------------
+                        echo "Starting Fabric Connection Creation..."
+
                         export PRODUCT="${PRODUCT}"
                         export CUSTOMER_CODE="${CUSTOMER_CODE}"
                         export KV_NAME="${KV_NAME}"
                         export AZURE_TENANT_ID="${AZURE_TENANT_ID}"
                         export DATABRICKS_HOST="${DATABRICKS_HOST}"
                         export DATABRICKS_SQL_PATH="${DATABRICKS_SQL_PATH}"
-        
-                        echo "Using Host: $DATABRICKS_HOST"
-                        echo "Using SQL Path: $DATABRICKS_SQL_PATH"
-        
-                        # --------------------------------------------------
-                        # Run Fabric Script
-                        # --------------------------------------------------
-                        chmod +x scripts/fabric_create_connectionn.sh
-                        ./scripts/fabric_create_connectionn.sh
+
+                        chmod +x scripts/fabric_create_connection.sh
+                        ./scripts/fabric_create_connection.sh
                     '''
                 }
             }
         }
-
-
-        
-
-        
-
-                
-
 
     }
 }
