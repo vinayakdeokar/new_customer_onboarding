@@ -184,7 +184,7 @@ pipeline {
             steps {
                 sh '''
                 chmod +x scripts/create_bronze_folder.sh
-                export STORAGE_ACCOUNT=stcrmXXXX
+                export STORAGE_ACCOUNT=stmedicareadvmcr
                 export CONTAINER_NAME=bronz
                 scripts/create_bronze_folder.sh
                 '''
