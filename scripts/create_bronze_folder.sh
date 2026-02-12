@@ -24,7 +24,8 @@ else
     --account-name "$STORAGE_ACCOUNT" \
     --file-system "$CONTAINER_NAME" \
     --name "$CUSTOMER_CODE" \
-    --auth-mode login
+    --auth-mode login \
+    --output none
 
   echo "✅ Folder created successfully"
 fi
