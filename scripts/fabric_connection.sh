@@ -48,7 +48,8 @@ fi
 # ==============================
 echo "🚀 Creating new connection..."
 
-curl -s -X POST https://api.powerbi.com/v1.0/myorg/connections \
+RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
+  https://api.powerbi.com/v1.0/myorg/connections \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d "{
@@ -75,7 +76,18 @@ curl -s -X POST https://api.powerbi.com/v1.0/myorg/connections \
         \"password\": \"$DB_PASS\"
       }
     }
-  }"
+  }")
 
-echo ""
-echo "✅ Connection Created Successfully!"
+HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+
+echo "HTTP Status: $HTTP_CODE"
+echo "Response:"
+echo "$HTTP_BODY"
+
+if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "201" ]; then
+  echo "✅ Connection Created Successfully!"
+else
+  echo "❌ Connection creation failed!"
+  exit 1
+fi
