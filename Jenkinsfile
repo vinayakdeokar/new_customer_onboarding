@@ -113,45 +113,34 @@ pipeline {
         // FABRIC DATABRICKS CONNECTION
         // --------------------------------------------------
        // --------------------------------------------------
-// FABRIC DATABRICKS CONNECTION
-// --------------------------------------------------
-stage('Fabric Databricks Connection') {
-    steps {
-        withCredentials([
-            string(credentialsId: 'AZURE_CLIENT_ID', variable: 'AZURE_CLIENT_ID'),
-            string(credentialsId: 'AZURE_CLIENT_SECRET', variable: 'AZURE_CLIENT_SECRET'),
-            string(credentialsId: 'AZURE_TENANT_ID', variable: 'AZURE_TENANT_ID'),
-            string(credentialsId: 'AZURE_SUBSCRIPTION_ID', variable: 'AZURE_SUBSCRIPTION_ID'),
-            string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
-            string(credentialsId: 'DATABRICKS_SQL_PATH', variable: 'DATABRICKS_SQL_PATH')
-        ]) {
-
-            sh '''
-                echo "========================================"
-                echo "🚀 STARTING FABRIC CONNECTION STAGE"
-                echo "Customer: ${CUSTOMER_CODE}"
-                echo "========================================"
-
-                # Export required vars
-                export PRODUCT="${PRODUCT}"
-                export CUSTOMER_CODE="${CUSTOMER_CODE}"
-                export KV_NAME="${KV_NAME}"
-                export AZURE_CLIENT_ID="${AZURE_CLIENT_ID}"
-                export AZURE_CLIENT_SECRET="${AZURE_CLIENT_SECRET}"
-                export AZURE_TENANT_ID="${AZURE_TENANT_ID}"
-                export AZURE_SUBSCRIPTION_ID="${AZURE_SUBSCRIPTION_ID}"
-                export DATABRICKS_HOST="${DATABRICKS_HOST}"
-                export DATABRICKS_SQL_PATH="${DATABRICKS_SQL_PATH}"
-
-                chmod +x scripts/azure_login.sh
-                ./scripts/azure_login.sh
-
-                chmod +x scripts/fabric_create_connection.sh
-                ./scripts/fabric_create_connection.sh
-            '''
+        stage('Fabric UI Connection') {
+            steps {
+                withCredentials([
+                    string(credentialsId: 'FABRIC_USER', variable: 'FABRIC_USER'),
+                    string(credentialsId: 'FABRIC_PASS', variable: 'FABRIC_PASS'),
+                    string(credentialsId: 'AZURE_CLIENT_ID', variable: 'AZURE_CLIENT_ID'),
+                    string(credentialsId: 'AZURE_CLIENT_SECRET', variable: 'AZURE_CLIENT_SECRET')
+                ]) {
+                    sh '''
+                        npm install
+                        npx playwright install chromium
+        
+                        export SPN_CLIENT_ID=$(az keyvault secret show \
+                          --vault-name ${KV_NAME} \
+                          --name sp-${PRODUCT}-${CUSTOMER_CODE}-oauth-client-id \
+                          --query value -o tsv)
+        
+                        export SPN_SECRET=$(az keyvault secret show \
+                          --vault-name ${KV_NAME} \
+                          --name sp-${PRODUCT}-${CUSTOMER_CODE}-oauth-secret \
+                          --query value -o tsv)
+        
+                        node scripts/fabric_ui_create_connection.js
+                    '''
+                }
+            }
         }
-    }
-}
+        
 
 
     }
