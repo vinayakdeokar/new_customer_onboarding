@@ -11,60 +11,60 @@ const { chromium } = require('playwright');
   const FABRIC_USER = process.env.FABRIC_USER;
   const FABRIC_PASS = process.env.FABRIC_PASS;
 
-  console.log("=================================");
-  console.log("🚀 FABRIC UI AUTOMATION STARTED");
-  console.log("Customer:", CUSTOMER);
-  console.log("=================================");
+  const WORKSPACE_ID = process.env.FABRIC_WORKSPACE_ID;
+
+  console.log("🚀 Starting Fabric UI automation for:", CUSTOMER);
 
   const browser = await chromium.launch({ headless: true });
-  const page = await browser.newPage();
+  const context = await browser.newContext();
+  const page = await context.newPage();
 
-  // 1️⃣ Login
+  // 🔐 LOGIN
   await page.goto("https://app.fabric.microsoft.com");
 
+  await page.waitForSelector('input[type="email"]');
   await page.fill('input[type="email"]', FABRIC_USER);
   await page.click('input[type="submit"]');
 
-  await page.waitForTimeout(3000);
-
+  await page.waitForSelector('input[type="password"]');
   await page.fill('input[type="password"]', FABRIC_PASS);
   await page.click('input[type="submit"]');
 
-  await page.waitForTimeout(8000);
+  await page.waitForLoadState('networkidle');
 
-  // 2️⃣ Navigate to Manage Connections
-  await page.goto("https://app.fabric.microsoft.com/groups/me/connections");
+  // 📍 Navigate to workspace connections
+  await page.goto(`https://app.fabric.microsoft.com/groups/${WORKSPACE_ID}/connections`);
+  await page.waitForLoadState('networkidle');
+
+  // ➕ Click New connection
+  await page.getByRole('button', { name: /new connection/i }).click();
+
+  await page.waitForLoadState('networkidle');
+
+  // 🌐 Select Virtual Network
+  await page.getByText(/virtual network/i).click();
+
+  await page.waitForLoadState('networkidle');
+
+  // 📝 Fill Form
+  await page.getByLabel(/connection name/i).fill(CUSTOMER);
+
+  await page.getByLabel(/server hostname/i).fill(HOST);
+  await page.getByLabel(/http path/i).fill(PATH);
+
+  // Credential Type dropdown
+  await page.getByLabel(/authentication type/i).click();
+  await page.getByText(/databricks client credentials/i).click();
+
+  await page.getByLabel(/client id/i).fill(CLIENT_ID);
+  await page.getByLabel(/client secret/i).fill(CLIENT_SECRET);
+
+  // 💾 Save
+  await page.getByRole('button', { name: /create|save/i }).click();
 
   await page.waitForTimeout(5000);
 
-  // 3️⃣ Click New Connection
-  await page.click('text=New connection');
-
-  await page.waitForTimeout(3000);
-
-  // 4️⃣ Select Virtual Network
-  await page.click('text=Virtual network');
-
-  await page.waitForTimeout(2000);
-
-  // 5️⃣ Fill Form
-
-  await page.fill('input[placeholder="Connection name"]', CUSTOMER);
-
-  await page.fill('input[placeholder="example.azuredatabricks.net"]', HOST);
-  await page.fill('input[placeholder="/sql/1.0/warehouses/abcd"]', PATH);
-
-  await page.selectOption('select', { label: 'Databricks Client Credentials' });
-
-  await page.fill('input[aria-label="Databricks Client ID"]', CLIENT_ID);
-  await page.fill('input[aria-label="Databricks Client Secret"]', CLIENT_SECRET);
-
-  // 6️⃣ Submit
-  await page.click('text=Save');
-
-  await page.waitForTimeout(8000);
-
-  console.log("✅ Connection Created Successfully");
+  console.log("✅ Fabric connection created");
 
   await browser.close();
 
