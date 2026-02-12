@@ -130,16 +130,37 @@ pipeline {
                     string(credentialsId: 'FABRIC_PASS', variable: 'FABRIC_PASS')
                 ]) {
                     sh '''
+                        echo "===================================="
+                        echo "🚀 STARTING FABRIC UI AUTOMATION"
+                        echo "===================================="
+        
+                        # Export main vars
                         export CUSTOMER_CODE="${CUSTOMER_CODE}"
                         export DATABRICKS_HOST="${DATABRICKS_HOST}"
                         export DATABRICKS_SQL_PATH="${DATABRICKS_SQL_PATH}"
+        
+                        # Fetch SPN secrets from KeyVault
+                        export SPN_CLIENT_ID=$(az keyvault secret show \
+                          --vault-name ${KV_NAME} \
+                          --name sp-${PRODUCT}-${CUSTOMER_CODE}-oauth-client-id \
+                          --query value -o tsv)
+        
+                        export SPN_SECRET=$(az keyvault secret show \
+                          --vault-name ${KV_NAME} \
+                          --name sp-${PRODUCT}-${CUSTOMER_CODE}-oauth-secret \
+                          --query value -o tsv)
+        
+                        if [ -z "$SPN_CLIENT_ID" ] || [ -z "$SPN_SECRET" ]; then
+                            echo "❌ Failed to fetch SPN credentials"
+                            exit 1
+                        fi
         
                         node scripts/fabric_ui_create_connection.js
                     '''
                 }
             }
         }
-        
+
                 
 
 
