@@ -60,42 +60,22 @@ fi
 # Step 5️⃣ Create SPN in Databricks
 # --------------------------------------------------
 
-echo "➕ Adding Azure SPN at Databricks Account level..."
+
+
+
+echo "➕ Adding Azure SPN to Databricks workspace..."
 
 HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
   -X POST \
-  "https://accounts.azuredatabricks.net/api/2.0/accounts/$DATABRICKS_ACCOUNT_ID/servicePrincipals" \
-  -H "Authorization: Bearer $DATABRICKS_ACCOUNT_TOKEN" \
+  "$DATABRICKS_HOST/api/2.0/preview/scim/v2/ServicePrincipals" \
+  -H "Authorization: Bearer $DATABRICKS_ADMIN_TOKEN" \
   -H "Content-Type: application/json" \
   -d "{
-        \"application_id\": \"$SPN_CLIENT_ID\"
+        \"applicationId\": \"$SPN_CLIENT_ID\",
+        \"displayName\": \"$SPN_NAME\"
       }")
 
 
-# echo "➕ Adding Azure SPN to Databricks workspace..."
-
-# HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
-#   -X POST \
-#   "$DATABRICKS_HOST/api/2.0/preview/scim/v2/ServicePrincipals" \
-#   -H "Authorization: Bearer $DATABRICKS_ADMIN_TOKEN" \
-#   -H "Content-Type: application/json" \
-#   -d "{
-#         \"applicationId\": \"$SPN_CLIENT_ID\",
-#         \"displayName\": \"$SPN_NAME\"
-#       }")
-
-curl -X POST \
-"https://accounts.azuredatabricks.net/api/2.0/accounts/$DATABRICKS_ACCOUNT_ID/servicePrincipals" \
--H "Authorization: Bearer $DATABRICKS_ACCOUNT_TOKEN" \
--H "Content-Type: application/json" \
--d "{\"application_id\": \"$SPN_CLIENT_ID\"}"
-ACCOUNT_SPN_ID=$(curl -s \
--H "Authorization: Bearer $DATABRICKS_ACCOUNT_TOKEN" \
-"https://accounts.azuredatabricks.net/api/2.0/accounts/$DATABRICKS_ACCOUNT_ID/servicePrincipals" \
-| jq -r ".service_principals[] | select(.application_id==\"$SPN_CLIENT_ID\") | .id")
-curl -X PATCH \
-"https://accounts.azuredatabricks.net/api/2.0/accounts/$DATABRICKS_ACCOUNT_ID/workspaces/$DATABRICKS_WORKSPACE_ID/servicePrincipals/$ACCOUNT_SPN_ID" \
--H "Authorization: Bearer $DATABRICKS_ACCOUNT_TOKEN"
 
 
 if [ "$HTTP_CODE" = "201" ]; then
