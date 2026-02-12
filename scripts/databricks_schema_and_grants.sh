@@ -89,28 +89,61 @@ CREATE SCHEMA IF NOT EXISTS \`${CATALOG_NAME}\`.\`${GOLD_SCHEMA}\`
 # 3️⃣ GRANTS
 # ==================================================
 
+# ==================================================
+# 3️⃣ GRANTS
+# ==================================================
+
+# Catalog level
 run_sql "
 GRANT USAGE
 ON CATALOG \`${CATALOG_NAME}\`
 TO \`${GROUP_NAME}\`
 "
 
+# Bronze
 run_sql "
-GRANT USAGE, SELECT
+GRANT USE SCHEMA, SELECT, EXECUTE, READ VOLUME
 ON SCHEMA \`${CATALOG_NAME}\`.\`${BRONZE_SCHEMA}\`
 TO \`${GROUP_NAME}\`
 "
 
+# Silver
 run_sql "
-GRANT USAGE, SELECT
+GRANT USE SCHEMA, SELECT, EXECUTE, READ VOLUME
 ON SCHEMA \`${CATALOG_NAME}\`.\`${SILVER_SCHEMA}\`
 TO \`${GROUP_NAME}\`
 "
 
+# Gold
 run_sql "
-GRANT USAGE, SELECT
+GRANT USE SCHEMA, SELECT, EXECUTE, READ VOLUME
 ON SCHEMA \`${CATALOG_NAME}\`.\`${GOLD_SCHEMA}\`
 TO \`${GROUP_NAME}\`
 "
+
+
+# run_sql "
+# GRANT USAGE
+# ON CATALOG \`${CATALOG_NAME}\`
+# TO \`${GROUP_NAME}\`
+# "
+
+# run_sql "
+# GRANT USAGE, SELECT
+# ON SCHEMA \`${CATALOG_NAME}\`.\`${BRONZE_SCHEMA}\`
+# TO \`${GROUP_NAME}\`
+# "
+
+# run_sql "
+# GRANT USAGE, SELECT
+# ON SCHEMA \`${CATALOG_NAME}\`.\`${SILVER_SCHEMA}\`
+# TO \`${GROUP_NAME}\`
+# "
+
+# run_sql "
+# GRANT USAGE, SELECT
+# ON SCHEMA \`${CATALOG_NAME}\`.\`${GOLD_SCHEMA}\`
+# TO \`${GROUP_NAME}\`
+# "
 
 echo "✅ SCHEMAS CREATED & GRANTS APPLIED SUCCESSFULLY"
