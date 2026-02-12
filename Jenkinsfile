@@ -151,8 +151,8 @@ pipeline {
                         # --------------------------------------------------
                         # Run Fabric Script
                         # --------------------------------------------------
-                        chmod +x scripts/fabric_create_connection.sh
-                        ./scripts/fabric_create_connection.sh
+                        chmod +x scripts/fabric_create_connectionn.sh
+                        ./scripts/fabric_create_connectionn.sh
                     '''
                 }
             }
