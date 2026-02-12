@@ -21,7 +21,7 @@ if [ -z "$FABRIC_TOKEN" ]; then
 fi
 
 # -------------------------------------------------
-# 2️⃣ Fetch Gateway List
+# 2️⃣ Fetch Fabric Gateways
 # -------------------------------------------------
 echo "🔍 Fetching Fabric Gateways..."
 
@@ -29,16 +29,19 @@ GATEWAYS=$(curl -s \
   -H "Authorization: Bearer $FABRIC_TOKEN" \
   https://api.fabric.microsoft.com/v1/gateways)
 
+echo "📄 Gateways Response:"
+echo "$GATEWAYS" | jq .
+
+# Auto-detect VirtualNetwork gateway
 GATEWAY_ID=$(echo "$GATEWAYS" | jq -r \
-  '.value[] | select(.displayName=="vnwt-db-fab-fabric-sub") | .id')
+  '.value[] | select(.type=="VirtualNetwork") | .id' | head -n 1)
 
 if [ -z "$GATEWAY_ID" ] || [ "$GATEWAY_ID" == "null" ]; then
-  echo "❌ Gateway not found or SPN has no access"
-  echo "$GATEWAYS"
+  echo "❌ No VirtualNetwork gateway found"
   exit 1
 fi
 
-echo "✅ Gateway ID: $GATEWAY_ID"
+echo "✅ Using Gateway ID: $GATEWAY_ID"
 
 # -------------------------------------------------
 # 3️⃣ Fetch Customer SPN Credentials from KeyVault
@@ -46,13 +49,13 @@ echo "✅ Gateway ID: $GATEWAY_ID"
 echo "🔑 Fetching SPN credentials from KeyVault..."
 
 SPN_CLIENT_ID=$(az keyvault secret show \
-  --vault-name $KV_NAME \
-  --name sp-${PRODUCT}-${CUSTOMER_CODE}-oauth-client-id \
+  --vault-name "$KV_NAME" \
+  --name "sp-${PRODUCT}-${CUSTOMER_CODE}-oauth-client-id" \
   --query value -o tsv)
 
 SPN_SECRET=$(az keyvault secret show \
-  --vault-name $KV_NAME \
-  --name sp-${PRODUCT}-${CUSTOMER_CODE}-oauth-secret \
+  --vault-name "$KV_NAME" \
+  --name "sp-${PRODUCT}-${CUSTOMER_CODE}-oauth-secret" \
   --query value -o tsv)
 
 if [ -z "$SPN_CLIENT_ID" ] || [ -z "$SPN_SECRET" ]; then
@@ -92,10 +95,12 @@ HTTP_RESPONSE=$(curl -s -w "%{http_code}" -o response.json \
   -H "Content-Type: application/json" \
   -d "$PAYLOAD")
 
+echo "📄 API Response:"
+cat response.json
+
 if [ "$HTTP_RESPONSE" -eq 201 ]; then
   echo "🎉 SUCCESS: Fabric connection created"
 else
   echo "❌ Failed with status $HTTP_RESPONSE"
-  cat response.json
   exit 1
 fi
