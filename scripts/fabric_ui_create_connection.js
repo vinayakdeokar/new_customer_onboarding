@@ -20,21 +20,18 @@ const { chromium } = require('playwright');
   const page = await context.newPage();
 
   // 🔐 LOGIN
-  await page.goto("https://app.fabric.microsoft.com");
+  await page.goto("https://login.microsoftonline.com");
 
-  await page.waitForSelector('input[type="email"]');
-  await page.fill('input[type="email"]', FABRIC_USER);
-  await page.click('input[type="submit"]');
+await page.waitForSelector('input[name="loginfmt"]', { timeout: 60000 });
+await page.fill('input[name="loginfmt"]', FABRIC_USER);
+await page.click('input[type="submit"]');
 
-  await page.waitForSelector('input[type="password"]');
-  await page.fill('input[type="password"]', FABRIC_PASS);
-  await page.click('input[type="submit"]');
+await page.waitForSelector('input[name="passwd"]', { timeout: 60000 });
+await page.fill('input[name="passwd"]', FABRIC_PASS);
+await page.click('input[type="submit"]');
 
-  await page.waitForLoadState('networkidle');
+await page.waitForLoadState('networkidle');
 
-  // 📍 Navigate to workspace connections
-  await page.goto(`https://app.fabric.microsoft.com/groups/${WORKSPACE_ID}/connections`);
-  await page.waitForLoadState('networkidle');
 
   // ➕ Click New connection
   await page.getByRole('button', { name: /new connection/i }).click();
