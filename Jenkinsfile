@@ -239,9 +239,13 @@ pipeline {
                         git remote set-url origin https://${GIT_USERNAME}:${GIT_TOKEN}@github.com/vinayakdeokar/new_customer_onboarding.git
         
                         git add metadata/customers/customers.json
-                        git commit -m "Auto-added structured metadata for ${CUSTOMER_CODE}"
-                        git push origin main
-                        """
+                        if git diff --cached --quiet; then
+                            echo "No changes to commit"
+                        else
+                            git commit -m "Auto-added structured metadata for ${CUSTOMER_CODE}"
+                            git push origin main
+                        fi
+
                     }
                 }
             }
