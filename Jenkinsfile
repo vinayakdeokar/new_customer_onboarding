@@ -131,6 +131,7 @@ pipeline {
                 withCredentials([
                     string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
                     string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_ADMIN_TOKEN')
+                    string(credentialsId: 'DATABRICKS_ACCOUNT_ID', variable: 'DATABRICKS_ACCOUNT_ID')
                 ]) {
                     sh '''
                         chmod +x scripts/databricks_login_and_add_spn.sh
