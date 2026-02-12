@@ -1,68 +1,101 @@
-const { chromium } = require('playwright');
+#!/bin/bash
+set -e
 
-(async () => {
+echo "============================================"
+echo "🚀 FABRIC CONNECTION AUTOMATION STARTED"
+echo "Customer: $CUSTOMER_CODE"
+echo "============================================"
 
-  const CUSTOMER = process.env.CUSTOMER_CODE;
-  const HOST = process.env.DATABRICKS_HOST;
-  const PATH = process.env.DATABRICKS_SQL_PATH;
-  const CLIENT_ID = process.env.SPN_CLIENT_ID;
-  const CLIENT_SECRET = process.env.SPN_SECRET;
+# -------------------------------------------------
+# 1️⃣ Get Fabric Access Token
+# -------------------------------------------------
+echo "🔐 Getting Fabric Access Token..."
 
-  const FABRIC_USER = process.env.FABRIC_USER;
-  const FABRIC_PASS = process.env.FABRIC_PASS;
+FABRIC_TOKEN=$(az account get-access-token \
+  --resource https://api.fabric.microsoft.com \
+  --query accessToken -o tsv)
 
-  const WORKSPACE_ID = process.env.FABRIC_WORKSPACE_ID;
+if [ -z "$FABRIC_TOKEN" ]; then
+  echo "❌ Failed to get Fabric token"
+  exit 1
+fi
 
-  console.log("🚀 Starting Fabric UI automation for:", CUSTOMER);
+# -------------------------------------------------
+# 2️⃣ Fetch Gateway List
+# -------------------------------------------------
+echo "🔍 Fetching Fabric Gateways..."
 
-  const browser = await chromium.launch({ headless: true });
-  const context = await browser.newContext();
-  const page = await context.newPage();
+GATEWAYS=$(curl -s \
+  -H "Authorization: Bearer $FABRIC_TOKEN" \
+  https://api.fabric.microsoft.com/v1/gateways)
 
-  // 🔐 LOGIN
-  await page.goto("https://login.microsoftonline.com");
+GATEWAY_ID=$(echo "$GATEWAYS" | jq -r \
+  '.value[] | select(.displayName=="vnwt-db-fab-fabric-sub") | .id')
 
-await page.waitForSelector('input[name="loginfmt"]', { timeout: 60000 });
-await page.fill('input[name="loginfmt"]', FABRIC_USER);
-await page.click('input[type="submit"]');
+if [ -z "$GATEWAY_ID" ] || [ "$GATEWAY_ID" == "null" ]; then
+  echo "❌ Gateway not found or SPN has no access"
+  echo "$GATEWAYS"
+  exit 1
+fi
 
-await page.waitForSelector('input[name="passwd"]', { timeout: 60000 });
-await page.fill('input[name="passwd"]', FABRIC_PASS);
-await page.click('input[type="submit"]');
+echo "✅ Gateway ID: $GATEWAY_ID"
 
-await page.waitForLoadState('networkidle');
+# -------------------------------------------------
+# 3️⃣ Fetch Customer SPN Credentials from KeyVault
+# -------------------------------------------------
+echo "🔑 Fetching SPN credentials from KeyVault..."
 
+SPN_CLIENT_ID=$(az keyvault secret show \
+  --vault-name $KV_NAME \
+  --name sp-${PRODUCT}-${CUSTOMER_CODE}-oauth-client-id \
+  --query value -o tsv)
 
-  // ➕ Click New connection
-  await page.getByRole('button', { name: /new connection/i }).click();
+SPN_SECRET=$(az keyvault secret show \
+  --vault-name $KV_NAME \
+  --name sp-${PRODUCT}-${CUSTOMER_CODE}-oauth-secret \
+  --query value -o tsv)
 
-  await page.waitForLoadState('networkidle');
+if [ -z "$SPN_CLIENT_ID" ] || [ -z "$SPN_SECRET" ]; then
+  echo "❌ Failed to fetch SPN secrets"
+  exit 1
+fi
 
-  // 🌐 Select Virtual Network
-  await page.getByText(/virtual network/i).click();
+# -------------------------------------------------
+# 4️⃣ Create Fabric Connection
+# -------------------------------------------------
+echo "🚀 Creating Fabric Connection..."
 
-  await page.waitForLoadState('networkidle');
+PAYLOAD=$(cat <<EOF
+{
+  "displayName": "${CUSTOMER_CODE}",
+  "gatewayClusterId": "${GATEWAY_ID}",
+  "connectionDetails": {
+    "type": "AzureDatabricks",
+    "parameters": {
+      "serverHostName": "${DATABRICKS_HOST}",
+      "httpPath": "${DATABRICKS_SQL_PATH}",
+      "authenticationType": "ServicePrincipal",
+      "clientId": "${SPN_CLIENT_ID}",
+      "clientSecret": "${SPN_SECRET}",
+      "tenantId": "${AZURE_TENANT_ID}"
+    }
+  },
+  "privacyLevel": "Private",
+  "allowCreateArtifact": true
+}
+EOF
+)
 
-  // 📝 Fill Form
-  await page.getByLabel(/connection name/i).fill(CUSTOMER);
+HTTP_RESPONSE=$(curl -s -w "%{http_code}" -o response.json \
+  -X POST https://api.fabric.microsoft.com/v1/connections \
+  -H "Authorization: Bearer $FABRIC_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d "$PAYLOAD")
 
-  await page.getByLabel(/server hostname/i).fill(HOST);
-  await page.getByLabel(/http path/i).fill(PATH);
-
-  // Credential Type dropdown
-  await page.getByLabel(/authentication type/i).click();
-  await page.getByText(/databricks client credentials/i).click();
-
-  await page.getByLabel(/client id/i).fill(CLIENT_ID);
-  await page.getByLabel(/client secret/i).fill(CLIENT_SECRET);
-
-  // 💾 Save
-  await page.getByRole('button', { name: /create|save/i }).click();
-
-  await page.waitForTimeout(5000);
-
-  console.log("✅ Fabric connection created");
-
-  await browser.close();
-
-})();
+if [ "$HTTP_RESPONSE" -eq 201 ]; then
+  echo "🎉 SUCCESS: Fabric connection created"
+else
+  echo "❌ Failed with status $HTTP_RESPONSE"
+  cat response.json
+  exit 1
+fi
