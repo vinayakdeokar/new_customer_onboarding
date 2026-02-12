@@ -180,6 +180,17 @@ pipeline {
                 }
             }
         }
+        stage('Create ADLS Bronze Folder') {
+            steps {
+                sh '''
+                chmod +x scripts/create_bronze_folder.sh
+                export STORAGE_ACCOUNT=stcrmXXXX
+                export CONTAINER_NAME=bronz
+                scripts/create_bronze_folder.sh
+                '''
+            }
+        }
+
 
         // --------------------------------------------------
         // SCHEMAS & GRANTS
@@ -200,6 +211,7 @@ pipeline {
                 }
             }
         }
+        
 
         // // --------------------------------------------------
         // // FABRIC DATABRICKS CONNECTION
