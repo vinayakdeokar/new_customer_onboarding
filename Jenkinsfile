@@ -41,11 +41,8 @@ pipeline {
         KV_NAME = 'kv-databricks-fab'
     }
 
-    // stages {
+    stages {
 
-        --------------------------------------------------
-        INIT – CLEAN OLD STATE
-        --------------------------------------------------
         stage('Init Workspace') {
             steps {
                 sh '''
