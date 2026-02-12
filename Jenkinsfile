@@ -109,6 +109,16 @@ pipeline {
             }
         }
 
+        stage('Install Node Dependencies') {
+            steps {
+                sh '''
+                    npm install
+                    npx playwright install chromium
+                '''
+            }
+        }
+
+
         // --------------------------------------------------
         // FABRIC DATABRICKS CONNECTION
         // --------------------------------------------------
@@ -117,23 +127,12 @@ pipeline {
             steps {
                 withCredentials([
                     string(credentialsId: 'FABRIC_USER', variable: 'FABRIC_USER'),
-                    string(credentialsId: 'FABRIC_PASS', variable: 'FABRIC_PASS'),
-                    string(credentialsId: 'AZURE_CLIENT_ID', variable: 'AZURE_CLIENT_ID'),
-                    string(credentialsId: 'AZURE_CLIENT_SECRET', variable: 'AZURE_CLIENT_SECRET')
+                    string(credentialsId: 'FABRIC_PASS', variable: 'FABRIC_PASS')
                 ]) {
                     sh '''
-                        npm install
-                        npx playwright install chromium
-        
-                        export SPN_CLIENT_ID=$(az keyvault secret show \
-                          --vault-name ${KV_NAME} \
-                          --name sp-${PRODUCT}-${CUSTOMER_CODE}-oauth-client-id \
-                          --query value -o tsv)
-        
-                        export SPN_SECRET=$(az keyvault secret show \
-                          --vault-name ${KV_NAME} \
-                          --name sp-${PRODUCT}-${CUSTOMER_CODE}-oauth-secret \
-                          --query value -o tsv)
+                        export CUSTOMER_CODE="${CUSTOMER_CODE}"
+                        export DATABRICKS_HOST="${DATABRICKS_HOST}"
+                        export DATABRICKS_SQL_PATH="${DATABRICKS_SQL_PATH}"
         
                         node scripts/fabric_ui_create_connection.js
                     '''
@@ -141,6 +140,7 @@ pipeline {
             }
         }
         
+                
 
 
     }
