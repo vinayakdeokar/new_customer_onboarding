@@ -44,8 +44,8 @@ echo "✅ Fabric login successful"
 
 echo "🔎 Checking existing connection..."
 
-CONNECTION_ID=$($FAB_CMD api connections -A fabric \
-  -q "text.value[?displayName=='${DISPLAY_NAME}'].id" -o tsv)
+CONNECTION_ID=$($FAB_CMD api connections -A fabric | jq -r ".value[] | select(.displayName==\"${DISPLAY_NAME}\") | .id")
+
 
 if [ -n "$CONNECTION_ID" ]; then
   echo "✅ Connection already exists"
@@ -93,8 +93,8 @@ EOF
 
   echo "⏳ Fetching new connection ID..."
 
-  CONNECTION_ID=$($FAB_CMD api connections -A fabric \
-    -q "text.value[?displayName=='${DISPLAY_NAME}'].id" -o tsv)
+  CONNECTION_ID=$($FAB_CMD api connections -A fabric | jq -r ".value[] | select(.displayName==\"${DISPLAY_NAME}\") | .id")
+
 
   if [ -z "$CONNECTION_ID" ]; then
     echo "❌ Connection creation failed!"
