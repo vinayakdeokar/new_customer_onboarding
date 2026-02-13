@@ -10,10 +10,10 @@ BASE_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 JSON_FILE="$BASE_DIR/metadata/customers/customers.json"
 STATUS_FILE="$BASE_DIR/customer_status.env"
 
-echo "Checking customer in JSON"
-echo "Product  : $PRODUCT"
-echo "Customer : $CUSTOMER"
-echo "JSON     : $JSON_FILE"
+# echo "Checking customer in JSON"
+# echo "Product  : $PRODUCT"
+# echo "Customer : $CUSTOMER"
+# echo "JSON     : $JSON_FILE"
 
 # Validate JSON file
 if [ ! -f "$JSON_FILE" ]; then
