@@ -32,7 +32,7 @@ if [ -z "$SPN_CLIENT_ID" ]; then
 fi
 
 echo "✅ Azure SPN found"
-echo "   ➜ Client ID: $SPN_CLIENT_ID"
+#echo "   ➜ Client ID: $SPN_CLIENT_ID"
 
 # --------------------------------------------------
 # Step 3️⃣ Databricks login check
