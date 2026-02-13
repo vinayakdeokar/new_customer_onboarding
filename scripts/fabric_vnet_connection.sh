@@ -35,8 +35,10 @@ $FAB_CMD auth login \
   --tenant $FABRIC_TENANT_ID 
 
 echo "✅ Fabric login successful"
+echo "=== LIST WORKSPACES VISIBLE TO SPN ==="
+$FAB_CMD api groups -A fabric
 
-$FAB_CMD auth status
+
 
 ############################################
 # Add SPN to Workspace (Hardcoded Test)
