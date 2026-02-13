@@ -33,9 +33,35 @@ $FAB_CMD auth login \
   -u $FABRIC_CLIENT_ID \
   -p $FABRIC_CLIENT_SECRET \
   --tenant $FABRIC_TENANT_ID \
-  --resource https://analysis.windows.net/powerbi/api
 
 echo "✅ Fabric login successful"
+
+$FAB_CMD auth status
+
+############################################
+# Add SPN to Workspace (Hardcoded Test)
+############################################
+
+echo "👤 Adding SPN to Workspace..."
+
+WORKSPACE_ID="9f656d64-9fd4-4c38-8a27-be73e5f36836"
+SPN_OBJECT_ID="a97fcf09-0a67-478d-bfd1-89550f20a33f"
+
+cat > workspace_role.json <<EOF
+{
+  "principal": {
+    "id": "${SPN_OBJECT_ID}",
+    "type": "ServicePrincipal"
+  },
+  "role": "Admin"
+}
+EOF
+
+$FAB_CMD api workspaces/${WORKSPACE_ID}/roleAssignments \
+  -A fabric -X post -i workspace_role.json
+
+echo "✅ SPN added to workspace"
+
 
 
 
