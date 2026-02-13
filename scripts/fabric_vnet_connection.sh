@@ -59,8 +59,16 @@ cat > workspace_role.json <<EOF
 }
 EOF
 
-RESPONSE=$($FAB_CMD api groups/${WORKSPACE_ID}/roleAssignments \
-  -A fabric -X post -i workspace_role.json)
+cat > workspace_user.json <<EOF
+{
+  "identifier": "${SPN_OBJECT_ID}",
+  "groupUserAccessRight": "Contributor",
+  "principalType": "App"
+}
+EOF
+
+RESPONSE=$($FAB_CMD api groups/${WORKSPACE_ID}/users \
+  -A fabric -X post -i workspace_user.json)
 
 echo "$RESPONSE"
 
