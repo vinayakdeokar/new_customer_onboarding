@@ -32,7 +32,7 @@ echo "🔐 Logging into Fabric..."
 $FAB_CMD auth login \
   -u $FABRIC_CLIENT_ID \
   -p $FABRIC_CLIENT_SECRET \
-  --tenant $FABRIC_TENANT_ID \
+  --tenant $FABRIC_TENANT_ID 
 
 echo "✅ Fabric login successful"
 
@@ -122,7 +122,9 @@ EOF
 
   echo "⏳ Fetching new connection ID..."
 
-  CONNECTION_ID=$($FAB_CMD api connections -A fabric | jq -r ".value[] | select(.displayName==\"${DISPLAY_NAME}\") | .id")
+  CONNECTION_ID=$($FAB_CMD api connections -A fabric | \
+  jq -r ".text.value[] | select(.displayName==\"${DISPLAY_NAME}\") | .id")
+
 
 
   if [ -z "$CONNECTION_ID" ]; then
