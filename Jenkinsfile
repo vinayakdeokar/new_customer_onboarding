@@ -198,22 +198,23 @@ pipeline {
         //         }
         //     }
         // }
-        stage('Install Microsoft Fabric CLI') {
+       stage('Install Microsoft Fabric CLI') {
             steps {
                 sh '''
                 set -e
         
-                echo "⬇ Downloading Microsoft Fabric CLI..."
+                echo "⬇ Installing NodeJS if not present..."
         
-                curl -L -o fabric.tar.gz https://aka.ms/fabric-cli-linux
+                if ! command -v node > /dev/null; then
+                    curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
+                    apt-get install -y nodejs
+                fi
         
-                tar -xzf fabric.tar.gz
+                echo "⬇ Installing Microsoft Fabric CLI..."
         
-                chmod +x fabric
+                npm install -g @microsoft/fabric-cli
         
-                mv fabric /usr/local/bin/fab
-        
-                echo "✅ Fabric CLI installed"
+                echo "✅ Fabric CLI Installed"
         
                 fab --version
                 '''
