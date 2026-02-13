@@ -80,7 +80,8 @@ fi
 echo "🔎 Checking existing connection..."
 
 CONNECTION_ID=$($FAB_CMD api connections -A fabric | \
-  jq -r ".text.value[] | select(.displayName==\"${DISPLAY_NAME}\") | .id")
+  jq -r ".text.value[]? | select(.displayName==\"${DISPLAY_NAME}\") | .id"
+
 
 
 if [ -n "$CONNECTION_ID" ]; then
@@ -131,7 +132,8 @@ EOF
   echo "⏳ Fetching new connection ID..."
 
   CONNECTION_ID=$($FAB_CMD api connections -A fabric | \
-  jq -r ".text.value[] | select(.displayName==\"${DISPLAY_NAME}\") | .id")
+  jq -r ".text.value[]? | select(.displayName==\"${DISPLAY_NAME}\") | .id"
+
 
 
 
