@@ -15,13 +15,7 @@ HTTP_PATH="/sql/1.0/warehouses/${DATABRICKS_SQL_WAREHOUSE_ID}"
 ############################################
 echo "🔐 Logging into Fabric..."
 
-# --- ही नवीन भर घाला (Fix) ---
-fab() {
-    python3 -m fabric_cli.main "$@"
-}
-export -f fab
-# ----------------------------
-ln -s /usr/bin/python3 /usr/local/bin/fab_bin && printf '#!/bin/bash\npython3 -m fabric "$@"' > /usr/local/bin/fab && chmod +x /usr/local/bin/fab
+export PATH=$PATH:$HOME/.local/bin
 
 fab auth login \
   --tenant-id $FABRIC_TENANT_ID \
@@ -29,6 +23,7 @@ fab auth login \
   --client-secret $FABRIC_CLIENT_SECRET
 
 echo "✅ Fabric login successful"
+
 
 ############################################
 # 2️⃣ Check if connection already exists
