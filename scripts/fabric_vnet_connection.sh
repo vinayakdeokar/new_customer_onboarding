@@ -71,12 +71,8 @@ echo "✅ SPN added to workspace"
 
 echo "🔎 Checking existing connection..."
 
-echo "=== RAW CONNECTION RESPONSE ==="
-$FAB_CMD api connections -A fabric
-echo "================================"
-
-exit 1
-
+CONNECTION_ID=$($FAB_CMD api connections -A fabric | \
+  jq -r ".text.value[] | select(.displayName==\"${DISPLAY_NAME}\") | .id")
 
 
 if [ -n "$CONNECTION_ID" ]; then
@@ -84,6 +80,7 @@ if [ -n "$CONNECTION_ID" ]; then
   echo "Connection ID: $CONNECTION_ID"
 else
   echo "🚀 Creating new connection..."
+
 
 cat > payload.json <<EOF
 {
