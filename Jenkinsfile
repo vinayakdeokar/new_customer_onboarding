@@ -197,7 +197,7 @@ pipeline {
         //             '''
         //         }
         //     }
-        }
+        // }
         stage('Install Fabric CLI') {
             steps {
                 sh '''
@@ -207,7 +207,7 @@ pipeline {
                 '''
             }
         }
-    
+
 
         stage('Fabric VNet Connection') {
             steps {
@@ -223,12 +223,11 @@ pipeline {
                     sh '''
                         set +x
                         chmod +x scripts/fabric_vnet_connection.sh
-                        ./scripts/fabric_vnet_connection.sh
+                        bash ./scripts/fabric_vnet_connection.sh
                     '''
                 }
             }
         }
-
 
         // stage('Update Customer Metadata') {
         //     when {
@@ -263,8 +262,6 @@ pipeline {
         //         }
         //     }
         // }
-        
-
 
     }
 }
