@@ -48,43 +48,43 @@ pipeline {
         KV_NAME = 'kv-databricks-fab'
     }
 
-    stages {
+    // stages {
 
-        stage('Init Workspace') {
-            steps {
-                sh '''
-                    echo "🧹 Cleaning old env state"
-                    rm -f db_env.sh
-                '''
-            }
-        }
+    //     stage('Init Workspace') {
+    //         steps {
+    //             sh '''
+    //                 echo "🧹 Cleaning old env state"
+    //                 rm -f db_env.sh
+    //             '''
+    //         }
+    //     }
 
-        stage('Checkout') {
-            steps {
-                checkout scm
-                echo "Customer=${params.CUSTOMER_CODE}, Product=${params.PRODUCT}, Env=${params.ENV}"
-                echo "SPN=${params.SPN_NAME}"
-            }
-        }
+        // stage('Checkout') {
+        //     steps {
+        //         checkout scm
+        //         echo "Customer=${params.CUSTOMER_CODE}, Product=${params.PRODUCT}, Env=${params.ENV}"
+        //         echo "SPN=${params.SPN_NAME}"
+        //     }
+        // }
 
-        stage('Customer Check') {
-            steps {
-                sh '''
-                    set +x
-                    chmod +x scripts/check_customer_exists.sh
-                    scripts/check_customer_exists.sh \
-                        ${PRODUCT} \
-                        ${CUSTOMER_CODE}
-                '''
-                script {
-                    def status = readFile('customer_status.env')
-                    if (status.contains("CUSTOMER_EXISTS=true")) {
-                        currentBuild.result = 'SUCCESS'
-                        error("STOP_PIPELINE")
-                    }
-                }
-            }
-        }
+        // stage('Customer Check') {
+        //     steps {
+        //         sh '''
+        //             set +x
+        //             chmod +x scripts/check_customer_exists.sh
+        //             scripts/check_customer_exists.sh \
+        //                 ${PRODUCT} \
+        //                 ${CUSTOMER_CODE}
+        //         '''
+        //         script {
+        //             def status = readFile('customer_status.env')
+        //             if (status.contains("CUSTOMER_EXISTS=true")) {
+        //                 currentBuild.result = 'SUCCESS'
+        //                 error("STOP_PIPELINE")
+        //             }
+        //         }
+        //     }
+        // }
 
         stage('Azure Login') {
             steps {
