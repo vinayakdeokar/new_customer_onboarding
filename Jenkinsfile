@@ -56,9 +56,6 @@ pipeline {
             }
         }
 
-        // --------------------------------------------------
-        // CHECKOUT
-        // --------------------------------------------------
         stage('Checkout') {
             steps {
                 checkout scm
@@ -67,9 +64,6 @@ pipeline {
             }
         }
 
-        // --------------------------------------------------
-        // CUSTOMER CHECK
-        // --------------------------------------------------
         stage('Customer Check') {
             steps {
                 sh '''
@@ -89,9 +83,6 @@ pipeline {
             }
         }
 
-        // --------------------------------------------------
-        // AZURE LOGIN
-        // --------------------------------------------------
         stage('Azure Login') {
             steps {
                 withCredentials([
@@ -109,9 +100,6 @@ pipeline {
             }
         }
 
-        // --------------------------------------------------
-        // PRE-DATABRICKS CHECK
-        // --------------------------------------------------
         stage('Pre Databricks Identity Check') {
             steps {
                 withCredentials([
@@ -126,163 +114,140 @@ pipeline {
             }
         }
 
-//         // --------------------------------------------------
-//         // SPN SETUP (WORKSPACE)
-//         // --------------------------------------------------
-//         stage('Databricks SPN Setup') {
-//             steps {
-//                 withCredentials([
-//                     string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
-//                     string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_ADMIN_TOKEN')
-//                 ]) {
-//                     sh '''
-//                         chmod +x scripts/databricks_login_and_add_spn.sh
-//                         scripts/databricks_login_and_add_spn.sh "${PRODUCT}" "${CUSTOMER_CODE}"
-//                     '''
-//                 }
-//             }
-//         }
+        stage('Databricks SPN Setup') {
+            steps {
+                withCredentials([
+                    string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
+                    string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_ADMIN_TOKEN')
+                ]) {
+                    sh '''
+                        set +x
+                        chmod +x scripts/databricks_login_and_add_spn.sh
+                        scripts/databricks_login_and_add_spn.sh "${PRODUCT}" "${CUSTOMER_CODE}"
+                    '''
+                }
+            }
+        }
 
-//         // --------------------------------------------------
-//         // SPN OAUTH SECRET (ACCOUNT LEVEL)
-//         // --------------------------------------------------
-//         stage('Databricks SPN OAuth Secret (Account Level)') {
-//             steps {
-//                 withCredentials([
-//                     string(credentialsId: 'DATABRICKS_ACCOUNT_ID', variable: 'DATABRICKS_ACCOUNT_ID'),
-//                     string(credentialsId: 'AZURE_TENANT_ID', variable: 'AZURE_TENANT_ID')
-//                 ]) {
-//                     sh """
-//                         export TARGET_SPN_DISPLAY_NAME="${params.SPN_NAME}"
+        stage('Databricks SPN OAuth Secret (Account Level)') {
+            steps {
+                withCredentials([
+                    string(credentialsId: 'DATABRICKS_ACCOUNT_ID', variable: 'DATABRICKS_ACCOUNT_ID'),
+                    string(credentialsId: 'AZURE_TENANT_ID', variable: 'AZURE_TENANT_ID')
+                ]) {
+                    sh """
+                        set +x
+                        export TARGET_SPN_DISPLAY_NAME="${params.SPN_NAME}"
+                        echo "Using SPN: \$TARGET_SPN_DISPLAY_NAME"
+                        chmod +x scripts/dbx_spn_discover.sh
+                        chmod +x scripts/dbx_spn_generate_secret.sh
+                        scripts/dbx_spn_discover.sh
+                        scripts/dbx_spn_generate_secret.sh
+                    """
+                }
+            }
+        }
 
-//                         echo "Using SPN: \$TARGET_SPN_DISPLAY_NAME"
+        stage('Databricks Account Group Sync') {
+            steps {
+                withCredentials([
+                    string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
+                    string(credentialsId: 'DATABRICKS_ACCOUNT_ID', variable: 'DATABRICKS_ACCOUNT_ID'),
+                    string(credentialsId: 'DATABRICKS_WORKSPACE_ID', variable: 'DATABRICKS_WORKSPACE_ID'),
+                    string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_ADMIN_TOKEN')
+                ]) {
+                    sh '''
+                        set +x
+                        export GROUP_NAME="grp-${PRODUCT}-${CUSTOMER_CODE}-users"
+                        chmod +x scripts/account_group_sync.sh
+                        ./scripts/account_group_sync.sh
+                    '''
+                }
+            }
+        }
 
-//                         chmod +x scripts/dbx_spn_discover.sh
-//                         chmod +x scripts/dbx_spn_generate_secret.sh
+        stage('Create ADLS Bronze Folder') {
+            steps {
+                sh '''
+                    set +x
+                    chmod +x scripts/create_bronze_folder.sh
+                    export STORAGE_ACCOUNT=stmedicareadvmcr
+                    export CONTAINER_NAME=bronze
+                    scripts/create_bronze_folder.sh
+                '''
+            }
+        }
 
-//                         scripts/dbx_spn_discover.sh
-//                         scripts/dbx_spn_generate_secret.sh
-//                     """
-//                 }
-//             }
-//         }
+        stage('Schemas & Grants') {
+            steps {
+                withCredentials([
+                    string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
+                    string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_ADMIN_TOKEN'),
+                    string(credentialsId: 'DATABRICKS_SQL_WAREHOUSE_ID', variable: 'DATABRICKS_SQL_WAREHOUSE_ID'),
+                    string(credentialsId: 'DATABRICKS_CATALOG_NAME', variable: 'CATALOG_NAME'),
+                    string(credentialsId: 'STORAGE_BRONZE_ROOT', variable: 'STORAGE_BRONZE_ROOT')
+                ]) {
+                    sh '''
+                        set +x
+                        chmod +x scripts/databricks_schema_and_grants.sh
+                        ./scripts/databricks_schema_and_grants.sh
+                    '''
+                }
+            }
+        }
 
-//         // --------------------------------------------------
-//         // ACCOUNT GROUP SYNC
-//         // --------------------------------------------------
-//         stage('Databricks Account Group Sync') {
-//             steps {
-//                 withCredentials([
-//                     string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
-//                     string(credentialsId: 'DATABRICKS_ACCOUNT_ID', variable: 'DATABRICKS_ACCOUNT_ID'),
-//                     string(credentialsId: 'DATABRICKS_WORKSPACE_ID', variable: 'DATABRICKS_WORKSPACE_ID'),
-//                     string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_ADMIN_TOKEN')
-//                 ]) {
-//                     sh '''
-//                         export GROUP_NAME="grp-${PRODUCT}-${CUSTOMER_CODE}-users"
+        stage('Create Fabric Connection') {
+            steps {
+                withCredentials([
+                    string(credentialsId: 'AZURE_CLIENT_ID', variable: 'DB_USER'),
+                    string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DB_PASS'),
+                    string(credentialsId: 'DATABRICKS_HOST', variable: 'DB_HOST')
+                ]) {
+                    sh '''
+                        set +x
+                        export DISPLAY_NAME="db-vnet-automation-spn-5"
+                        export GATEWAY_ID="34377033-6f6f-433a-9a66-3095e996f65c"
+                        export DB_HTTP_PATH="/sql/1.0/warehouses/559747c78f71249c"
+                        chmod +x scripts/fabric_connection.sh
+                        ./scripts/fabric_connection.sh
+                    '''
+                }
+            }
+        }
 
-//                         chmod +x scripts/account_group_sync.sh
-//                         ./scripts/account_group_sync.sh
-//                     '''
-//                 }
-//             }
-//         }
-//         stage('Create ADLS Bronze Folder') {
-//             steps {
-//                 sh '''
-//                 chmod +x scripts/create_bronze_folder.sh
-//                 export STORAGE_ACCOUNT=stmedicareadvmcr
-//                 export CONTAINER_NAME=bronze
-//                 scripts/create_bronze_folder.sh
-//                 '''
-//             }
-//         }
+        stage('Update Customer Metadata') {
+            when {
+                expression { currentBuild.currentResult == 'SUCCESS' }
+            }
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'github-pat',
+                    usernameVariable: 'GIT_USERNAME',
+                    passwordVariable: 'GIT_TOKEN'
+                )]) {
 
+                    sh '''
+                        set -e
+                        set +x
+                        echo "✔ Updating customer metadata..."
+                        chmod +x scripts/update_metadata.sh
+                        ./scripts/update_metadata.sh $PRODUCT $CUSTOMER_CODE $ENV > /dev/null 2>&1
+                        git config user.name "jenkins-bot"
+                        git config user.email "jenkins@automation.local"
+                        git add metadata/customers/customers.json
 
-//         // --------------------------------------------------
-//         // SCHEMAS & GRANTS
-//         // --------------------------------------------------
-//         stage('Schemas & Grants') {
-//             steps {
-//                 withCredentials([
-//                     string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
-//                     string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_ADMIN_TOKEN'),
-//                     string(credentialsId: 'DATABRICKS_SQL_WAREHOUSE_ID', variable: 'DATABRICKS_SQL_WAREHOUSE_ID'),
-//                     string(credentialsId: 'DATABRICKS_CATALOG_NAME', variable: 'CATALOG_NAME'),
-//                     string(credentialsId: 'STORAGE_BRONZE_ROOT', variable: 'STORAGE_BRONZE_ROOT')
-//                 ]) {
-//                     sh '''
-//                         chmod +x scripts/databricks_schema_and_grants.sh
-//                         ./scripts/databricks_schema_and_grants.sh
-//                     '''
-//                 }
-//             }
-//         }
+                        if git diff --cached --quiet; then
+                            echo "✔ No metadata changes"
+                            exit 0
+                        fi
 
-//         // stage('Create Fabric Connection') {
-//         //     steps {
-//         //         withCredentials([
-//         //             string(credentialsId: 'AZURE_CLIENT_ID', variable: 'DB_USER'),
-//         //             string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DB_PASS'),
-//         //             string(credentialsId: 'DATABRICKS_HOST', variable: 'DB_HOST')
-//         //         ]) {
-                
-//         //             sh '''
-//         //             export DISPLAY_NAME="db-vnet-automation-spn-5"
-//         //             export GATEWAY_ID="34377033-6f6f-433a-9a66-3095e996f65c"
-//         //             export DB_HTTP_PATH="/sql/1.0/warehouses/559747c78f71249c"
-//         //             chmod +x scripts/fabric_connection.sh
-                
-//         //             ./scripts/fabric_connection.sh
-//         //             '''
-//         //         }
-
-//         //     }
-//         // }
-
-//         stage('Update Customer Metadata') {
-//             when {
-//                 expression { currentBuild.currentResult == 'SUCCESS' }
-//             }
-//             steps {
-//                 withCredentials([usernamePassword(
-//                     credentialsId: 'github-pat',
-//                     usernameVariable: 'GIT_USERNAME',
-//                     passwordVariable: 'GIT_TOKEN'
-//                 )]) {
-        
-//                     sh '''
-//                     set -e
-        
-//                     echo "✔ Updating customer metadata..."
-        
-//                     chmod +x scripts/update_metadata.sh
-//                     ./scripts/update_metadata.sh $PRODUCT $CUSTOMER_CODE $ENV > /dev/null 2>&1
-        
-//                     git config user.name "jenkins-bot"
-//                     git config user.email "jenkins@automation.local"
-        
-//                     git add metadata/customers/customers.json
-        
-//                     if git diff --cached --quiet; then
-//                         echo "✔ No metadata changes"
-//                         exit 0
-//                     fi
-        
-//                     git commit -m "Auto-added customer $CUSTOMER_CODE" > /dev/null 2>&1
-        
-//                     git push https://$GIT_USERNAME:$GIT_TOKEN@github.com/vinayakdeokar/new_customer_onboarding.git HEAD:main > /dev/null 2>&1
-        
-//                     echo "✔ Metadata pushed to Git"
-//                     '''
-//                 }
-//             }
-//         }
-
-
-        
-
-
+                        git commit -m "Auto-added customer $CUSTOMER_CODE" > /dev/null 2>&1
+                        git push https://$GIT_USERNAME:$GIT_TOKEN@github.com/vinayakdeokar/new_customer_onboarding.git HEAD:main > /dev/null 2>&1
+                        echo "✔ Metadata pushed to Git"
+                    '''
+                }
+            }
+        }
 
     }
 }
