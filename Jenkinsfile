@@ -197,7 +197,17 @@ pipeline {
         //             '''
         //         }
         //     }
-        // }
+        }
+        stage('Install Fabric CLI') {
+            steps {
+                sh '''
+                python3 -m pip install --user ms-fabric-cli
+                export PATH=$PATH:$HOME/.local/bin
+                fab --version
+                '''
+            }
+        }
+    
 
         stage('Fabric VNet Connection') {
             steps {
@@ -213,7 +223,7 @@ pipeline {
                     sh '''
                         set +x
                         chmod +x scripts/fabric_vnet_connection.sh
-                        bash ./scripts/fabric_vnet_connection.sh
+                        ./scripts/fabric_vnet_connection.sh
                     '''
                 }
             }
