@@ -1,5 +1,6 @@
 ##!/bin/bash
 set -e
+FAB_CMD="$WORKSPACE/fabric-venv/bin/fab"
 
 echo "============================================"
 echo "🚀 FABRIC VNET CONNECTION AUTOMATION STARTED"
@@ -14,7 +15,7 @@ HTTP_PATH="/sql/1.0/warehouses/${DATABRICKS_SQL_WAREHOUSE_ID}"
 # 1️⃣ Fabric Login
 ############################################
 echo "🔐 Logging into Fabric..."
-FAB_CMD="./fabric-venv/bin/fab"
+
 
 
 export PATH=$PATH:$HOME/.local/bin
