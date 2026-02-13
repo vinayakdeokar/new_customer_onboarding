@@ -1,0 +1,112 @@
+#!/bin/bash
+set -e
+
+echo "============================================"
+echo "🚀 FABRIC VNET CONNECTION AUTOMATION STARTED"
+echo "Customer: $CUSTOMER_CODE"
+echo "============================================"
+
+DISPLAY_NAME="db-vnet-${CUSTOMER_CODE}"
+GATEWAY_ID="34377033-6f6f-433a-9a66-3095e996f65c"
+HTTP_PATH="/sql/1.0/warehouses/${DATABRICKS_SQL_WAREHOUSE_ID}"
+
+############################################
+# 1️⃣ Fabric Login
+############################################
+echo "🔐 Logging into Fabric..."
+
+fab auth login \
+  --tenant-id $FABRIC_TENANT_ID \
+  --client-id $FABRIC_CLIENT_ID \
+  --client-secret $FABRIC_CLIENT_SECRET
+
+echo "✅ Fabric login successful"
+
+############################################
+# 2️⃣ Check if connection already exists
+############################################
+echo "🔎 Checking existing connection..."
+
+CONNECTION_ID=$(fab api connections -A fabric \
+  -q "text.value[?displayName=='${DISPLAY_NAME}'].id" -o tsv)
+
+if [ -n "$CONNECTION_ID" ]; then
+  echo "✅ Connection already exists"
+  echo "Connection ID: $CONNECTION_ID"
+else
+  echo "🚀 Creating new connection..."
+
+  cat > payload.json <<EOF
+{
+  "displayName": "${DISPLAY_NAME}",
+  "connectivityType": "VirtualNetworkGateway",
+  "gatewayId": "${GATEWAY_ID}",
+  "privacyLevel": "Private",
+  "connectionDetails": {
+    "type": "Databricks",
+    "creationMethod": "Databricks.Catalogs",
+    "parameters": [
+      {
+        "dataType": "Text",
+        "name": "host",
+        "value": "${DATABRICKS_HOST}"
+      },
+      {
+        "dataType": "Text",
+        "name": "httpPath",
+        "value": "${HTTP_PATH}"
+      }
+    ]
+  },
+  "credentialDetails": {
+    "credentialType": "Basic",
+    "singleSignOnType": "None",
+    "connectionEncryption": "NotEncrypted",
+    "skipTestConnection": false,
+    "credentials": {
+      "credentialType": "Basic",
+      "username": "${SPN_CLIENT_ID_KV}",
+      "password": "${SPN_SECRET_KV}"
+    }
+  }
+}
+EOF
+
+  fab api connections -A fabric -X post -i payload.json
+
+  echo "⏳ Fetching new connection ID..."
+
+  CONNECTION_ID=$(fab api connections -A fabric \
+    -q "text.value[?displayName=='${DISPLAY_NAME}'].id" -o tsv)
+
+  if [ -z "$CONNECTION_ID" ]; then
+    echo "❌ Connection creation failed!"
+    exit 1
+  fi
+
+  echo "✅ Connection created successfully"
+fi
+
+############################################
+# 3️⃣ Assign Group as Owner
+############################################
+echo "👥 Assigning group as Owner..."
+
+cat > role.json <<EOF
+{
+  "principal": {
+    "id": "${GROUP_OBJECT_ID}",
+    "type": "Group"
+  },
+  "role": "Owner"
+}
+EOF
+
+fab api connections/${CONNECTION_ID}/roleAssignments \
+  -A fabric -X post -i role.json
+
+echo "✅ Group assigned successfully"
+
+echo "============================================"
+echo "🎉 FABRIC CONNECTION AUTOMATION COMPLETED"
+echo "============================================"
