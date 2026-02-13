@@ -198,28 +198,26 @@ pipeline {
         //         }
         //     }
         // }
-       stage('Install Microsoft Fabric CLI') {
+       stage('Install Fabric CLI (Python venv)') {
             steps {
                 sh '''
                 set -e
         
-                echo "⬇ Installing NodeJS if not present..."
+                echo "Creating virtual environment..."
+                python3 -m venv fabricenv
         
-                if ! command -v node > /dev/null; then
-                    curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
-                    apt-get install -y nodejs
-                fi
+                echo "Activating venv..."
+                . fabricenv/bin/activate
         
-                echo "⬇ Installing Microsoft Fabric CLI..."
+                echo "Installing ms-fabric-cli..."
+                pip install ms-fabric-cli==1.4.0
         
-                npm install -g @microsoft/fabric-cli
-        
-                echo "✅ Fabric CLI Installed"
-        
-                fab --version
+                echo "Verifying install..."
+                fabricenv/bin/fab --version
                 '''
             }
         }
+
 
         stage('Check Existing FAB') {
             steps {
