@@ -27,9 +27,10 @@ echo "🔐 Logging into Fabric..."
 
 $FAB_CMD auth login \
   --tenant $FABRIC_TENANT_ID \
-  --service-principal \
   --client-id $FABRIC_CLIENT_ID \
   --client-secret $FABRIC_CLIENT_SECRET
+
+echo "✅ Fabric login successful"
 
 
 echo "✅ Fabric login successful"
