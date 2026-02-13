@@ -1,11 +1,14 @@
-##!/bin/bash
+#!/bin/bash
 set -e
-FAB_CMD="$WORKSPACE/fabric-venv/bin/fab"
 
 echo "============================================"
 echo "🚀 FABRIC VNET CONNECTION AUTOMATION STARTED"
 echo "Customer: $CUSTOMER_CODE"
 echo "============================================"
+
+############################################
+# VARIABLES
+############################################
 
 DISPLAY_NAME="db-vnet-${CUSTOMER_CODE}"
 GATEWAY_ID="34377033-6f6f-433a-9a66-3095e996f65c"
@@ -14,24 +17,20 @@ HTTP_PATH="/sql/1.0/warehouses/${DATABRICKS_SQL_WAREHOUSE_ID}"
 ############################################
 # 1️⃣ Fabric Login
 ############################################
+
 echo "🔐 Logging into Fabric..."
 
-
-
-export PATH=$PATH:$HOME/.local/bin
-
-$FAB_CMD auth login service-principal \
-  --tenant $FABRIC_TENANT_ID \
+fab auth login \
+  --tenant-id $FABRIC_TENANT_ID \
   --client-id $FABRIC_CLIENT_ID \
   --client-secret $FABRIC_CLIENT_SECRET
 
-
 echo "✅ Fabric login successful"
-
 
 ############################################
 # 2️⃣ Check if connection already exists
 ############################################
+
 echo "🔎 Checking existing connection..."
 
 CONNECTION_ID=$(fab api connections -A fabric \
@@ -43,7 +42,7 @@ if [ -n "$CONNECTION_ID" ]; then
 else
   echo "🚀 Creating new connection..."
 
-  cat > payload.json <<EOF
+cat > payload.json <<EOF
 {
   "displayName": "${DISPLAY_NAME}",
   "connectivityType": "VirtualNetworkGateway",
@@ -92,11 +91,13 @@ EOF
   fi
 
   echo "✅ Connection created successfully"
+  echo "Connection ID: $CONNECTION_ID"
 fi
 
 ############################################
 # 3️⃣ Assign Group as Owner
 ############################################
+
 echo "👥 Assigning group as Owner..."
 
 cat > role.json <<EOF
