@@ -1,15 +1,15 @@
 #!/bin/bash
 set -e
-FAB_CMD="$WORKSPACE/fabricenv/bin/fab"
 
+FAB_CMD="$WORKSPACE/fabricenv/bin/fab"
 
 echo "============================================"
 echo "🚀 FABRIC VNET CONNECTION AUTOMATION STARTED"
 echo "Customer: $CUSTOMER_CODE"
 echo "============================================"
-which fab
-fab --version
 
+echo "Using FAB from:"
+ls -l $FAB_CMD
 
 ############################################
 # VARIABLES
@@ -30,7 +30,6 @@ $FAB_CMD auth login \
   --client-id $FABRIC_CLIENT_ID \
   --client-secret $FABRIC_CLIENT_SECRET
 
-
 echo "✅ Fabric login successful"
 
 ############################################
@@ -39,7 +38,7 @@ echo "✅ Fabric login successful"
 
 echo "🔎 Checking existing connection..."
 
-CONNECTION_ID=$(fab api connections -A fabric \
+CONNECTION_ID=$($FAB_CMD api connections -A fabric \
   -q "text.value[?displayName=='${DISPLAY_NAME}'].id" -o tsv)
 
 if [ -n "$CONNECTION_ID" ]; then
@@ -84,11 +83,11 @@ cat > payload.json <<EOF
 }
 EOF
 
-  fab api connections -A fabric -X post -i payload.json
+  $FAB_CMD api connections -A fabric -X post -i payload.json
 
   echo "⏳ Fetching new connection ID..."
 
-  CONNECTION_ID=$(fab api connections -A fabric \
+  CONNECTION_ID=$($FAB_CMD api connections -A fabric \
     -q "text.value[?displayName=='${DISPLAY_NAME}'].id" -o tsv)
 
   if [ -z "$CONNECTION_ID" ]; then
@@ -116,7 +115,7 @@ cat > role.json <<EOF
 }
 EOF
 
-fab api connections/${CONNECTION_ID}/roleAssignments \
+$FAB_CMD api connections/${CONNECTION_ID}/roleAssignments \
   -A fabric -X post -i role.json
 
 echo "✅ Group assigned successfully"
