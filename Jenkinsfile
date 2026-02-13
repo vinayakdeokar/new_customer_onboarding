@@ -196,24 +196,24 @@ pipeline {
             }
         }
 
-        stage('Create Fabric Connection') {
-            steps {
-                withCredentials([
-                    string(credentialsId: 'AZURE_CLIENT_ID', variable: 'DB_USER'),
-                    string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DB_PASS'),
-                    string(credentialsId: 'DATABRICKS_HOST', variable: 'DB_HOST')
-                ]) {
-                    sh '''
-                        set +x
-                        export DISPLAY_NAME="db-vnet-automation-spn-5"
-                        export GATEWAY_ID="34377033-6f6f-433a-9a66-3095e996f65c"
-                        export DB_HTTP_PATH="/sql/1.0/warehouses/559747c78f71249c"
-                        chmod +x scripts/fabric_connection.sh
-                        ./scripts/fabric_connection.sh
-                    '''
-                }
-            }
-        }
+        // stage('Create Fabric Connection') {
+        //     steps {
+        //         withCredentials([
+        //             string(credentialsId: 'AZURE_CLIENT_ID', variable: 'DB_USER'),
+        //             string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DB_PASS'),
+        //             string(credentialsId: 'DATABRICKS_HOST', variable: 'DB_HOST')
+        //         ]) {
+        //             sh '''
+        //                 set +x
+        //                 export DISPLAY_NAME="db-vnet-automation-spn-5"
+        //                 export GATEWAY_ID="34377033-6f6f-433a-9a66-3095e996f65c"
+        //                 export DB_HTTP_PATH="/sql/1.0/warehouses/559747c78f71249c"
+        //                 chmod +x scripts/fabric_connection.sh
+        //                 ./scripts/fabric_connection.sh
+        //             '''
+        //         }
+        //     }
+        // }
 
         stage('Update Customer Metadata') {
             when {
