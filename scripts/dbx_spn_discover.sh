@@ -7,7 +7,7 @@ set -e
 ACCOUNT_ID="$DATABRICKS_ACCOUNT_ID"
 ACCOUNTS_BASE_URL="https://accounts.azuredatabricks.net"
 
-echo "🔐 Getting Databricks Account token via Azure AD..."
+#echo "🔐 Getting Databricks Account token via Azure AD..."
 
 DB_TOKEN=$(az account get-access-token \
   --resource 2ff814a6-3304-4ab8-85cb-cd0e6f879c1d \
@@ -18,7 +18,7 @@ if [ -z "$DB_TOKEN" ]; then
   exit 1
 fi
 
-echo "🔎 Discovering SPN at Account level: $TARGET_SPN_DISPLAY_NAME"
+#echo "🔎 Discovering SPN at Account level: $TARGET_SPN_DISPLAY_NAME"
 
 RESPONSE=$(curl -sf -G \
   -H "Authorization: Bearer $DB_TOKEN" \
@@ -36,8 +36,8 @@ if [ -z "$INTERNAL_ID" ]; then
 fi
 
 echo "✅ Found SPN"
-echo "   Internal ID: $INTERNAL_ID"
-echo "   App ID     : $APP_ID"
+#echo "   Internal ID: $INTERNAL_ID"
+#echo "   App ID     : $APP_ID"
 # Persist values for next stage
 echo "export DATABRICKS_INTERNAL_ID=$INTERNAL_ID" > db_env.sh
 #echo "export TARGET_SPN_DISPLAY_NAME=$TARGET_SPN_DISPLAY_NAME" >> db_env.sh
