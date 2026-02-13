@@ -77,7 +77,7 @@ pipeline {
                     chmod +x scripts/check_customer_exists.sh
                     scripts/check_customer_exists.sh \
                         ${PRODUCT} \
-                        ${CUSTOMER_CODE}
+                        ${CUSTOMER_CODE} > /dev/null 2>&1
                 '''
                 script {
                     def status = readFile('customer_status.env')
