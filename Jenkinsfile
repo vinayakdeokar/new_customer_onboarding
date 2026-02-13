@@ -221,6 +221,19 @@ pipeline {
             }
         }
 
+        stage('Check Existing FAB') {
+            steps {
+                sh '''
+                echo "Which fab:"
+                which fab || true
+        
+                echo "Fab version:"
+                fab --version || true
+                '''
+            }
+        }
+
+
 
 
         stage('Fabric VNet Connection') {
