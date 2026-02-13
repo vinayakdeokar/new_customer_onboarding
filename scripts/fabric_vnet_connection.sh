@@ -23,6 +23,10 @@ HTTP_PATH="/sql/1.0/warehouses/${DATABRICKS_SQL_WAREHOUSE_ID}"
 # 1️⃣ Fabric Login
 ############################################
 
+echo "🔐 Configuring Fabric CLI for CI..."
+
+$FAB_CMD config set encryption_fallback_enabled true
+
 echo "🔐 Logging into Fabric..."
 
 $FAB_CMD auth login \
