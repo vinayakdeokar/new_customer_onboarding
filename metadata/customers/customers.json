@@ -48,10 +48,10 @@
       ]
     },
     {
-      "customer_code": "vinayak-003",
+      "customer_code": "vinayak-000",
       "product": "m360",
       "environment": "dev",
-      "group": "grp-m360-vinayak-003-users",
+      "group": "grp-m360-vinayak-000-users",
       "group_permissions": [
         "USE_CATALOG",
         "USE_SCHEMA",
@@ -59,7 +59,7 @@
         "EXECUTE",
         "READ_VOLUME"
       ],
-      "spn": "sp-m360-vinayak-003",
+      "spn": "sp-m360-vinayak-000",
       "spn_permissions": [
         "CAN_USE"
       ]
