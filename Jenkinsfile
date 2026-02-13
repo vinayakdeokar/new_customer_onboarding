@@ -201,12 +201,14 @@ pipeline {
         stage('Install Fabric CLI') {
             steps {
                 sh '''
-                python3 -m pip install --user ms-fabric-cli
-                export PATH=$PATH:$HOME/.local/bin
+                python3 -m venv fabric-venv
+                . fabric-venv/bin/activate
+                pip install ms-fabric-cli
                 fab --version
                 '''
             }
         }
+
 
 
         stage('Fabric VNet Connection') {
