@@ -48,16 +48,16 @@ pipeline {
         KV_NAME = 'kv-databricks-fab'
     }
 
-    // stages {
+    stages {
 
-    //     stage('Init Workspace') {
-    //         steps {
-    //             sh '''
-    //                 echo "🧹 Cleaning old env state"
-    //                 rm -f db_env.sh
-    //             '''
-    //         }
-    //     }
+        stage('Init Workspace') {
+            steps {
+                sh '''
+                    echo "🧹 Cleaning old env state"
+                    rm -f db_env.sh
+                '''
+            }
+        }
 
         // stage('Checkout') {
         //     steps {
