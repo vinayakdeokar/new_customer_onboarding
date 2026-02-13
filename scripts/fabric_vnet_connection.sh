@@ -26,9 +26,11 @@ HTTP_PATH="/sql/1.0/warehouses/${DATABRICKS_SQL_WAREHOUSE_ID}"
 echo "🔐 Logging into Fabric..."
 
 $FAB_CMD auth login \
-  --tenant-id $FABRIC_TENANT_ID \
+  --tenant $FABRIC_TENANT_ID \
+  --service-principal \
   --client-id $FABRIC_CLIENT_ID \
   --client-secret $FABRIC_CLIENT_SECRET
+
 
 echo "✅ Fabric login successful"
 
