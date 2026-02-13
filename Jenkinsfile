@@ -213,7 +213,7 @@ pipeline {
                     sh '''
                         set +x
                         chmod +x scripts/fabric_vnet_connection.sh
-                        ./scripts/fabric_vnet_connection.sh
+                        bash ./scripts/fabric_vnet_connection.sh
                     '''
                 }
             }
