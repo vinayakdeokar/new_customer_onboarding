@@ -57,10 +57,18 @@ cat > workspace_role.json <<EOF
 }
 EOF
 
-$FAB_CMD api workspaces/${WORKSPACE_ID}/roleAssignments \
-  -A fabric -X post -i workspace_role.json
+RESPONSE=$($FAB_CMD api groups/${WORKSPACE_ID}/roleAssignments \
+  -A fabric -X post -i workspace_role.json)
 
-echo "✅ SPN added to workspace"
+echo "$RESPONSE"
+
+if echo "$RESPONSE" | grep -q '"status_code": 200'; then
+  echo "✅ SPN added to workspace"
+else
+  echo "❌ Failed to add SPN"
+  exit 1
+fi
+
 
 
 
