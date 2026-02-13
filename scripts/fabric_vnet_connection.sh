@@ -41,6 +41,8 @@ $FAB_CMD auth status
 ############################################
 # Add SPN to Workspace (Hardcoded Test)
 ############################################
+echo $FABRIC_WORKSPACE_ID
+
 
 echo "👤 Adding SPN to Workspace..."
 
