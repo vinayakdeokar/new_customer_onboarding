@@ -9,6 +9,7 @@ pipeline {
 
         string(
             name: 'CUSTOMER_CODE',
+            defaultValue: 'vinayak-003',
             description: 'Customer code like vinayak-003'
         )
 
@@ -32,11 +33,13 @@ pipeline {
 
         string(
             name: 'SPN_NAME',
+            defaultValue: 'sp-m360-vinayak-003',
             description: 'Azure Entra ID SPN name (e.g. sp-m360-vinayak-003)'
         )
 
         string(
             name: 'ACCESS_GROUP',
+            defaultValue: 'grp-m360-vinayak-003-users',
             description: 'Azure Entra ID group name (single)'
         )
     }
