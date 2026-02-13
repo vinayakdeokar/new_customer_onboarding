@@ -44,7 +44,12 @@ echo "✅ Fabric login successful"
 
 echo "🔎 Checking existing connection..."
 
-CONNECTION_ID=$($FAB_CMD api connections -A fabric | jq -r ".value[] | select(.displayName==\"${DISPLAY_NAME}\") | .id")
+echo "=== RAW CONNECTION RESPONSE ==="
+$FAB_CMD api connections -A fabric
+echo "================================"
+
+exit 1
+
 
 
 if [ -n "$CONNECTION_ID" ]; then
