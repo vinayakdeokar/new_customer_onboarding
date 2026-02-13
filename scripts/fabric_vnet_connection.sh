@@ -19,10 +19,11 @@ FAB_CMD="./fabric-venv/bin/fab"
 
 export PATH=$PATH:$HOME/.local/bin
 
-$FAB_CMD auth login \
-  --tenant-id $FABRIC_TENANT_ID \
+$FAB_CMD auth login service-principal \
+  --tenant $FABRIC_TENANT_ID \
   --client-id $FABRIC_CLIENT_ID \
   --client-secret $FABRIC_CLIENT_SECRET
+
 
 echo "✅ Fabric login successful"
 
