@@ -32,7 +32,8 @@ echo "🔐 Logging into Fabric..."
 $FAB_CMD auth login \
   -u $FABRIC_CLIENT_ID \
   -p $FABRIC_CLIENT_SECRET \
-  --tenant $FABRIC_TENANT_ID
+  --tenant $FABRIC_TENANT_ID \
+  --resource https://analysis.windows.net/powerbi/api
 
 echo "✅ Fabric login successful"
 
