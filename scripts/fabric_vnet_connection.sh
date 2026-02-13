@@ -5,6 +5,9 @@ echo "============================================"
 echo "🚀 FABRIC VNET CONNECTION AUTOMATION STARTED"
 echo "Customer: $CUSTOMER_CODE"
 echo "============================================"
+which fab
+fab --version
+
 
 ############################################
 # VARIABLES
