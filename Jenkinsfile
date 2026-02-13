@@ -64,41 +64,41 @@ pipeline {
             }
         }
 
-        // stage('Customer Check') {
-        //     steps {
-        //         sh '''
-        //             set +x
-        //             chmod +x scripts/check_customer_exists.sh
-        //             scripts/check_customer_exists.sh \
-        //                 ${PRODUCT} \
-        //                 ${CUSTOMER_CODE}
-        //         '''
-        //         script {
-        //             def status = readFile('customer_status.env')
-        //             if (status.contains("CUSTOMER_EXISTS=true")) {
-        //                 currentBuild.result = 'SUCCESS'
-        //                 error("STOP_PIPELINE")
-        //             }
-        //         }
-        //     }
-        // }
+        stage('Customer Check') {
+            steps {
+                sh '''
+                    set +x
+                    chmod +x scripts/check_customer_exists.sh
+                    scripts/check_customer_exists.sh \
+                        ${PRODUCT} \
+                        ${CUSTOMER_CODE}
+                '''
+                script {
+                    def status = readFile('customer_status.env')
+                    if (status.contains("CUSTOMER_EXISTS=true")) {
+                        currentBuild.result = 'SUCCESS'
+                        error("STOP_PIPELINE")
+                    }
+                }
+            }
+        }
 
-        // stage('Azure Login') {
-        //     steps {
-        //         withCredentials([
-        //             string(credentialsId: 'AZURE_CLIENT_ID', variable: 'AZURE_CLIENT_ID'),
-        //             string(credentialsId: 'AZURE_CLIENT_SECRET', variable: 'AZURE_CLIENT_SECRET'),
-        //             string(credentialsId: 'AZURE_TENANT_ID', variable: 'AZURE_TENANT_ID'),
-        //             string(credentialsId: 'AZURE_SUBSCRIPTION_ID', variable: 'AZURE_SUBSCRIPTION_ID')
-        //         ]) {
-        //             sh '''
-        //                 set +x
-        //                 chmod +x scripts/azure_login.sh
-        //                 scripts/azure_login.sh
-        //             '''
-        //         }
-        //     }
-        // }
+        stage('Azure Login') {
+            steps {
+                withCredentials([
+                    string(credentialsId: 'AZURE_CLIENT_ID', variable: 'AZURE_CLIENT_ID'),
+                    string(credentialsId: 'AZURE_CLIENT_SECRET', variable: 'AZURE_CLIENT_SECRET'),
+                    string(credentialsId: 'AZURE_TENANT_ID', variable: 'AZURE_TENANT_ID'),
+                    string(credentialsId: 'AZURE_SUBSCRIPTION_ID', variable: 'AZURE_SUBSCRIPTION_ID')
+                ]) {
+                    sh '''
+                        set +x
+                        chmod +x scripts/azure_login.sh
+                        scripts/azure_login.sh
+                    '''
+                }
+            }
+        }
 
         // stage('Pre Databricks Identity Check') {
         //     steps {
@@ -196,24 +196,26 @@ pipeline {
         //     }
         // }
 
-        // // stage('Create Fabric Connection') {
-        // //     steps {
-        // //         withCredentials([
-        // //             string(credentialsId: 'AZURE_CLIENT_ID', variable: 'DB_USER'),
-        // //             string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DB_PASS'),
-        // //             string(credentialsId: 'DATABRICKS_HOST', variable: 'DB_HOST')
-        // //         ]) {
-        // //             sh '''
-        // //                 set +x
-        // //                 export DISPLAY_NAME="db-vnet-automation-spn-5"
-        // //                 export GATEWAY_ID="34377033-6f6f-433a-9a66-3095e996f65c"
-        // //                 export DB_HTTP_PATH="/sql/1.0/warehouses/559747c78f71249c"
-        // //                 chmod +x scripts/fabric_connection.sh
-        // //                 ./scripts/fabric_connection.sh
-        // //             '''
-        // //         }
-        // //     }
-        // // }
+        stage('Fabric VNet Connection') {
+            steps {
+                withCredentials([
+                    string(credentialsId: 'FABRIC_CLIENT_ID', variable: 'FABRIC_CLIENT_ID'),
+                    string(credentialsId: 'FABRIC_CLIENT_SECRET', variable: 'FABRIC_CLIENT_SECRET'),
+                    string(credentialsId: 'FABRIC_TENANT_ID', variable: 'FABRIC_TENANT_ID'),
+                    string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
+                    string(credentialsId: 'DATABRICKS_SQL_WAREHOUSE_ID', variable: 'DATABRICKS_SQL_WAREHOUSE_ID'),
+                    string(credentialsId: 'DATABRICKS_CLIENT_ID', variable: 'SPN_CLIENT_ID_KV'),
+                    string(credentialsId: 'DATABRICKS_CLIENT_SECRET', variable: 'SPN_SECRET_KV')
+                ]) {
+                    sh '''
+                        set +x
+                        chmod +x scripts/fabric_vnet_connection.sh
+                        ./scripts/fabric_vnet_connection.sh
+                    '''
+                }
+            }
+        }
+
 
         // stage('Update Customer Metadata') {
         //     when {
@@ -248,11 +250,7 @@ pipeline {
         //         }
         //     }
         // }
-        stage('Check OS') {
-            steps {
-                sh 'cat /etc/os-release'
-    }
-}
+        
 
 
     }
