@@ -101,6 +101,7 @@ pipeline {
                     string(credentialsId: 'AZURE_SUBSCRIPTION_ID', variable: 'AZURE_SUBSCRIPTION_ID')
                 ]) {
                     sh '''
+                        set +x
                         chmod +x scripts/azure_login.sh
                         scripts/azure_login.sh
                     '''
@@ -117,6 +118,7 @@ pipeline {
                     string(credentialsId: 'DATABRICKS_CATALOG_NAME', variable: 'CATALOG_NAME')
                 ]) {
                     sh '''
+                        set +x
                         chmod +x scripts/pre_databricks_identity_check.sh
                         scripts/pre_databricks_identity_check.sh "${PRODUCT}" "${CUSTOMER_CODE}"
                     '''
