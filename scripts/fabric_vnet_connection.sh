@@ -119,17 +119,21 @@ cat > payload.json <<EOF
       }
     ]
   },
-  "credentialDetails": {
-  "credentialType": "OAuth2",
-  "singleSignOnType": "None",
-  "connectionEncryption": "NotEncrypted",
-  "skipTestConnection": false,
-  "credentials": {
+   "credentialDetails": {
     "credentialType": "OAuth2",
-    "clientId": "${CUSTOMER_SP_CLIENT_ID}",
-    "clientSecret": "${CUSTOMER_SP_SECRET}"
+    "singleSignOnType": "None",
+    "connectionEncryption": "NotEncrypted",
+    "skipTestConnection": false,
+    "credentials": {
+      "credentialType": "OAuth2",
+      "clientId": "${CUSTOMER_SP_CLIENT_ID}",
+      "clientSecret": "${CUSTOMER_SP_SECRET}"
+    }
   }
 }
+EOF
+
+
 
   # "credentialDetails": {
   #   "credentialType": "Basic",
