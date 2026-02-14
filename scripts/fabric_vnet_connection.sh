@@ -89,6 +89,9 @@ CUSTOMER_SP_SECRET=$(az keyvault secret show \
   --query value -o tsv)
 
 echo "✅ Secrets Fetched Successfully"
+echo "CLIENT_ID = $CUSTOMER_SP_CLIENT_ID"
+echo "SECRET LENGTH = ${#CUSTOMER_SP_SECRET}"
+
 
 
 # =========================
