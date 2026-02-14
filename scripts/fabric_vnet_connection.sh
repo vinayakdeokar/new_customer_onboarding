@@ -123,16 +123,16 @@ cat > payload.json <<EOF
     ]
   },
   "credentialDetails": {
+  "credentialType": "Basic",
+  "singleSignOnType": "None",
+  "connectionEncryption": "NotEncrypted",
+  "skipTestConnection": false,
+  "credentials": {
     "credentialType": "Basic",
-    "singleSignOnType": "None",
-    "connectionEncryption": "NotEncrypted",
-    "skipTestConnection": false,
-    "credentials": {
-      "credentialType": "Basic",
-      "clientId": "${CUSTOMER_SP_CLIENT_ID}",
-      "clientSecret": "${CUSTOMER_SP_SECRET}"
-    }
+    "username": "${CUSTOMER_SP_CLIENT_ID}",
+    "password": "${CUSTOMER_SP_SECRET}"
   }
+}
 }
 EOF
 
