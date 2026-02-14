@@ -17,13 +17,13 @@ DISPLAY_NAME="db-vnet-${ENV}-${CUSTOMER_CODE}"
 
 GATEWAY_ID="34377033-6f6f-433a-9a66-3095e996f65c"
 
-DATABRICKS_HOST="adb-7405618110977329.9.azuredatabricks.net"
-HTTP_PATH="/sql/1.0/warehouses/334a2ae248719051"
+DATABRICKS_HOST="adb-7405609173671370.10.azuredatabricks.net"
+HTTP_PATH="/sql/1.0/warehouses/559747c78f71249c"
 
 
 
-SECRET_CLIENT_ID_NAME="sp-${PRODUCT}-${CUSTOMER_CODE}-oauth-client-id"
-SECRET_SECRET_NAME="sp-${PRODUCT}-${CUSTOMER_CODE}-oauth-secret"
+# SECRET_CLIENT_ID_NAME="sp-${PRODUCT}-${CUSTOMER_CODE}-oauth-client-id"
+# SECRET_SECRET_NAME="sp-${PRODUCT}-${CUSTOMER_CODE}-oauth-secret"
 
 # CUSTOMER_SP_CLIENT_ID="842439d6-518c-42a5-af01-c492d638c6c9"
 # CUSTOMER_SP_SECRET="dose0c1fbea254834971a344988f49687236"
@@ -78,21 +78,21 @@ echo "✅ Gateway ID: $GATEWAY_ID"
 # FETCH CUSTOMER SPN FROM KEY VAULT
 # =========================
 
-echo "🔎 Fetching Customer SPN from Key Vault..."
+# echo "🔎 Fetching Customer SPN from Key Vault..."
 
-CUSTOMER_SP_CLIENT_ID=$(az keyvault secret show \
-  --vault-name kv-databricks-fab \
-  --name $SECRET_CLIENT_ID_NAME \
-  --query value -o tsv)
+# CUSTOMER_SP_CLIENT_ID=$(az keyvault secret show \
+#   --vault-name kv-databricks-fab \
+#   --name $SECRET_CLIENT_ID_NAME \
+#   --query value -o tsv)
 
-CUSTOMER_SP_SECRET=$(az keyvault secret show \
-  --vault-name kv-databricks-fab \
-  --name $SECRET_SECRET_NAME \
-  --query value -o tsv)
+# CUSTOMER_SP_SECRET=$(az keyvault secret show \
+#   --vault-name kv-databricks-fab \
+#   --name $SECRET_SECRET_NAME \
+#   --query value -o tsv)
 
-echo "✅ Secrets Fetched Successfully"
-echo "CLIENT_ID = $CUSTOMER_SP_CLIENT_ID"
-echo "SECRET LENGTH = ${CUSTOMER_SP_SECRET}"
+# echo "✅ Secrets Fetched Successfully"
+# echo "CLIENT_ID = $CUSTOMER_SP_CLIENT_ID"
+# echo "SECRET LENGTH = ${CUSTOMER_SP_SECRET}"
 
 
 
@@ -131,8 +131,8 @@ cat > payload.json <<EOF
     "skipTestConnection": false,
     "credentials": {
       "credentialType": "Basic",
-      "username": "${CUSTOMER_SP_CLIENT_ID}",
-      "password": "${CUSTOMER_SP_SECRET}"
+      "username": "ccb59224-dc2f-4bf4-94d2-ae6eb1765ae9",
+      "password": "dose05f09ba17704bd6d2b10e68dc5edb5ba"
 
 
 
