@@ -103,133 +103,133 @@ pipeline {
             }
         }
 
-        stage('Pre Databricks Identity Check') {
-            steps {
-                withCredentials([
-                    string(credentialsId: 'DATABRICKS_CATALOG_NAME', variable: 'CATALOG_NAME')
-                ]) {
-                    sh '''
-                        set +x
-                        chmod +x scripts/pre_databricks_identity_check.sh
-                        scripts/pre_databricks_identity_check.sh "${PRODUCT}" "${CUSTOMER_CODE}"
-                    '''
-                }
-            }
-        }
+       //  stage('Pre Databricks Identity Check') {
+       //      steps {
+       //          withCredentials([
+       //              string(credentialsId: 'DATABRICKS_CATALOG_NAME', variable: 'CATALOG_NAME')
+       //          ]) {
+       //              sh '''
+       //                  set +x
+       //                  chmod +x scripts/pre_databricks_identity_check.sh
+       //                  scripts/pre_databricks_identity_check.sh "${PRODUCT}" "${CUSTOMER_CODE}"
+       //              '''
+       //          }
+       //      }
+       //  }
 
-        stage('Databricks SPN Setup') {
-            steps {
-                withCredentials([
-                    string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
-                    string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_ADMIN_TOKEN')
-                ]) {
-                    sh '''
-                        set +x
-                        chmod +x scripts/databricks_login_and_add_spn.sh
-                        scripts/databricks_login_and_add_spn.sh "${PRODUCT}" "${CUSTOMER_CODE}"
-                    '''
-                }
-            }
-        }
+       //  stage('Databricks SPN Setup') {
+       //      steps {
+       //          withCredentials([
+       //              string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
+       //              string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_ADMIN_TOKEN')
+       //          ]) {
+       //              sh '''
+       //                  set +x
+       //                  chmod +x scripts/databricks_login_and_add_spn.sh
+       //                  scripts/databricks_login_and_add_spn.sh "${PRODUCT}" "${CUSTOMER_CODE}"
+       //              '''
+       //          }
+       //      }
+       //  }
 
-        stage('Databricks SPN OAuth Secret (Account Level)') {
-            steps {
-                withCredentials([
-                    string(credentialsId: 'DATABRICKS_ACCOUNT_ID', variable: 'DATABRICKS_ACCOUNT_ID'),
-                    string(credentialsId: 'AZURE_TENANT_ID', variable: 'AZURE_TENANT_ID')
-                ]) {
-                    sh """
-                        set +x
-                        export TARGET_SPN_DISPLAY_NAME="${params.SPN_NAME}"
-                        echo "Using SPN: \$TARGET_SPN_DISPLAY_NAME"
-                        chmod +x scripts/dbx_spn_discover.sh
-                        chmod +x scripts/dbx_spn_generate_secret.sh
-                        scripts/dbx_spn_discover.sh
-                        scripts/dbx_spn_generate_secret.sh
-                    """
-                }
-            }
-        }
+       //  stage('Databricks SPN OAuth Secret (Account Level)') {
+       //      steps {
+       //          withCredentials([
+       //              string(credentialsId: 'DATABRICKS_ACCOUNT_ID', variable: 'DATABRICKS_ACCOUNT_ID'),
+       //              string(credentialsId: 'AZURE_TENANT_ID', variable: 'AZURE_TENANT_ID')
+       //          ]) {
+       //              sh """
+       //                  set +x
+       //                  export TARGET_SPN_DISPLAY_NAME="${params.SPN_NAME}"
+       //                  echo "Using SPN: \$TARGET_SPN_DISPLAY_NAME"
+       //                  chmod +x scripts/dbx_spn_discover.sh
+       //                  chmod +x scripts/dbx_spn_generate_secret.sh
+       //                  scripts/dbx_spn_discover.sh
+       //                  scripts/dbx_spn_generate_secret.sh
+       //              """
+       //          }
+       //      }
+       //  }
 
-        stage('Databricks Account Group Sync') {
-            steps {
-                withCredentials([
-                    string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
-                    string(credentialsId: 'DATABRICKS_ACCOUNT_ID', variable: 'DATABRICKS_ACCOUNT_ID'),
-                    string(credentialsId: 'DATABRICKS_WORKSPACE_ID', variable: 'DATABRICKS_WORKSPACE_ID'),
-                    string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_ADMIN_TOKEN')
-                ]) {
-                    sh '''
-                        set +x
-                        export GROUP_NAME="grp-${PRODUCT}-${CUSTOMER_CODE}-users"
-                        chmod +x scripts/account_group_sync.sh
-                        ./scripts/account_group_sync.sh
-                    '''
-                }
-            }
-        }
+       //  stage('Databricks Account Group Sync') {
+       //      steps {
+       //          withCredentials([
+       //              string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
+       //              string(credentialsId: 'DATABRICKS_ACCOUNT_ID', variable: 'DATABRICKS_ACCOUNT_ID'),
+       //              string(credentialsId: 'DATABRICKS_WORKSPACE_ID', variable: 'DATABRICKS_WORKSPACE_ID'),
+       //              string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_ADMIN_TOKEN')
+       //          ]) {
+       //              sh '''
+       //                  set +x
+       //                  export GROUP_NAME="grp-${PRODUCT}-${CUSTOMER_CODE}-users"
+       //                  chmod +x scripts/account_group_sync.sh
+       //                  ./scripts/account_group_sync.sh
+       //              '''
+       //          }
+       //      }
+       //  }
 
-        stage('Create ADLS Bronze Folder') {
-            steps {
-                sh '''
-                    set +x
-                    chmod +x scripts/create_bronze_folder.sh
-                    export STORAGE_ACCOUNT=stmedicareadvmcr
-                    export CONTAINER_NAME=bronze
-                    scripts/create_bronze_folder.sh
-                '''
-            }
-        }
+       //  stage('Create ADLS Bronze Folder') {
+       //      steps {
+       //          sh '''
+       //              set +x
+       //              chmod +x scripts/create_bronze_folder.sh
+       //              export STORAGE_ACCOUNT=stmedicareadvmcr
+       //              export CONTAINER_NAME=bronze
+       //              scripts/create_bronze_folder.sh
+       //          '''
+       //      }
+       //  }
 
-        stage('Schemas & Grants') {
-            steps {
-                withCredentials([
-                    string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
-                    string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_ADMIN_TOKEN'),
-                    string(credentialsId: 'DATABRICKS_SQL_WAREHOUSE_ID', variable: 'DATABRICKS_SQL_WAREHOUSE_ID'),
-                    string(credentialsId: 'DATABRICKS_CATALOG_NAME', variable: 'CATALOG_NAME'),
-                    string(credentialsId: 'STORAGE_BRONZE_ROOT', variable: 'STORAGE_BRONZE_ROOT')
-                ]) {
-                    sh '''
-                        set +x
-                        chmod +x scripts/databricks_schema_and_grants.sh
-                        ./scripts/databricks_schema_and_grants.sh
-                    '''
-                }
-            }
-        }
-       stage('Install Fabric CLI (Python venv)') {
-            steps {
-                sh '''
-                set -e
+       //  stage('Schemas & Grants') {
+       //      steps {
+       //          withCredentials([
+       //              string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
+       //              string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_ADMIN_TOKEN'),
+       //              string(credentialsId: 'DATABRICKS_SQL_WAREHOUSE_ID', variable: 'DATABRICKS_SQL_WAREHOUSE_ID'),
+       //              string(credentialsId: 'DATABRICKS_CATALOG_NAME', variable: 'CATALOG_NAME'),
+       //              string(credentialsId: 'STORAGE_BRONZE_ROOT', variable: 'STORAGE_BRONZE_ROOT')
+       //          ]) {
+       //              sh '''
+       //                  set +x
+       //                  chmod +x scripts/databricks_schema_and_grants.sh
+       //                  ./scripts/databricks_schema_and_grants.sh
+       //              '''
+       //          }
+       //      }
+       //  }
+       // stage('Install Fabric CLI (Python venv)') {
+       //      steps {
+       //          sh '''
+       //          set -e
         
-                echo "Creating virtual environment..."
-                python3 -m venv fabricenv
+       //          echo "Creating virtual environment..."
+       //          python3 -m venv fabricenv
         
-                echo "Activating venv..."
-                . fabricenv/bin/activate
+       //          echo "Activating venv..."
+       //          . fabricenv/bin/activate
         
-                echo "Installing ms-fabric-cli..."
-                pip install ms-fabric-cli==1.4.0
+       //          echo "Installing ms-fabric-cli..."
+       //          pip install ms-fabric-cli==1.4.0
         
-                echo "Verifying install..."
-                fabricenv/bin/fab --version
-                '''
-            }
-        }
+       //          echo "Verifying install..."
+       //          fabricenv/bin/fab --version
+       //          '''
+       //      }
+       //  }
 
 
-        stage('Check Existing FAB') {
-            steps {
-                sh '''
-                echo "Which fab:"
-                which fab || true
+       //  stage('Check Existing FAB') {
+       //      steps {
+       //          sh '''
+       //          echo "Which fab:"
+       //          which fab || true
         
-                echo "Fab version:"
-                fab --version || true
-                '''
-            }
-        }
+       //          echo "Fab version:"
+       //          fab --version || true
+       //          '''
+       //      }
+       //  }
 
 
 
@@ -257,38 +257,38 @@ pipeline {
         }
 
 
-        stage('Update Customer Metadata') {
-            when {
-                expression { currentBuild.currentResult == 'SUCCESS' }
-            }
-            steps {
-                withCredentials([usernamePassword(
-                    credentialsId: 'github-pat',
-                    usernameVariable: 'GIT_USERNAME',
-                    passwordVariable: 'GIT_TOKEN'
-                )]) {
+        // stage('Update Customer Metadata') {
+        //     when {
+        //         expression { currentBuild.currentResult == 'SUCCESS' }
+        //     }
+        //     steps {
+        //         withCredentials([usernamePassword(
+        //             credentialsId: 'github-pat',
+        //             usernameVariable: 'GIT_USERNAME',
+        //             passwordVariable: 'GIT_TOKEN'
+        //         )]) {
 
-                    sh '''
-                        set -e
-                        set +x
-                        echo "✔ Updating customer metadata..."
-                        chmod +x scripts/update_metadata.sh
-                        ./scripts/update_metadata.sh $PRODUCT $CUSTOMER_CODE $ENV > /dev/null 2>&1
-                        git config user.name "jenkins-bot"
-                        git config user.email "jenkins@automation.local"
-                        git add metadata/customers/customers.json
+        //             sh '''
+        //                 set -e
+        //                 set +x
+        //                 echo "✔ Updating customer metadata..."
+        //                 chmod +x scripts/update_metadata.sh
+        //                 ./scripts/update_metadata.sh $PRODUCT $CUSTOMER_CODE $ENV > /dev/null 2>&1
+        //                 git config user.name "jenkins-bot"
+        //                 git config user.email "jenkins@automation.local"
+        //                 git add metadata/customers/customers.json
 
-                        if git diff --cached --quiet; then
-                            echo "✔ No metadata changes"
-                            exit 0
-                        fi
+        //                 if git diff --cached --quiet; then
+        //                     echo "✔ No metadata changes"
+        //                     exit 0
+        //                 fi
 
-                        git commit -m "Auto-added customer $CUSTOMER_CODE" > /dev/null 2>&1
-                        git push https://$GIT_USERNAME:$GIT_TOKEN@github.com/vinayakdeokar/new_customer_onboarding.git HEAD:main > /dev/null 2>&1
-                        echo "✔ Metadata pushed to Git"
-                    '''
-                }
-            }
+        //                 git commit -m "Auto-added customer $CUSTOMER_CODE" > /dev/null 2>&1
+        //                 git push https://$GIT_USERNAME:$GIT_TOKEN@github.com/vinayakdeokar/new_customer_onboarding.git HEAD:main > /dev/null 2>&1
+        //                 echo "✔ Metadata pushed to Git"
+        //             '''
+        //         }
+        //     }
         }
 
     }
