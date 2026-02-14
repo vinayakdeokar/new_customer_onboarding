@@ -12,16 +12,16 @@ TENANT_ID="6fbff720-d89b-4675-b188-48491f24b460"
 AUTOMATION_CLIENT_ID="5edcfcf8-9dbd-4c1b-a602-a0887f677e2e"
 AUTOMATION_CLIENT_SECRET="O8W8Q~5W.ato3IN3L3QdEDWberZzOSp7.VObIdp3"
 
-#DISPLAY_NAME="db-vnet-hardcode-test"
-DISPLAY_NAME="db-vnet-${ENV}-${CUSTOMER_CODE}"
+DISPLAY_NAME="db-vnet-hardcode-test"
+#DISPLAY_NAME="db-vnet-${ENV}-${CUSTOMER_CODE}"
 
-#GATEWAY_ID="34377033-6f6f-433a-9a66-3095e996f65c"
+GATEWAY_ID="34377033-6f6f-433a-9a66-3095e996f65c"
 
 DATABRICKS_HOST="adb-7405609173671370.10.azuredatabricks.net"
 HTTP_PATH="/sql/1.0/warehouses/559747c78f71249c"
 
-SECRET_CLIENT_ID_NAME="sp-${PRODUCT}-${CUSTOMER_CODE}-oauth-client-id"
-SECRET_SECRET_NAME="sp-${PRODUCT}-${CUSTOMER_CODE}-oauth-secret"
+#SECRET_CLIENT_ID_NAME="sp-${PRODUCT}-${CUSTOMER_CODE}-oauth-client-id"
+#SECRET_SECRET_NAME="sp-${PRODUCT}-${CUSTOMER_CODE}-oauth-secret"
 
 # CUSTOMER_SP_CLIENT_ID="842439d6-518c-42a5-af01-c492d638c6c9"
 # CUSTOMER_SP_SECRET="dose0c1fbea254834971a344988f49687236"
@@ -55,19 +55,19 @@ az login --service-principal \
 
 echo "✅ Azure Login Successful"
 
-echo "🔎 Fetching Gateway ID dynamically..."
+# echo "🔎 Fetching Gateway ID dynamically..."
 
-GATEWAY_ID=$($FAB api gateways -A fabric | \
-jq -r '.text.value[]? | select(.displayName=="ContosoVirtualNetworkGateway") | .id')
+# GATEWAY_ID=$($FAB api gateways -A fabric | \
+# jq -r '.text.value[]? | select(.displayName=="ContosoVirtualNetworkGateway") | .id')
 
 
-# GATEWAY_ID=$($FAB api virtualNetworkGateways -A fabric | \
-# jq -r '.text.value[] | select(.displayName=="vnwt-db-fab-fabric-sub") | .id')
+# # GATEWAY_ID=$($FAB api virtualNetworkGateways -A fabric | \
+# # jq -r '.text.value[] | select(.displayName=="vnwt-db-fab-fabric-sub") | .id')
 
-if [ -z "$GATEWAY_ID" ]; then
-  echo "❌ Gateway not found!"
-  exit 1
-fi
+# if [ -z "$GATEWAY_ID" ]; then
+#   echo "❌ Gateway not found!"
+#   exit 1
+# fi
 
 echo "✅ Gateway ID: $GATEWAY_ID"
 
@@ -76,19 +76,19 @@ echo "✅ Gateway ID: $GATEWAY_ID"
 # FETCH CUSTOMER SPN FROM KEY VAULT
 # =========================
 
-echo "🔎 Fetching Customer SPN from Key Vault..."
+# echo "🔎 Fetching Customer SPN from Key Vault..."
 
-CUSTOMER_SP_CLIENT_ID=$(az keyvault secret show \
-  --vault-name kv-databricks-fab \
-  --name $SECRET_CLIENT_ID_NAME \
-  --query value -o tsv)
+# CUSTOMER_SP_CLIENT_ID=$(az keyvault secret show \
+#   --vault-name kv-databricks-fab \
+#   --name $SECRET_CLIENT_ID_NAME \
+#   --query value -o tsv)
 
-CUSTOMER_SP_SECRET=$(az keyvault secret show \
-  --vault-name kv-databricks-fab \
-  --name $SECRET_SECRET_NAME \
-  --query value -o tsv)
+# CUSTOMER_SP_SECRET=$(az keyvault secret show \
+#   --vault-name kv-databricks-fab \
+#   --name $SECRET_SECRET_NAME \
+#   --query value -o tsv)
 
-echo "✅ Secrets Fetched Successfully"
+# echo "✅ Secrets Fetched Successfully"
 echo "CLIENT_ID = $CUSTOMER_SP_CLIENT_ID"
 echo "SECRET LENGTH = ${#CUSTOMER_SP_SECRET}"
 
@@ -161,34 +161,20 @@ EOF
 #     ]
 #   },
 #    "credentialDetails": {
-#     "credentialType": "OAuth2",
-#     "singleSignOnType": "None",
-#     "connectionEncryption": "NotEncrypted",
-#     "skipTestConnection": false,
-#     "credentials": {
-#       "credentialType": "OAuth2",
-#       "clientId": "${CUSTOMER_SP_CLIENT_ID}",
-#       "clientSecret": "${CUSTOMER_SP_SECRET}"
-#     }
-#   }
+#      "credentialType": "Basic",
+#      "singleSignOnType": "None",
+#      "connectionEncryption": "NotEncrypted",
+#      "skipTestConnection": false,
+#      "credentials": {
+#        "credentialType": "Basic",
+#        "username": "${CUSTOMER_SP_CLIENT_ID}",
+#        "password": "${CUSTOMER_SP_SECRET}"
+#      }
+#    }
 # }
 # EOF
 
 
-
-#   # "credentialDetails": {
-#   #   "credentialType": "Basic",
-#   #   "singleSignOnType": "None",
-#   #   "connectionEncryption": "NotEncrypted",
-#   #   "skipTestConnection": false,
-#   #   "credentials": {
-#   #     "credentialType": "Basic",
-#   #     "username": "${CUSTOMER_SP_CLIENT_ID}",
-#   #     "password": "${CUSTOMER_SP_SECRET}"
-#   #   }
-#   # }
-# }
-# EOF
 
 $FAB api connections -A fabric -X post -i payload.json
 
