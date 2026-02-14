@@ -86,289 +86,74 @@ echo "================================="
 echo "✅ DONE"
 echo "================================="
 
-# #!/bin/bash
-# set -e
-
-# FAB_CMD="$WORKSPACE/fabricenv/bin/fab"
-
-# echo "============================================"
-# echo "🚀 FABRIC VNET CONNECTION AUTOMATION STARTED"
-# echo "Customer: $CUSTOMER_CODE"
-# echo "============================================"
-
-# echo "Using FAB from:"
-# ls -l $FAB_CMD
-
-# ############################################
-# # VARIABLES
-# ############################################
-
-# DISPLAY_NAME="db-vnet-${CUSTOMER_CODE}"
-# GATEWAY_ID="34377033-6f6f-433a-9a66-3095e996f65c"
-# HTTP_PATH="/sql/1.0/warehouses/${DATABRICKS_SQL_WAREHOUSE_ID}"
-
-# ############################################
-# # 1️⃣ Fabric Login
-# ############################################
-
-# echo "🔐 Configuring Fabric CLI for CI..."
-
-# $FAB_CMD config set encryption_fallback_enabled true
-
-# echo "🔐 Logging into Fabric..."
-
-# $FAB_CMD auth login \
-#   -u $FABRIC_CLIENT_ID \
-#   -p $FABRIC_CLIENT_SECRET \
-#   --tenant $FABRIC_TENANT_ID 
-
-# echo "✅ Fabric login successful"
-# # echo "=== LIST WORKSPACES VISIBLE TO SPN ==="
-# # $FAB_CMD api groups -A fabric
-
-
-# #!/bin/bash
-# set -e
-
-# FAB_CMD="$WORKSPACE/fabricenv/bin/fab"
-
-# echo "============================================"
-# echo "🚀 FABRIC VNET HARD-CODE TEST"
-# echo "============================================"
-
-# ############################################
-# # 1️⃣ Fabric Login (Automation SPN)
-# ############################################
-
-# $FAB_CMD config set encryption_fallback_enabled true
+#!/bin/bash
+set -e
 
-# $FAB_CMD auth login \
-#   -u "<AUTOMATION_SPn_CLIENT_ID>" \
-#   -p "<AUTOMATION_SPn_CLIENT_SECRET>" \
-#   --tenant "<TENANT_ID>"
-
-# echo "✅ Logged into Fabric"
-
-# ############################################
-# # 2️⃣ Create Connection (Hardcoded Values)
-# ############################################
-
-# cat > payload.json <<EOF
-# {
-#   "displayName": "db-vnet-hardcode-test",
-#   "connectivityType": "VirtualNetworkGateway",
-#   "gatewayId": "34377033-6f6f-433a-9a66-3095e996f65c",
-#   "privacyLevel": "Private",
-#   "connectionDetails": {
-#     "type": "Databricks",
-#     "creationMethod": "Databricks.Catalogs",
-#     "parameters": [
-#       {
-#         "dataType": "Text",
-#         "name": "host",
-#         "value": "adb-7405609173671370.10.azuredatabricks.net"
-#       },
-#       {
-#         "dataType": "Text",
-#         "name": "httpPath",
-#         "value": "/sql/1.0/warehouses/559747c78f71249c"
-#       }
-#     ]
-#   },
-#   "credentialDetails": {
-#     "credentialType": "Basic",
-#     "singleSignOnType": "None",
-#     "connectionEncryption": "NotEncrypted",
-#     "skipTestConnection": false,
-#     "credentials": {
-#       "credentialType": "Basic",
-#       "username": "842439d6-518c-42a5-af01-c492d638c6c9",
-#       "password": "dose0c1fbea254834971a344988f49687236"
-#     }
-#   }
-# }
-# EOF
+FAB_CMD="$WORKSPACE/fabricenv/bin/fab"
 
-# RESPONSE=$($FAB_CMD api connections -A fabric -X post -i payload.json)
+CONNECTION_ID="a8b22aa5-ad59-4094-a5ce-535a6196df65"   # <-- your created connection id
 
-# echo "==== CREATE RESPONSE ===="
-# echo "$RESPONSE"
-# echo "========================="
+echo "========================================="
+echo "🚀 Assigning 3 AAD Groups as USER"
+echo "Connection: $CONNECTION_ID"
+echo "========================================="
 
-# ############################################
-# # 3️⃣ Fetch Connection ID
-# ############################################
+#########################################
+# Fabric Login (Automation SPN)
+#########################################
 
-# CONNECTION_ID=$($FAB_CMD api connections -A fabric | \
-#   jq -r '.text.value[]? | select(.displayName=="db-vnet-hardcode-test") | .id')
+$FAB_CMD config set encryption_fallback_enabled true
 
-# echo "Connection ID: $CONNECTION_ID"
+$FAB_CMD auth login \
+  -u 5edcfcf8-9dbd-4c1b-a602-a0887f677e2e \
+  -p '3iH8Q~kqNjz4SgqvKW~JsoXdRPbdCSqTYGLYZai4' \
+  --tenant 6fbff720-d89b-4675-b188-48491f24b460
 
-# ############################################
-# # 4️⃣ Assign Group Owner (Hardcoded Group)
-# ############################################
+echo "✅ Login Successful"
 
-# cat > role.json <<EOF
-# {
-#   "principal": {
-#     "id": "04ee87bd-1b24-4c08-88e8-7ceb037fdd6a",
-#     "type": "Group"
-#   },
-#   "role": "Owner"
-# }
-# EOF
+#########################################
+# GROUP OBJECT IDs (Azure AD)
+#########################################
 
-# ROLE_RESPONSE=$($FAB_CMD api connections/${CONNECTION_ID}/roleAssignments \
-#   -A fabric -X post -i role.json)
+GROUP1="883140c6-51f1-4d9f-8efa-96161d175026"
+GROUP2="89781bdf-bd4d-4da3-9e42-fa14c5cecb49"
+GROUP3="badb555e-db90-46c3-b199-e33eb1a662b1"
 
-# echo "==== ROLE RESPONSE ===="
-# echo "$ROLE_RESPONSE"
-# echo "======================="
-
-# echo "🎉 HARD-CODE TEST COMPLETE"
-
-
-
-
-# # ############################################
-# # # Add SPN to Workspace (Hardcoded Test)
-# # ############################################
-# # echo $FABRIC_WORKSPACE_ID
+#########################################
+# Function to Add Group as USER
+#########################################
 
-
-# # echo "👤 Adding SPN to Workspace..."
+add_group() {
 
-# # WORKSPACE_ID="9f656d64-9fd4-4c38-8a27-be73e5f36836"
-# # SPN_OBJECT_ID="a97fcf09-0a67-478d-bfd1-89550f20a33f"
+  GROUP_ID=$1
 
-# # cat > workspace_role.json <<EOF
-# # {
-# #   "principal": {
-# #     "id": "${SPN_OBJECT_ID}",
-# #     "type": "ServicePrincipal"
-# #   },
-# #   "role": "Admin"
-# # }
-# # EOF
+  cat > role.json <<EOF
+{
+  "principal": {
+    "id": "${GROUP_ID}",
+    "type": "Group"
+  },
+  "role": "User"
+}
+EOF
 
-# # cat > workspace_user.json <<EOF
-# # {
-# #   "identifier": "${SPN_OBJECT_ID}",
-# #   "groupUserAccessRight": "Contributor",
-# #   "principalType": "App"
-# # }
-# # EOF
+  echo "➕ Adding Group $GROUP_ID as USER"
 
-# # RESPONSE=$($FAB_CMD api groups/${WORKSPACE_ID}/users \
-# #   -A fabric -X post -i workspace_user.json)
+  $FAB_CMD api connections/${CONNECTION_ID}/roleAssignments \
+    -A fabric -X post -i role.json
 
-# # echo "$RESPONSE"
+  echo "✅ Done"
+}
 
-# # if echo "$RESPONSE" | grep -q '"status_code": 200'; then
-# #   echo "✅ SPN added to workspace"
-# # else
-# #   echo "❌ Failed to add SPN"
-# #   exit 1
-# # fi
+#########################################
+# Add All 3 Groups
+#########################################
 
+add_group $GROUP1
+add_group $GROUP2
+add_group $GROUP3
 
-
-
-
-# # ############################################
-# # # 2️⃣ Check if connection already exists
-# # ############################################
-
-# # echo "🔎 Checking existing connection..."
-
-# # CONNECTION_ID=$($FAB_CMD api connections -A fabric | \
-# #   jq -r ".text.value[]? | select(.displayName==\"${DISPLAY_NAME}\") | .id"
-
-
-
-# # if [ -n "$CONNECTION_ID" ]; then
-# #   echo "✅ Connection already exists"
-# #   echo "Connection ID: $CONNECTION_ID"
-# # else
-# #   echo "🚀 Creating new connection..."
-
-
-# # cat > payload.json <<EOF
-# # {
-# #   "displayName": "${DISPLAY_NAME}",
-# #   "connectivityType": "VirtualNetworkGateway",
-# #   "gatewayId": "${GATEWAY_ID}",
-# #   "privacyLevel": "Private",
-# #   "connectionDetails": {
-# #     "type": "Databricks",
-# #     "creationMethod": "Databricks.Catalogs",
-# #     "parameters": [
-# #       {
-# #         "dataType": "Text",
-# #         "name": "host",
-# #         "value": "${DATABRICKS_HOST}"
-# #       },
-# #       {
-# #         "dataType": "Text",
-# #         "name": "httpPath",
-# #         "value": "${HTTP_PATH}"
-# #       }
-# #     ]
-# #   },
-# #   "credentialDetails": {
-# #     "credentialType": "Basic",
-# #     "singleSignOnType": "None",
-# #     "connectionEncryption": "NotEncrypted",
-# #     "skipTestConnection": false,
-# #     "credentials": {
-# #       "credentialType": "Basic",
-# #       "username": "${SPN_CLIENT_ID_KV}",
-# #       "password": "${SPN_SECRET_KV}"
-# #     }
-# #   }
-# # }
-# # EOF
-
-# #   $FAB_CMD api connections -A fabric -X post -i payload.json
-
-# #   echo "⏳ Fetching new connection ID..."
-
-# #   CONNECTION_ID=$($FAB_CMD api connections -A fabric | \
-# #   jq -r ".text.value[]? | select(.displayName==\"${DISPLAY_NAME}\") | .id"
-
-
-
-
-# #   if [ -z "$CONNECTION_ID" ]; then
-# #     echo "❌ Connection creation failed!"
-# #     exit 1
-# #   fi
-
-# #   echo "✅ Connection created successfully"
-# #   echo "Connection ID: $CONNECTION_ID"
-# # fi
-
-# # ############################################
-# # # 3️⃣ Assign Group as Owner
-# # ############################################
-
-# # echo "👥 Assigning group as Owner..."
-
-# # cat > role.json <<EOF
-# # {
-# #   "principal": {
-# #     "id": "${GROUP_OBJECT_ID}",
-# #     "type": "Group"
-# #   },
-# #   "role": "Owner"
-# # }
-# # EOF
-
-# # $FAB_CMD api connections/${CONNECTION_ID}/roleAssignments \
-# #   -A fabric -X post -i role.json
-
-# # echo "✅ Group assigned successfully"
-
-# # echo "============================================"
-# # echo "🎉 FABRIC CONNECTION AUTOMATION COMPLETED"
-# # echo "============================================"
+echo "========================================="
+echo "🎉 All Groups Assigned as USER"
+echo "========================================="
+======================"
