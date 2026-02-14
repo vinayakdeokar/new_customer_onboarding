@@ -12,15 +12,19 @@ TENANT_ID="6fbff720-d89b-4675-b188-48491f24b460"
 AUTOMATION_CLIENT_ID="5edcfcf8-9dbd-4c1b-a602-a0887f677e2e"
 AUTOMATION_CLIENT_SECRET="O8W8Q~5W.ato3IN3L3QdEDWberZzOSp7.VObIdp3"
 
-DISPLAY_NAME="db-vnet-hardcode-test"
+#DISPLAY_NAME="db-vnet-hardcode-test"
+DISPLAY_NAME="db-vnet-${ENV}-${CUSTOMER_CODE}"
 
-GATEWAY_ID="34377033-6f6f-433a-9a66-3095e996f65c"
+#GATEWAY_ID="34377033-6f6f-433a-9a66-3095e996f65c"
 
 DATABRICKS_HOST="adb-7405609173671370.10.azuredatabricks.net"
 HTTP_PATH="/sql/1.0/warehouses/559747c78f71249c"
 
-CUSTOMER_SP_CLIENT_ID="842439d6-518c-42a5-af01-c492d638c6c9"
-CUSTOMER_SP_SECRET="dose0c1fbea254834971a344988f49687236"
+SECRET_CLIENT_ID_NAME="sp-${PRODUCT}-${CUSTOMER_CODE}-oauth-client-id"
+SECRET_SECRET_NAME="sp-${PRODUCT}-${CUSTOMER_CODE}-oauth-secret"
+
+# CUSTOMER_SP_CLIENT_ID="842439d6-518c-42a5-af01-c492d638c6c9"
+# CUSTOMER_SP_SECRET="dose0c1fbea254834971a344988f49687236"
 
 # =========================
 # LOGIN
@@ -37,6 +41,51 @@ $FAB auth login \
 
 echo "✅ Login Successful"
 $FAB auth status
+
+# =========================
+# AZURE LOGIN (for Key Vault)
+# =========================
+
+echo "🔐 Azure Login for Key Vault..."
+
+az login --service-principal \
+  -u $AUTOMATION_CLIENT_ID \
+  -p $AUTOMATION_CLIENT_SECRET \
+  --tenant $TENANT_ID >/dev/null
+
+echo "✅ Azure Login Successful"
+
+echo "🔎 Fetching Gateway ID dynamically..."
+
+GATEWAY_ID=$($FAB api virtualNetworkGateways -A fabric | \
+jq -r '.text.value[] | select(.displayName=="vnwt-db-fab-fabric-sub") | .id')
+
+if [ -z "$GATEWAY_ID" ]; then
+  echo "❌ Gateway not found!"
+  exit 1
+fi
+
+echo "✅ Gateway ID: $GATEWAY_ID"
+
+
+# =========================
+# FETCH CUSTOMER SPN FROM KEY VAULT
+# =========================
+
+echo "🔎 Fetching Customer SPN from Key Vault..."
+
+CUSTOMER_SP_CLIENT_ID=$(az keyvault secret show \
+  --vault-name kv-databricks-fab \
+  --name $SECRET_CLIENT_ID_NAME \
+  --query value -o tsv)
+
+CUSTOMER_SP_SECRET=$(az keyvault secret show \
+  --vault-name kv-databricks-fab \
+  --name $SECRET_SECRET_NAME \
+  --query value -o tsv)
+
+echo "✅ Secrets Fetched Successfully"
+
 
 # =========================
 # CREATE CONNECTION
@@ -86,12 +135,21 @@ echo "================================="
 echo "✅ DONE"
 echo "================================="
 
-#!/bin/bash
-set -e
+# #!/bin/bash
+# set -e
 
-FAB_CMD="$WORKSPACE/fabricenv/bin/fab"
+# FAB_CMD="$WORKSPACE/fabricenv/bin/fab"
 
-CONNECTION_ID="a8b22aa5-ad59-4094-a5ce-535a6196df65"   # <-- your created connection id
+# #CONNECTION_ID="a8b22aa5-ad59-4094-a5ce-535a6196df65"
+# CONNECTION_ID=$($FAB api connections -A fabric | \
+# jq -r '.text.value[]? | select(.displayName=="'"${DISPLAY_NAME}"'") | .id')
+
+# if [ -z "$CONNECTION_ID" ]; then
+#   echo "❌ Connection ID not found"
+#   exit 1
+# fi
+
+# <-- your created connection id
 
 echo "========================================="
 echo "🚀 Assigning 3 AAD Groups as USER"
@@ -102,14 +160,14 @@ echo "========================================="
 # Fabric Login (Automation SPN)
 #########################################
 
-$FAB_CMD config set encryption_fallback_enabled true
+# $FAB_CMD config set encryption_fallback_enabled true
 
-$FAB_CMD auth login \
-  -u 5edcfcf8-9dbd-4c1b-a602-a0887f677e2e \
-  -p '3iH8Q~kqNjz4SgqvKW~JsoXdRPbdCSqTYGLYZai4' \
-  --tenant 6fbff720-d89b-4675-b188-48491f24b460
+# $FAB_CMD auth login \
+#   -u 5edcfcf8-9dbd-4c1b-a602-a0887f677e2e \
+#   -p '3iH8Q~kqNjz4SgqvKW~JsoXdRPbdCSqTYGLYZai4' \
+#   --tenant 6fbff720-d89b-4675-b188-48491f24b460
 
-echo "✅ Login Successful"
+# echo "✅ Login Successful"
 
 #########################################
 # GROUP OBJECT IDs (Azure AD)
@@ -139,7 +197,9 @@ EOF
 
   echo "➕ Adding Group $GROUP_ID as USER"
 
-  $FAB_CMD api connections/${CONNECTION_ID}/roleAssignments \
+  
+  #$FAB_CMD api connections/${CONNECTION_ID}/roleAssignments
+  $FAB api connections/${CONNECTION_ID}/roleAssignments \
     -A fabric -X post -i role.json
 
   echo "✅ Done"
