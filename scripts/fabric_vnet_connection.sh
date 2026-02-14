@@ -119,7 +119,7 @@ cat > payload.json <<EOF
       }
     ]
   },
-   "credentialDetails": {
+  "credentialDetails": {
     "credentialType": "OAuth2",
     "singleSignOnType": "None",
     "connectionEncryption": "NotEncrypted",
@@ -134,20 +134,57 @@ cat > payload.json <<EOF
 EOF
 
 
+# cat > payload.json <<EOF
+# {
+#   "displayName": "${DISPLAY_NAME}",
+#   "connectivityType": "VirtualNetworkGateway",
+#   "gatewayId": "${GATEWAY_ID}",
+#   "privacyLevel": "Private",
+#   "connectionDetails": {
+#     "type": "Databricks",
+#     "creationMethod": "Databricks.Catalogs",
+#     "parameters": [
+#       {
+#         "dataType": "Text",
+#         "name": "host",
+#         "value": "${DATABRICKS_HOST}"
+#       },
+#       {
+#         "dataType": "Text",
+#         "name": "httpPath",
+#         "value": "${HTTP_PATH}"
+#       }
+#     ]
+#   },
+#    "credentialDetails": {
+#     "credentialType": "OAuth2",
+#     "singleSignOnType": "None",
+#     "connectionEncryption": "NotEncrypted",
+#     "skipTestConnection": false,
+#     "credentials": {
+#       "credentialType": "OAuth2",
+#       "clientId": "${CUSTOMER_SP_CLIENT_ID}",
+#       "clientSecret": "${CUSTOMER_SP_SECRET}"
+#     }
+#   }
+# }
+# EOF
 
-  # "credentialDetails": {
-  #   "credentialType": "Basic",
-  #   "singleSignOnType": "None",
-  #   "connectionEncryption": "NotEncrypted",
-  #   "skipTestConnection": false,
-  #   "credentials": {
-  #     "credentialType": "Basic",
-  #     "username": "${CUSTOMER_SP_CLIENT_ID}",
-  #     "password": "${CUSTOMER_SP_SECRET}"
-  #   }
-  # }
-}
-EOF
+
+
+#   # "credentialDetails": {
+#   #   "credentialType": "Basic",
+#   #   "singleSignOnType": "None",
+#   #   "connectionEncryption": "NotEncrypted",
+#   #   "skipTestConnection": false,
+#   #   "credentials": {
+#   #     "credentialType": "Basic",
+#   #     "username": "${CUSTOMER_SP_CLIENT_ID}",
+#   #     "password": "${CUSTOMER_SP_SECRET}"
+#   #   }
+#   # }
+# }
+# EOF
 
 $FAB api connections -A fabric -X post -i payload.json
 
