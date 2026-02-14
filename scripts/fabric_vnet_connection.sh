@@ -130,7 +130,7 @@ cat > payload.json <<EOF
     "credentials": {
       "credentialType": "Basic",
       "username": "c82159d0-62e8-4e03-a111-b744f844c360",
-      "password": "dose18381086710cb1725403a3c3d8cf8757"
+      "password": "dose3e70ad64c4576ee95d052e10586b50dd"
 
 
     }
