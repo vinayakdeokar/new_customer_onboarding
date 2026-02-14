@@ -120,12 +120,12 @@ cat > payload.json <<EOF
     ]
   },
   "credentialDetails": {
-    "credentialType": "OAuth2",
+    "credentialType": "Basic",
     "singleSignOnType": "None",
     "connectionEncryption": "NotEncrypted",
     "skipTestConnection": false,
     "credentials": {
-      "credentialType": "OAuth2",
+      "credentialType": "Basic",
       "clientId": "${CUSTOMER_SP_CLIENT_ID}",
       "clientSecret": "${CUSTOMER_SP_SECRET}"
     }
