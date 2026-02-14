@@ -201,7 +201,7 @@ if [ -z "$CONNECTION_ID" ]; then
   exit 1
 fi
 
-<-- your created connection id
+
 
 echo "========================================="
 echo "🚀 Assigning 3 AAD Groups as USER"
