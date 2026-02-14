@@ -130,7 +130,7 @@ cat > payload.json <<EOF
     "credentials": {
       "credentialType": "Basic",
       "username": "c82159d0-62e8-4e03-a111-b744f844c360",
-      "password": "dose18381086710cb1725403a3c3d8cf8757"
+      "password": "R5z8Q~B.5.b2Whfs-AUfkFxJ0VA6uDLaPvTurbxN"
     }
   }
 }
@@ -212,70 +212,70 @@ echo "================================="
 
 # <-- your created connection id
 
-echo "========================================="
-echo "🚀 Assigning 3 AAD Groups as USER"
-echo "Connection: $CONNECTION_ID"
-echo "========================================="
+# echo "========================================="
+# echo "🚀 Assigning 3 AAD Groups as USER"
+# echo "Connection: $CONNECTION_ID"
+# echo "========================================="
 
-#########################################
-# Fabric Login (Automation SPN)
-#########################################
+# #########################################
+# # Fabric Login (Automation SPN)
+# #########################################
 
-# $FAB_CMD config set encryption_fallback_enabled true
+# # $FAB_CMD config set encryption_fallback_enabled true
 
-# $FAB_CMD auth login \
-#   -u 5edcfcf8-9dbd-4c1b-a602-a0887f677e2e \
-#   -p '3iH8Q~kqNjz4SgqvKW~JsoXdRPbdCSqTYGLYZai4' \
-#   --tenant 6fbff720-d89b-4675-b188-48491f24b460
+# # $FAB_CMD auth login \
+# #   -u 5edcfcf8-9dbd-4c1b-a602-a0887f677e2e \
+# #   -p '3iH8Q~kqNjz4SgqvKW~JsoXdRPbdCSqTYGLYZai4' \
+# #   --tenant 6fbff720-d89b-4675-b188-48491f24b460
 
-# echo "✅ Login Successful"
+# # echo "✅ Login Successful"
 
-#########################################
-# GROUP OBJECT IDs (Azure AD)
-#########################################
+# #########################################
+# # GROUP OBJECT IDs (Azure AD)
+# #########################################
 
-GROUP1="883140c6-51f1-4d9f-8efa-96161d175026"
-GROUP2="89781bdf-bd4d-4da3-9e42-fa14c5cecb49"
-GROUP3="badb555e-db90-46c3-b199-e33eb1a662b1"
+# GROUP1="883140c6-51f1-4d9f-8efa-96161d175026"
+# GROUP2="89781bdf-bd4d-4da3-9e42-fa14c5cecb49"
+# GROUP3="badb555e-db90-46c3-b199-e33eb1a662b1"
 
-#########################################
-# Function to Add Group as USER
-#########################################
+# #########################################
+# # Function to Add Group as USER
+# #########################################
 
-add_group() {
+# add_group() {
 
-  GROUP_ID=$1
+#   GROUP_ID=$1
 
-  cat > role.json <<EOF
-{
-  "principal": {
-    "id": "${GROUP_ID}",
-    "type": "Group"
-  },
-  "role": "User"
-}
-EOF
+#   cat > role.json <<EOF
+# {
+#   "principal": {
+#     "id": "${GROUP_ID}",
+#     "type": "Group"
+#   },
+#   "role": "User"
+# }
+# EOF
 
-  echo "➕ Adding Group $GROUP_ID as USER"
+#   echo "➕ Adding Group $GROUP_ID as USER"
 
   
-  #$FAB_CMD api connections/${CONNECTION_ID}/roleAssignments
-  $FAB api connections/${CONNECTION_ID}/roleAssignments \
-    -A fabric -X post -i role.json
+#   #$FAB_CMD api connections/${CONNECTION_ID}/roleAssignments
+#   $FAB api connections/${CONNECTION_ID}/roleAssignments \
+#     -A fabric -X post -i role.json
 
-  echo "✅ Done"
-}
+#   echo "✅ Done"
+# }
 
-#########################################
-# Add All 3 Groups
-#########################################
+# #########################################
+# # Add All 3 Groups
+# #########################################
 
-add_group $GROUP1
-add_group $GROUP2
-add_group $GROUP3
+# add_group $GROUP1
+# add_group $GROUP2
+# add_group $GROUP3
 
-echo "========================================="
-echo "🎉 All Groups Assigned as USER"
-echo "========================================="
+# echo "========================================="
+# echo "🎉 All Groups Assigned as USER"
+# echo "========================================="
 
 
