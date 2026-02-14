@@ -92,7 +92,7 @@ CUSTOMER_SP_SECRET=$(az keyvault secret show \
 
 echo "✅ Secrets Fetched Successfully"
 echo "CLIENT_ID = $CUSTOMER_SP_CLIENT_ID"
-echo "SECRET LENGTH = ${#CUSTOMER_SP_SECRET}"
+echo "SECRET LENGTH = ${CUSTOMER_SP_SECRET}"
 
 
 
