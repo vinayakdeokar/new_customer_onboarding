@@ -26,8 +26,8 @@ HTTP_PATH="/sql/1.0/warehouses/334a2ae248719051"
 
 
 
-# SECRET_CLIENT_ID_NAME="sp-${PRODUCT}-${CUSTOMER_CODE}-oauth-client-id"
-# SECRET_SECRET_NAME="sp-${PRODUCT}-${CUSTOMER_CODE}-oauth-secret"
+ SECRET_CLIENT_ID_NAME="sp-${PRODUCT}-${CUSTOMER_CODE}-oauth-client-id"
+ SECRET_SECRET_NAME="sp-${PRODUCT}-${CUSTOMER_CODE}-oauth-secret"
 
 # CUSTOMER_SP_CLIENT_ID="842439d6-518c-42a5-af01-c492d638c6c9"
 # CUSTOMER_SP_SECRET="dose0c1fbea254834971a344988f49687236"
@@ -82,21 +82,21 @@ echo "✅ Gateway ID: $GATEWAY_ID"
 # FETCH CUSTOMER SPN FROM KEY VAULT
 # =========================
 
-# echo "🔎 Fetching Customer SPN from Key Vault..."
+echo "🔎 Fetching Customer SPN from Key Vault..."
 
-# CUSTOMER_SP_CLIENT_ID=$(az keyvault secret show \
-#   --vault-name kv-databricks-fab \
-#   --name $SECRET_CLIENT_ID_NAME \
-#   --query value -o tsv)
+CUSTOMER_SP_CLIENT_ID=$(az keyvault secret show \
+  --vault-name kv-databricks-fab \
+  --name $SECRET_CLIENT_ID_NAME \
+  --query value -o tsv)
 
-# CUSTOMER_SP_SECRET=$(az keyvault secret show \
-#   --vault-name kv-databricks-fab \
-#   --name $SECRET_SECRET_NAME \
-#   --query value -o tsv)
+CUSTOMER_SP_SECRET=$(az keyvault secret show \
+  --vault-name kv-databricks-fab \
+  --name $SECRET_SECRET_NAME \
+  --query value -o tsv)
 
-# echo "✅ Secrets Fetched Successfully"
-# echo "CLIENT_ID = $CUSTOMER_SP_CLIENT_ID"
-# echo "SECRET LENGTH = ${CUSTOMER_SP_SECRET}"
+echo "✅ Secrets Fetched Successfully"
+echo "CLIENT_ID = $CUSTOMER_SP_CLIENT_ID"
+echo "SECRET LENGTH = ${CUSTOMER_SP_SECRET}"
 
 
 
@@ -135,8 +135,8 @@ cat > payload.json <<EOF
     "skipTestConnection": false,
     "credentials": {
       "credentialType": "Basic",
-      "username": "fa8ab78e-2064-4736-860b-162cb2f201c3",
-      "password": "dose988a0cc2c9fe0b34954cc71b6a560ab8"
+      "username": "${CUSTOMER_SP_CLIENT_ID}",
+      "password": "${CUSTOMER_SP_SECRET}"
 
 
 
