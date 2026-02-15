@@ -7,10 +7,19 @@ FAB="$WORKSPACE/fabricenv/bin/fab"
 # HARD CODE VALUES
 # =========================
 
-TENANT_ID="6fbff720-d89b-4675-b188-48491f24b460"
+# TENANT_ID="6fbff720-d89b-4675-b188-48491f24b460"
 
-AUTOMATION_CLIENT_ID="5edcfcf8-9dbd-4c1b-a602-a0887f677e2e"
-AUTOMATION_CLIENT_SECRET="O8W8Q~5W.ato3IN3L3QdEDWberZzOSp7.VObIdp3"
+# AUTOMATION_CLIENT_ID="5edcfcf8-9dbd-4c1b-a602-a0887f677e2e"
+# AUTOMATION_CLIENT_SECRET="O8W8Q~5W.ato3IN3L3QdEDWberZzOSp7.VObIdp3"
+TENANT_ID="$FABRIC_TENANT_ID"
+AUTOMATION_CLIENT_ID="$FABRIC_CLIENT_ID"
+AUTOMATION_CLIENT_SECRET="$FABRIC_CLIENT_SECRET"
+
+if [ -z "$AUTOMATION_CLIENT_ID" ] || [ -z "$AUTOMATION_CLIENT_SECRET" ] || [ -z "$TENANT_ID" ]; then
+  echo "❌ Fabric credentials not provided from pipeline"
+  exit 1
+fi
+
 
 #DISPLAY_NAME="db-vnet-testing-new-6177"
 DISPLAY_NAME="db-vnet-${ENV}-${CUSTOMER_CODE}"
@@ -29,8 +38,6 @@ HTTP_PATH="/sql/1.0/warehouses/334a2ae248719051"
  SECRET_CLIENT_ID_NAME="sp-${PRODUCT}-${CUSTOMER_CODE}-oauth-client-id"
  SECRET_SECRET_NAME="sp-${PRODUCT}-${CUSTOMER_CODE}-oauth-secret"
 
-# CUSTOMER_SP_CLIENT_ID="842439d6-518c-42a5-af01-c492d638c6c9"
-# CUSTOMER_SP_SECRET="dose0c1fbea254834971a344988f49687236"
 
 # =========================
 # LOGIN
@@ -75,7 +82,7 @@ if [ -z "$GATEWAY_ID" ]; then
   exit 1
 fi
 
-echo "✅ Gateway ID: $GATEWAY_ID"
+#echo "✅ Gateway ID: $GATEWAY_ID"
 
 
 # =========================
@@ -95,8 +102,8 @@ CUSTOMER_SP_SECRET=$(az keyvault secret show \
   --query value -o tsv)
 
 echo "✅ Secrets Fetched Successfully"
-echo "CLIENT_ID = $CUSTOMER_SP_CLIENT_ID"
-echo "SECRET LENGTH = ${CUSTOMER_SP_SECRET}"
+# echo "CLIENT_ID = $CUSTOMER_SP_CLIENT_ID"
+# echo "SECRET LENGTH = ${CUSTOMER_SP_SECRET}"
 
 
 
@@ -147,44 +154,6 @@ EOF
 
 
 
-# cat > payload.json <<EOF
-# {
-#   "displayName": "${DISPLAY_NAME}",
-#   "connectivityType": "VirtualNetworkGateway",
-#   "gatewayId": "${GATEWAY_ID}",
-#   "privacyLevel": "Private",
-#   "connectionDetails": {
-#     "type": "Databricks",
-#     "creationMethod": "Databricks.Catalogs",
-#     "parameters": [
-#       {
-#         "dataType": "Text",
-#         "name": "host",
-#         "value": "${DATABRICKS_HOST}"
-#       },
-#       {
-#         "dataType": "Text",
-#         "name": "httpPath",
-#         "value": "${HTTP_PATH}"
-#       }
-#     ]
-#   },
-#    "credentialDetails": {
-#      "credentialType": "Basic",
-#      "singleSignOnType": "None",
-#      "connectionEncryption": "NotEncrypted",
-#      "skipTestConnection": false,
-#      "credentials": {
-#        "credentialType": "Basic",
-#        "username": "${CUSTOMER_SP_CLIENT_ID}",
-#        "password": "${CUSTOMER_SP_SECRET}"
-#      }
-#    }
-# }
-# EOF
-
-
-
 $FAB api connections -A fabric -X post -i payload.json
 
 echo "================================="
@@ -209,68 +178,117 @@ fi
 
 echo "========================================="
 echo "🚀 Assigning 3 AAD Groups as USER"
-echo "Connection: $CONNECTION_ID"
+#echo "Connection: $CONNECTION_ID"
 echo "========================================="
 
-#########################################
-# Fabric Login (Automation SPN)
-#########################################
-
-# $FAB_CMD config set encryption_fallback_enabled true
-
-# $FAB_CMD auth login \
-#   -u 5edcfcf8-9dbd-4c1b-a602-a0887f677e2e \
-#   -p '3iH8Q~kqNjz4SgqvKW~JsoXdRPbdCSqTYGLYZai4' \
-#   --tenant 6fbff720-d89b-4675-b188-48491f24b460
-
-# echo "✅ Login Successful"
 
 #########################################
-# GROUP OBJECT IDs (Azure AD)
+# DYNAMIC GROUP FETCH + ASSIGN
 #########################################
 
-GROUP1="883140c6-51f1-4d9f-8efa-96161d175026"
-GROUP2="89781bdf-bd4d-4da3-9e42-fa14c5cecb49"
-GROUP3="badb555e-db90-46c3-b199-e33eb1a662b1"
+echo "🔎 Building dynamic group names..."
+
+GROUP_ADMIN="agd-${CUSTOMER_CODE}-${PRODUCT}-powerbi-admin-internal-qa"
+GROUP_CONTR_EXT="agd-${CUSTOMER_CODE}-${PRODUCT}-powerbi-contributor-external-qa"
+GROUP_CONTR_INT="agd-${CUSTOMER_CODE}-${PRODUCT}-powerbi-contributor-internal-qa"
+
+echo "Admin Group: $GROUP_ADMIN"
+echo "Contributor External: $GROUP_CONTR_EXT"
+echo "Contributor Internal: $GROUP_CONTR_INT"
+
+echo "🔎 Fetching Group Object IDs from Azure AD..."
+
+# GROUP1=$(az ad group list --filter "displayName eq '$GROUP_ADMIN'" --query "[0].id" -o tsv)
+# GROUP2=$(az ad group list --filter "displayName eq '$GROUP_CONTR_EXT'" --query "[0].id" -o tsv)
+# GROUP3=$(az ad group list --filter "displayName eq '$GROUP_CONTR_INT'" --query "[0].id" -o tsv)
+GROUP1=$(az ad group show --group "$GROUP_ADMIN" --query id -o tsv 2>/dev/null)
+GROUP2=$(az ad group show --group "$GROUP_CONTR_EXT" --query id -o tsv 2>/dev/null)
+GROUP3=$(az ad group show --group "$GROUP_CONTR_INT" --query id -o tsv 2>/dev/null)
+
 
 #########################################
-# Function to Add Group as USER
+# VALIDATE GROUPS
 #########################################
 
-add_group() {
+if [ -z "$GROUP1" ] || [ -z "$GROUP2" ] || [ -z "$GROUP3" ]; then
+  echo "❌ One or more groups not found. Exiting."
+  exit 1
+fi
 
-  GROUP_ID=$1
+echo "✅ All groups found"
 
-  cat > role.json <<EOF
-{
-  "principal": {
-    "id": "${GROUP_ID}",
-    "type": "Group"
-  },
-  "role": "User"
-}
-EOF
+# #########################################
+# # ASSIGN GROUPS TO CONNECTION
+# #########################################
 
-  echo "➕ Adding Group $GROUP_ID as USER"
+# for GROUP_ID in $GROUP1 $GROUP2 $GROUP3
+# do
+#   cat > role.json <<EOF
+# {
+#   "principal": {
+#     "id": "${GROUP_ID}",
+#     "type": "Group"
+#   },
+#   "role": "User"
+# }
+# EOF
+
+#   echo "➕ Assigning Group $GROUP_ID to Connection..."
+
+#   $FAB api connections/${CONNECTION_ID}/roleAssignments \
+#     -A fabric -X post -i role.json
+
+#   echo "✅ Assigned $GROUP_ID"
+# done
+
+# echo "========================================="
+# echo "🎉 All dynamic groups assigned successfully"
+# echo "========================================="
+
+# ethun varch vegal ahe ata update kel ahe gropnma yava mhnun 
+
+# GROUP1="883140c6-51f1-4d9f-8efa-96161d175026"
+# GROUP2="89781bdf-bd4d-4da3-9e42-fa14c5cecb49"
+# GROUP3="badb555e-db90-46c3-b199-e33eb1a662b1"
+
+# #########################################
+# # Function to Add Group as USER
+# #########################################
+
+# # add_group() {
+
+#   GROUP_ID=$1
+
+#   cat > role.json <<EOF
+# {
+#   "principal": {
+#     "id": "${GROUP_ID}",
+#     "type": "Group"
+#   },
+#   "role": "User"
+# }
+# EOF
+
+#   echo "➕ Adding Group $GROUP_ID as USER"
 
   
-  #$FAB_CMD api connections/${CONNECTION_ID}/roleAssignments
-  $FAB api connections/${CONNECTION_ID}/roleAssignments \
-    -A fabric -X post -i role.json
+#   #$FAB_CMD api connections/${CONNECTION_ID}/roleAssignments
+#   $FAB api connections/${CONNECTION_ID}/roleAssignments \
+#     -A fabric -X post -i role.json
 
-  echo "✅ Done"
-}
+#   echo "✅ Done"
+# }
 
-#########################################
-# Add All 3 Groups
-#########################################
+# #########################################
+# # Add All 3 Groups
+# #########################################
 
-add_group $GROUP1
-add_group $GROUP2
-add_group $GROUP3
+# add_group $GROUP1
+# add_group $GROUP2
+# add_group $GROUP3
 
-echo "========================================="
-echo "🎉 All Groups Assigned as USER"
-echo "========================================="
+# echo "========================================="
+# echo "🎉 All Groups Assigned as USER"
+# echo "========================================="
 
 
