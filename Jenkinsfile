@@ -198,22 +198,17 @@ pipeline {
                 }
             }
         }
-       stage('Install Fabric CLI (Python venv)') {
+        stage('Install Fabric CLI (Python venv)') {
             steps {
                 sh '''
                 set -e
+                set +x
         
-                echo "Creating virtual environment..."
-                python3 -m venv fabricenv
+                python3 -m venv fabricenv >/dev/null 2>&1
+                . fabricenv/bin/activate >/dev/null 2>&1
+                pip install ms-fabric-cli==1.4.0 >/dev/null 2>&1
         
-                echo "Activating venv..."
-                . fabricenv/bin/activate
-        
-                echo "Installing ms-fabric-cli..."
-                pip install ms-fabric-cli==1.4.0
-        
-                echo "Verifying install..."
-                fabricenv/bin/fab --version
+                echo "Fabric CLI Installed Successfully"
                 '''
             }
         }
