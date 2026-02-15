@@ -201,9 +201,16 @@ echo "🔎 Fetching Group Object IDs from Azure AD..."
 # GROUP1=$(az ad group list --filter "displayName eq '$GROUP_ADMIN'" --query "[0].id" -o tsv)
 # GROUP2=$(az ad group list --filter "displayName eq '$GROUP_CONTR_EXT'" --query "[0].id" -o tsv)
 # GROUP3=$(az ad group list --filter "displayName eq '$GROUP_CONTR_INT'" --query "[0].id" -o tsv)
-GROUP1=$(az ad group show --group "$GROUP_ADMIN" --query id -o tsv 2>/dev/null)
-GROUP2=$(az ad group show --group "$GROUP_CONTR_EXT" --query id -o tsv 2>/dev/null)
-GROUP3=$(az ad group show --group "$GROUP_CONTR_INT" --query id -o tsv 2>/dev/null)
+
+echo "🔎 Fetching Group Object IDs from Azure AD..."
+
+GROUP1=$(az ad group list --filter "displayName eq '$GROUP_ADMIN'" --query "[0].id" -o tsv)
+GROUP2=$(az ad group list --filter "displayName eq '$GROUP_CONTR_EXT'" --query "[0].id" -o tsv)
+GROUP3=$(az ad group list --filter "displayName eq '$GROUP_CONTR_INT'" --query "[0].id" -o tsv)
+
+echo "GROUP1=$GROUP1"
+echo "GROUP2=$GROUP2"
+echo "GROUP3=$GROUP3"
 
 
 #########################################
