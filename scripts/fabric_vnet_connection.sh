@@ -367,110 +367,58 @@ echo "🚀 Assigning 3 AAD Groups as USER"
 echo "========================================="
 
 
-# #########################################
-# # DYNAMIC GROUP FETCH + ASSIGN
-# #########################################
-
-# echo "🔎 Building dynamic group names..."
-
-# GROUP_ADMIN="agd-${CUSTOMER_CODE}-${PRODUCT}-powerbi-admin-internal-qa"
-# GROUP_CONTR_EXT="agd-${CUSTOMER_CODE}-${PRODUCT}-powerbi-contributor-external-qa"
-# GROUP_CONTR_INT="agd-${CUSTOMER_CODE}-${PRODUCT}-powerbi-contributor-internal-qa"
-
-# echo "Admin Group: $GROUP_ADMIN"
-# echo "Contributor External: $GROUP_CONTR_EXT"
-# echo "Contributor Internal: $GROUP_CONTR_INT"
-
-# echo "🔎 Fetching Group Object IDs from Azure AD..."
-
-# # GROUP1=$(az ad group list --filter "displayName eq '$GROUP_ADMIN'" --query "[0].id" -o tsv)
-# # GROUP2=$(az ad group list --filter "displayName eq '$GROUP_CONTR_EXT'" --query "[0].id" -o tsv)
-# # GROUP3=$(az ad group list --filter "displayName eq '$GROUP_CONTR_INT'" --query "[0].id" -o tsv)
-
-# echo "🔎 Fetching Group Object IDs from Azure AD..."
-
-# GROUP1=$(az ad group list --filter "displayName eq '$GROUP_ADMIN'" --query "[0].id" -o tsv)
-# GROUP2=$(az ad group list --filter "displayName eq '$GROUP_CONTR_EXT'" --query "[0].id" -o tsv)
-# GROUP3=$(az ad group list --filter "displayName eq '$GROUP_CONTR_INT'" --query "[0].id" -o tsv)
-
-# echo "GROUP1=$GROUP1"
-# echo "GROUP2=$GROUP2"
-# echo "GROUP3=$GROUP3"
-
-
-# #########################################
-# # VALIDATE GROUPS
-# #########################################
-
-# if [ -z "$GROUP1" ] || [ -z "$GROUP2" ] || [ -z "$GROUP3" ]; then
-#   echo "❌ One or more groups not found. Exiting."
-#   exit 1
-# fi
-
-# echo "✅ All groups found"
-
-# #########################################
-# # ASSIGN GROUPS TO CONNECTION
-# #########################################
-
-# # Admin
-# cat > role.json <<EOF
-# {
-#   "principal": {
-#     "id": "${GROUP1}",
-#     "type": "Group"
-#   },
-#   "role": "User"
-# }
-# EOF
-
-# echo "➕ Assigning Group: $GROUP_ADMIN"
-# $FAB api connections/${CONNECTION_ID}/roleAssignments -A fabric -X post -i role.json
-# echo "✅ Assigned: $GROUP_ADMIN"
-
-
-# # Contributor External
-# cat > role.json <<EOF
-# {
-#   "principal": {
-#     "id": "${GROUP2}",
-#     "type": "Group"
-#   },
-#   "role": "User"
-# }
-# EOF
-
-# echo "➕ Assigning Group: $GROUP_CONTR_EXT"
-# $FAB api connections/${CONNECTION_ID}/roleAssignments -A fabric -X post -i role.json
-# echo "✅ Assigned: $GROUP_CONTR_EXT"
-
-
-# # Contributor Internal
-# cat > role.json <<EOF
-# {
-#   "principal": {
-#     "id": "${GROUP3}",
-#     "type": "Group"
-#   },
-#   "role": "User"
-# }
-# EOF
-
-# echo "➕ Assigning Group: $GROUP_CONTR_INT"
-# $FAB api connections/${CONNECTION_ID}/roleAssignments -A fabric -X post -i role.json
-# echo "✅ Assigned: $GROUP_CONTR_INT"
-
-# echo "========================================="
-# echo "🎉 All dynamic groups assigned successfully"
-# echo "========================================="
-
+echo "========================================="
+echo "🚀 Assigning Dynamic AAD Groups as USER"
+echo "========================================="
 
 #########################################
-# ASSIGN GROUPS TO CONNECTION
+# BUILD DYNAMIC GROUP NAMES
 #########################################
 
-for GROUP_ID in $GROUP1 $GROUP2 $GROUP3
+GROUP_ADMIN="agd-${CUSTOMER_CODE}-${PRODUCT}-powerbi-admin-internal-qa"
+GROUP_CONTR_EXT="agd-${CUSTOMER_CODE}-${PRODUCT}-powerbi-contributor-external-qa"
+GROUP_CONTR_INT="agd-${CUSTOMER_CODE}-${PRODUCT}-powerbi-contributor-internal-qa"
+
+echo "Admin Group: $GROUP_ADMIN"
+echo "Contributor External: $GROUP_CONTR_EXT"
+echo "Contributor Internal: $GROUP_CONTR_INT"
+
+#########################################
+# FETCH GROUP OBJECT IDs FROM AZURE AD
+#########################################
+
+GROUP1=$(az ad group list --filter "displayName eq '$GROUP_ADMIN'" --query "[0].id" -o tsv)
+GROUP2=$(az ad group list --filter "displayName eq '$GROUP_CONTR_EXT'" --query "[0].id" -o tsv)
+GROUP3=$(az ad group list --filter "displayName eq '$GROUP_CONTR_INT'" --query "[0].id" -o tsv)
+
+#########################################
+# VALIDATE GROUPS
+#########################################
+
+if [ -z "$GROUP1" ] || [ -z "$GROUP2" ] || [ -z "$GROUP3" ]; then
+  echo "❌ One or more groups not found in Azure AD. Exiting."
+  exit 1
+fi
+
+echo "✅ All groups found in Azure AD"
+
+#########################################
+# MAP NAME → ID
+#########################################
+
+declare -A GROUP_MAP
+GROUP_MAP["$GROUP_ADMIN"]=$GROUP1
+GROUP_MAP["$GROUP_CONTR_EXT"]=$GROUP2
+GROUP_MAP["$GROUP_CONTR_INT"]=$GROUP3
+
+#########################################
+# ASSIGN GROUPS TO FABRIC CONNECTION
+#########################################
+
+for GROUP_NAME in "${!GROUP_MAP[@]}"
 do
+  GROUP_ID=${GROUP_MAP[$GROUP_NAME]}
+
   cat > role.json <<EOF
 {
   "principal": {
@@ -481,63 +429,18 @@ do
 }
 EOF
 
-  echo "➕ Assigning Group $GROUP_ID to Connection..."
+  echo "➕ Assigning Group: $GROUP_NAME"
 
   $FAB api connections/${CONNECTION_ID}/roleAssignments \
     -A fabric -X post -i role.json
 
-  echo "✅ Assigned $GROUP_ID"
+  echo "✅ Assigned: $GROUP_NAME"
 done
 
 echo "========================================="
-echo "🎉 All dynamic groups assigned successfully"
+echo "🎉 All Dynamic Groups Assigned Successfully"
 echo "========================================="
 
-#ethun varch vegal ahe ata update kel ahe gropnma yava mhnun 
-
-GROUP1="883140c6-51f1-4d9f-8efa-96161d175026"
-GROUP2="89781bdf-bd4d-4da3-9e42-fa14c5cecb49"
-GROUP3="badb555e-db90-46c3-b199-e33eb1a662b1"
-
-#########################################
-# Function to Add Group as USER
-#########################################
-
-# add_group() {
-
-  GROUP_ID=$1
-
-  cat > role.json <<EOF
-{
-  "principal": {
-    "id": "${GROUP_ID}",
-    "type": "Group"
-  },
-  "role": "User"
-}
-EOF
-
-  echo "➕ Adding Group $GROUP_ID as USER"
-
-  
-  #$FAB_CMD api connections/${CONNECTION_ID}/roleAssignments
-  $FAB api connections/${CONNECTION_ID}/roleAssignments \
-    -A fabric -X post -i role.json
-
-  echo "✅ Done"
-}
-
-#########################################
-# Add All 3 Groups
-#########################################
-
-add_group $GROUP1
-add_group $GROUP2
-add_group $GROUP3
-
-echo "========================================="
-echo "🎉 All Groups Assigned as USER"
-echo "========================================="
 
 
 
