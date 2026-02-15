@@ -275,7 +275,8 @@ EOF
   echo "➕ Assigning Group: $GROUP_NAME"
 
   $FAB api connections/${CONNECTION_ID}/roleAssignments \
-    -A fabric -X post -i role.json
+    -A fabric -X post -i role.json > /dev/null 2>&1
+
 
   echo "✅ Assigned: $GROUP_NAME"
 done
