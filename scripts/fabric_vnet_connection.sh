@@ -161,189 +161,189 @@ echo "================================="
 echo "✅ DONE"
 echo "================================="
 
-#!/bin/bash
-set -e
+# #!/bin/bash
+# set -e
 
-FAB_CMD="$WORKSPACE/fabricenv/bin/fab"
+# FAB_CMD="$WORKSPACE/fabricenv/bin/fab"
 
-#CONNECTION_ID="a8b22aa5-ad59-4094-a5ce-535a6196df65"
-CONNECTION_ID=$($FAB api connections -A fabric | \
-jq -r '.text.value[]? | select(.displayName=="'"${DISPLAY_NAME}"'") | .id')
+# #CONNECTION_ID="a8b22aa5-ad59-4094-a5ce-535a6196df65"
+# CONNECTION_ID=$($FAB api connections -A fabric | \
+# jq -r '.text.value[]? | select(.displayName=="'"${DISPLAY_NAME}"'") | .id')
 
-if [ -z "$CONNECTION_ID" ]; then
-  echo "❌ Connection ID not found"
-  exit 1
-fi
+# if [ -z "$CONNECTION_ID" ]; then
+#   echo "❌ Connection ID not found"
+#   exit 1
+# fi
 
 
 
-echo "========================================="
-echo "🚀 Assigning 3 AAD Groups as USER"
-#echo "Connection: $CONNECTION_ID"
-echo "========================================="
+# echo "========================================="
+# echo "🚀 Assigning 3 AAD Groups as USER"
+# #echo "Connection: $CONNECTION_ID"
+# echo "========================================="
 
-#!/bin/bash
-set -e
+# #!/bin/bash
+# set -e
 
-FAB="$WORKSPACE/fabricenv/bin/fab"
+# FAB="$WORKSPACE/fabricenv/bin/fab"
 
-# =========================
-# HARD CODE VALUES
-# =========================
+# # =========================
+# # HARD CODE VALUES
+# # =========================
 
-# TENANT_ID="6fbff720-d89b-4675-b188-48491f24b460"
+# # TENANT_ID="6fbff720-d89b-4675-b188-48491f24b460"
 
-# AUTOMATION_CLIENT_ID="5edcfcf8-9dbd-4c1b-a602-a0887f677e2e"
+# # AUTOMATION_CLIENT_ID="5edcfcf8-9dbd-4c1b-a602-a0887f677e2e"
+# # AUTOMATION_CLIENT_SECRET="O8W8Q~5W.ato3IN3L3QdEDWberZzOSp7.VObIdp3"
+# TENANT_ID="$FABRIC_TENANT_ID"
+# AUTOMATION_CLIENT_ID="$FABRIC_CLIENT_ID"
+# #AUTOMATION_CLIENT_SECRET="$FABRIC_CLIENT_SECRET"
 # AUTOMATION_CLIENT_SECRET="O8W8Q~5W.ato3IN3L3QdEDWberZzOSp7.VObIdp3"
-TENANT_ID="$FABRIC_TENANT_ID"
-AUTOMATION_CLIENT_ID="$FABRIC_CLIENT_ID"
-#AUTOMATION_CLIENT_SECRET="$FABRIC_CLIENT_SECRET"
-AUTOMATION_CLIENT_SECRET="O8W8Q~5W.ato3IN3L3QdEDWberZzOSp7.VObIdp3"
 
-if [ -z "$AUTOMATION_CLIENT_ID" ] || [ -z "$AUTOMATION_CLIENT_SECRET" ] || [ -z "$TENANT_ID" ]; then
-  echo "❌ Fabric credentials not provided from pipeline"
-  exit 1
-fi
+# if [ -z "$AUTOMATION_CLIENT_ID" ] || [ -z "$AUTOMATION_CLIENT_SECRET" ] || [ -z "$TENANT_ID" ]; then
+#   echo "❌ Fabric credentials not provided from pipeline"
+#   exit 1
+# fi
 
 
-#DISPLAY_NAME="db-vnet-testing-new-6177"
-DISPLAY_NAME="db-vnet-${ENV}-${CUSTOMER_CODE}"
+# #DISPLAY_NAME="db-vnet-testing-new-6177"
+# DISPLAY_NAME="db-vnet-${ENV}-${CUSTOMER_CODE}"
 
-GATEWAY_ID="34377033-6f6f-433a-9a66-3095e996f65c"
+# GATEWAY_ID="34377033-6f6f-433a-9a66-3095e996f65c"
 
-# DATABRICKS_HOST="adb-7405609173671370.10.azuredatabricks.net"
-# HTTP_PATH="/sql/1.0/warehouses/559747c78f71249c"
+# # DATABRICKS_HOST="adb-7405609173671370.10.azuredatabricks.net"
+# # HTTP_PATH="/sql/1.0/warehouses/559747c78f71249c"
 
-DATABRICKS_HOST="adb-7405618110977329.9.azuredatabricks.net"
-HTTP_PATH="/sql/1.0/warehouses/334a2ae248719051"
+# DATABRICKS_HOST="adb-7405618110977329.9.azuredatabricks.net"
+# HTTP_PATH="/sql/1.0/warehouses/334a2ae248719051"
 
 
 
 
- SECRET_CLIENT_ID_NAME="sp-${PRODUCT}-${CUSTOMER_CODE}-oauth-client-id"
- SECRET_SECRET_NAME="sp-${PRODUCT}-${CUSTOMER_CODE}-oauth-secret"
+#  SECRET_CLIENT_ID_NAME="sp-${PRODUCT}-${CUSTOMER_CODE}-oauth-client-id"
+#  SECRET_SECRET_NAME="sp-${PRODUCT}-${CUSTOMER_CODE}-oauth-secret"
 
 
-# =========================
-# LOGIN
-# =========================
+# # =========================
+# # LOGIN
+# # =========================
 
-echo "🔐 Fabric Login..."
+# echo "🔐 Fabric Login..."
 
-$FAB config set encryption_fallback_enabled true
+# $FAB config set encryption_fallback_enabled true
 
-$FAB auth login \
-  -u $AUTOMATION_CLIENT_ID \
-  -p $AUTOMATION_CLIENT_SECRET \
-  --tenant $TENANT_ID
+# $FAB auth login \
+#   -u $AUTOMATION_CLIENT_ID \
+#   -p $AUTOMATION_CLIENT_SECRET \
+#   --tenant $TENANT_ID
 
-echo "✅ Login Successful"
-$FAB auth status
+# echo "✅ Login Successful"
+# $FAB auth status
 
-# =========================
-# AZURE LOGIN (for Key Vault)
-# =========================
+# # =========================
+# # AZURE LOGIN (for Key Vault)
+# # =========================
 
-echo "🔐 Azure Login for Key Vault..."
+# echo "🔐 Azure Login for Key Vault..."
 
-az login --service-principal \
-  -u $AUTOMATION_CLIENT_ID \
-  -p $AUTOMATION_CLIENT_SECRET \
-  --tenant $TENANT_ID >/dev/null
+# az login --service-principal \
+#   -u $AUTOMATION_CLIENT_ID \
+#   -p $AUTOMATION_CLIENT_SECRET \
+#   --tenant $TENANT_ID >/dev/null
 
-echo "✅ Azure Login Successful"
+# echo "✅ Azure Login Successful"
 
-echo "🔎 Fetching Gateway ID dynamically..."
+# echo "🔎 Fetching Gateway ID dynamically..."
 
-GATEWAY_ID=$($FAB api gateways -A fabric | \
-jq -r '.text.value[]? | select(.displayName=="vnwt-db-fab-fabric-sub") | .id')
-
-
-# GATEWAY_ID=$($FAB api virtualNetworkGateways -A fabric | \
-# jq -r '.text.value[] | select(.displayName=="vnwt-db-fab-fabric-sub") | .id')
-
-if [ -z "$GATEWAY_ID" ]; then
-  echo "❌ Gateway not found!"
-  exit 1
-fi
-
-#echo "✅ Gateway ID: $GATEWAY_ID"
+# GATEWAY_ID=$($FAB api gateways -A fabric | \
+# jq -r '.text.value[]? | select(.displayName=="vnwt-db-fab-fabric-sub") | .id')
 
 
-# =========================
-# FETCH CUSTOMER SPN FROM KEY VAULT
-# =========================
+# # GATEWAY_ID=$($FAB api virtualNetworkGateways -A fabric | \
+# # jq -r '.text.value[] | select(.displayName=="vnwt-db-fab-fabric-sub") | .id')
 
-echo "🔎 Fetching Customer SPN from Key Vault..."
+# if [ -z "$GATEWAY_ID" ]; then
+#   echo "❌ Gateway not found!"
+#   exit 1
+# fi
 
-CUSTOMER_SP_CLIENT_ID=$(az keyvault secret show \
-  --vault-name kv-databricks-fab \
-  --name $SECRET_CLIENT_ID_NAME \
-  --query value -o tsv)
-
-CUSTOMER_SP_SECRET=$(az keyvault secret show \
-  --vault-name kv-databricks-fab \
-  --name $SECRET_SECRET_NAME \
-  --query value -o tsv)
-
-echo "✅ Secrets Fetched Successfully"
-# echo "CLIENT_ID = $CUSTOMER_SP_CLIENT_ID"
-# echo "SECRET LENGTH = ${CUSTOMER_SP_SECRET}"
+# #echo "✅ Gateway ID: $GATEWAY_ID"
 
 
+# # =========================
+# # FETCH CUSTOMER SPN FROM KEY VAULT
+# # =========================
 
-# =========================
-# CREATE CONNECTION
-# =========================
+# echo "🔎 Fetching Customer SPN from Key Vault..."
 
-echo "🚀 Creating VNet Connection..."
+# CUSTOMER_SP_CLIENT_ID=$(az keyvault secret show \
+#   --vault-name kv-databricks-fab \
+#   --name $SECRET_CLIENT_ID_NAME \
+#   --query value -o tsv)
 
-cat > payload.json <<EOF
-{
-  "displayName": "${DISPLAY_NAME}",
-  "connectivityType": "VirtualNetworkGateway",
-  "gatewayId": "${GATEWAY_ID}",
-  "privacyLevel": "Private",
-  "connectionDetails": {
-    "type": "Databricks",
-    "creationMethod": "Databricks.Catalogs",
-    "parameters": [
-      {
-        "dataType": "Text",
-        "name": "host",
-        "value": "${DATABRICKS_HOST}"
-      },
-      {
-        "dataType": "Text",
-        "name": "httpPath",
-        "value": "${HTTP_PATH}"
-      }
-    ]
-  },
-  "credentialDetails": {
-    "credentialType": "Basic",
-    "singleSignOnType": "None",
-    "connectionEncryption": "NotEncrypted",
-    "skipTestConnection": false,
-    "credentials": {
-      "credentialType": "Basic",
-      "username": "${CUSTOMER_SP_CLIENT_ID}",
-      "password": "${CUSTOMER_SP_SECRET}"
+# CUSTOMER_SP_SECRET=$(az keyvault secret show \
+#   --vault-name kv-databricks-fab \
+#   --name $SECRET_SECRET_NAME \
+#   --query value -o tsv)
+
+# echo "✅ Secrets Fetched Successfully"
+# # echo "CLIENT_ID = $CUSTOMER_SP_CLIENT_ID"
+# # echo "SECRET LENGTH = ${CUSTOMER_SP_SECRET}"
 
 
 
-    }
-  }
-}
-EOF
+# # =========================
+# # CREATE CONNECTION
+# # =========================
+
+# echo "🚀 Creating VNet Connection..."
+
+# cat > payload.json <<EOF
+# {
+#   "displayName": "${DISPLAY_NAME}",
+#   "connectivityType": "VirtualNetworkGateway",
+#   "gatewayId": "${GATEWAY_ID}",
+#   "privacyLevel": "Private",
+#   "connectionDetails": {
+#     "type": "Databricks",
+#     "creationMethod": "Databricks.Catalogs",
+#     "parameters": [
+#       {
+#         "dataType": "Text",
+#         "name": "host",
+#         "value": "${DATABRICKS_HOST}"
+#       },
+#       {
+#         "dataType": "Text",
+#         "name": "httpPath",
+#         "value": "${HTTP_PATH}"
+#       }
+#     ]
+#   },
+#   "credentialDetails": {
+#     "credentialType": "Basic",
+#     "singleSignOnType": "None",
+#     "connectionEncryption": "NotEncrypted",
+#     "skipTestConnection": false,
+#     "credentials": {
+#       "credentialType": "Basic",
+#       "username": "${CUSTOMER_SP_CLIENT_ID}",
+#       "password": "${CUSTOMER_SP_SECRET}"
 
 
 
-$FAB api connections -A fabric -X post -i payload.json
+#     }
+#   }
+# }
+# EOF
 
-echo "================================="
-echo "✅ DONE"
-echo "================================="
+
+
+# $FAB api connections -A fabric -X post -i payload.json
+
+# echo "================================="
+# echo "✅ DONE"
+# echo "================================="
 
 #!/bin/bash
 set -e
@@ -387,9 +387,9 @@ echo "Contributor Internal: $GROUP_CONTR_INT"
 # FETCH GROUP OBJECT IDs FROM AZURE AD
 #########################################
 
-GROUP1=$(az ad group list --filter "displayName eq '$GROUP_ADMIN'" --query "[0].id" -o tsv)
-GROUP2=$(az ad group list --filter "displayName eq '$GROUP_CONTR_EXT'" --query "[0].id" -o tsv)
-GROUP3=$(az ad group list --filter "displayName eq '$GROUP_CONTR_INT'" --query "[0].id" -o tsv)
+GROUP1=$(az ad group list --query "[?contains(displayName, '$GROUP_ADMIN')].id" -o tsv)
+GROUP2=$(az ad group list --query "[?contains(displayName, '$GROUP_CONTR_EXT')].id" -o tsv)
+GROUP3=$(az ad group list --query "[?contains(displayName, '$GROUP_CONTR_INT')].id" -o tsv)
 
 #########################################
 # VALIDATE GROUPS
