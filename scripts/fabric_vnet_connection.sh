@@ -14,7 +14,9 @@ FAB="$WORKSPACE/fabricenv/bin/fab"
 TENANT_ID="$FABRIC_TENANT_ID"
 AUTOMATION_CLIENT_ID="$FABRIC_CLIENT_ID"
 #AUTOMATION_CLIENT_SECRET="$FABRIC_CLIENT_SECRET"
-AUTOMATION_CLIENT_SECRET="O8W8Q~5W.ato3IN3L3QdEDWberZzOSp7.VObIdp3"
+#AUTOMATION_CLIENT_SECRET="O8W8Q~5W.ato3IN3L3QdEDWberZzOSp7.VObIdp3"
+AUTOMATION_CLIENT_SECRET="$FABRIC_CLIENT_SECRET"
+
 
 if [ -z "$AUTOMATION_CLIENT_ID" ] || [ -z "$AUTOMATION_CLIENT_SECRET" ] || [ -z "$TENANT_ID" ]; then
   echo "❌ Fabric credentials not provided from pipeline"
@@ -54,7 +56,7 @@ $FAB auth login \
   --tenant $TENANT_ID
 
 echo "✅ Login Successful"
-$FAB auth status
+#$FAB auth status
 
 # =========================
 # AZURE LOGIN (for Key Vault)
@@ -74,9 +76,6 @@ echo "🔎 Fetching Gateway ID dynamically..."
 GATEWAY_ID=$($FAB api gateways -A fabric | \
 jq -r '.text.value[]? | select(.displayName=="vnwt-db-fab-fabric-sub") | .id')
 
-
-# GATEWAY_ID=$($FAB api virtualNetworkGateways -A fabric | \
-# jq -r '.text.value[] | select(.displayName=="vnwt-db-fab-fabric-sub") | .id')
 
 if [ -z "$GATEWAY_ID" ]; then
   echo "❌ Gateway not found!"
@@ -103,10 +102,6 @@ CUSTOMER_SP_SECRET=$(az keyvault secret show \
   --query value -o tsv)
 
 echo "✅ Secrets Fetched Successfully"
-# echo "CLIENT_ID = $CUSTOMER_SP_CLIENT_ID"
-# echo "SECRET LENGTH = ${CUSTOMER_SP_SECRET}"
-
-
 
 # =========================
 # CREATE CONNECTION
@@ -153,35 +148,16 @@ cat > payload.json <<EOF
 }
 EOF
 
-
-
-$FAB api connections -A fabric -X post -i payload.json
+if $FAB api connections -A fabric -X post -i payload.json > /dev/null 2>&1; then
+    echo "✅ VNet Connection Created Successfully"
+else
+    echo "❌ VNet Connection Creation Failed"
+    exit 1
+fi
 
 echo "================================="
 echo "✅ DONE"
 echo "================================="
-
-# #!/bin/bash
-# set -e
-
-# FAB_CMD="$WORKSPACE/fabricenv/bin/fab"
-
-# #CONNECTION_ID="a8b22aa5-ad59-4094-a5ce-535a6196df65"
-# CONNECTION_ID=$($FAB api connections -A fabric | \
-# jq -r '.text.value[]? | select(.displayName=="'"${DISPLAY_NAME}"'") | .id')
-
-# if [ -z "$CONNECTION_ID" ]; then
-#   echo "❌ Connection ID not found"
-#   exit 1
-# fi
-
-
-
-# echo "========================================="
-# echo "🚀 Assigning 3 AAD Groups as USER"
-# #echo "Connection: $CONNECTION_ID"
-# echo "========================================="
-
 
 
 #!/bin/bash
@@ -284,86 +260,3 @@ done
 echo "========================================="
 echo "🎉 All Dynamic Groups Assigned Successfully"
 echo "========================================="
-
-
-
-
-
-
-
-
-# #########################################
-# # ASSIGN GROUPS TO CONNECTION
-# #########################################
-
-# for GROUP_ID in $GROUP1 $GROUP2 $GROUP3
-# do
-#   cat > role.json <<EOF
-# {
-#   "principal": {
-#     "id": "${GROUP_ID}",
-#     "type": "Group"
-#   },
-#   "role": "User"
-# }
-# EOF
-
-#   echo "➕ Assigning Group $GROUP_ID to Connection..."
-
-#   $FAB api connections/${CONNECTION_ID}/roleAssignments \
-#     -A fabric -X post -i role.json
-
-#   echo "✅ Assigned $GROUP_ID"
-# done
-
-# echo "========================================="
-# echo "🎉 All dynamic groups assigned successfully"
-# echo "========================================="
-
-# #ethun varch vegal ahe ata update kel ahe gropnma yava mhnun 
-
-# GROUP1="883140c6-51f1-4d9f-8efa-96161d175026"
-# GROUP2="89781bdf-bd4d-4da3-9e42-fa14c5cecb49"
-# GROUP3="badb555e-db90-46c3-b199-e33eb1a662b1"
-
-# #########################################
-# # Function to Add Group as USER
-# #########################################
-
-# # add_group() {
-
-#   GROUP_ID=$1
-
-#   cat > role.json <<EOF
-# {
-#   "principal": {
-#     "id": "${GROUP_ID}",
-#     "type": "Group"
-#   },
-#   "role": "User"
-# }
-# EOF
-
-#   echo "➕ Adding Group $GROUP_ID as USER"
-
-  
-#   #$FAB_CMD api connections/${CONNECTION_ID}/roleAssignments
-#   $FAB api connections/${CONNECTION_ID}/roleAssignments \
-#     -A fabric -X post -i role.json
-
-#   echo "✅ Done"
-# }
-
-# #########################################
-# # Add All 3 Groups
-# #########################################
-
-# add_group $GROUP1
-# add_group $GROUP2
-# add_group $GROUP3
-
-# echo "========================================="
-# echo "🎉 All Groups Assigned as USER"
-# echo "========================================="
-
-
