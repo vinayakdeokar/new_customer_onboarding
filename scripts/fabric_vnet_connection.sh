@@ -224,6 +224,62 @@ fi
 
 echo "✅ All groups found"
 
+#########################################
+# ASSIGN GROUPS TO CONNECTION
+#########################################
+
+# Admin
+cat > role.json <<EOF
+{
+  "principal": {
+    "id": "${GROUP1}",
+    "type": "Group"
+  },
+  "role": "User"
+}
+EOF
+
+echo "➕ Assigning Group: $GROUP_ADMIN"
+$FAB api connections/${CONNECTION_ID}/roleAssignments -A fabric -X post -i role.json
+echo "✅ Assigned: $GROUP_ADMIN"
+
+
+# Contributor External
+cat > role.json <<EOF
+{
+  "principal": {
+    "id": "${GROUP2}",
+    "type": "Group"
+  },
+  "role": "User"
+}
+EOF
+
+echo "➕ Assigning Group: $GROUP_CONTR_EXT"
+$FAB api connections/${CONNECTION_ID}/roleAssignments -A fabric -X post -i role.json
+echo "✅ Assigned: $GROUP_CONTR_EXT"
+
+
+# Contributor Internal
+cat > role.json <<EOF
+{
+  "principal": {
+    "id": "${GROUP3}",
+    "type": "Group"
+  },
+  "role": "User"
+}
+EOF
+
+echo "➕ Assigning Group: $GROUP_CONTR_INT"
+$FAB api connections/${CONNECTION_ID}/roleAssignments -A fabric -X post -i role.json
+echo "✅ Assigned: $GROUP_CONTR_INT"
+
+echo "========================================="
+echo "🎉 All dynamic groups assigned successfully"
+echo "========================================="
+
+
 # #########################################
 # # ASSIGN GROUPS TO CONNECTION
 # #########################################
