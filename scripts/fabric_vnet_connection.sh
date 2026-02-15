@@ -309,7 +309,7 @@ echo "========================================="
 echo "🎉 All dynamic groups assigned successfully"
 echo "========================================="
 
-ethun varch vegal ahe ata update kel ahe gropnma yava mhnun 
+#ethun varch vegal ahe ata update kel ahe gropnma yava mhnun 
 
 GROUP1="883140c6-51f1-4d9f-8efa-96161d175026"
 GROUP2="89781bdf-bd4d-4da3-9e42-fa14c5cecb49"
