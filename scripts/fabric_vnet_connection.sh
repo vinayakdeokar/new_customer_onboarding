@@ -17,8 +17,12 @@ DISPLAY_NAME="db-vnet-${ENV}-${CUSTOMER_CODE}"
 
 GATEWAY_ID="34377033-6f6f-433a-9a66-3095e996f65c"
 
-DATABRICKS_HOST="adb-7405609173671370.10.azuredatabricks.net"
-HTTP_PATH="/sql/1.0/warehouses/559747c78f71249c"
+# DATABRICKS_HOST="adb-7405609173671370.10.azuredatabricks.net"
+# HTTP_PATH="/sql/1.0/warehouses/559747c78f71249c"
+
+DATABRICKS_HOST="adb-7405618110977329.9.azuredatabricks.net"
+HTTP_PATH="/sql/1.0/warehouses/334a2ae248719051"
+
 
 
 
