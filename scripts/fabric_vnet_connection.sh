@@ -135,8 +135,10 @@ cat > payload.json <<EOF
     "skipTestConnection": false,
     "credentials": {
       "credentialType": "Basic",
-      "username": "ccb59224-dc2f-4bf4-94d2-ae6eb1765ae9",
-      "password": "dose05f09ba17704bd6d2b10e68dc5edb5ba"
+      #"username": "ccb59224-dc2f-4bf4-94d2-ae6eb1765ae9",
+      #"password": "dose05f09ba17704bd6d2b10e68dc5edb5ba"
+      "username": "fa8ab78e-2064-4736-860b-162cb2f201c3",
+      "password": "dose988a0cc2c9fe0b34954cc71b6a560ab8"
 
 
 
