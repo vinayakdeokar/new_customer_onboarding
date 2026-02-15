@@ -361,6 +361,8 @@ fi
 
 
 
+
+
 echo "========================================="
 echo "🚀 Assigning 3 AAD Groups as USER"
 #echo "Connection: $CONNECTION_ID"
@@ -382,6 +384,16 @@ GROUP_CONTR_INT="agd-${CUSTOMER_CODE}-${PRODUCT}-powerbi-contributor-internal-qa
 echo "Admin Group: $GROUP_ADMIN"
 echo "Contributor External: $GROUP_CONTR_EXT"
 echo "Contributor Internal: $GROUP_CONTR_INT"
+
+echo "Contributor Internal: $GROUP_CONTR_INT"
+
+echo "================ DEBUG AZURE CONTEXT ================"
+az account show
+echo "================ LISTING FIRST 20 GROUPS ================"
+az ad group list --query "[].displayName" -o table | head -20
+echo "======================================================="
+
+
 
 #########################################
 # FETCH GROUP OBJECT IDs FROM AZURE AD
