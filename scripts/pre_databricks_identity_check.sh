@@ -51,9 +51,12 @@ echo "export CUSTOMER_CODE=${CUSTOMER}" >> db_env.sh
 echo "export DATA_GROUP=${GROUP_NAME}" >> db_env.sh
 echo "export BRONZE_STORAGE_ROOT=abfss://bronz@stcrmmedicareadv.dfs.core.windows.net/${CUSTOMER}" >> db_env.sh
 
-echo "Context saved:"
-cat db_env.sh
-echo "--------------------------------------------------"
+# echo "Context saved:"
+# cat db_env.sh
+# echo "--------------------------------------------------"
+echo "Context saved successfully"
+echo "----------"
+
 
 # -------------------------------
 # Secret check (NON-BLOCKING)
