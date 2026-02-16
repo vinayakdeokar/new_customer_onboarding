@@ -213,6 +213,23 @@ pipeline {
             }
         }
 
+                stage('Create Fabric Workspace') {
+                    steps {
+                        withCredentials([
+                            string(credentialsId: 'FABRIC_CLIENT_ID', variable: 'FABRIC_CLIENT_ID'),
+                            string(credentialsId: 'FABRIC_CLIENT_SECRET', variable: 'FABRIC_CLIENT_SECRET'),
+                            string(credentialsId: 'FABRIC_TENANT_ID', variable: 'FABRIC_TENANT_ID')
+                        ]) {
+                            sh '''
+                                set +x
+                                chmod +x scripts/create_fabric_workspace.sh
+                                ./scripts/create_fabric_workspace.sh "${CUSTOMER_CODE}" "${PRODUCT}" "${ENV}"
+                            '''
+                        }
+                    }
+                }
+
+
         stage('Fabric VNet Connection') {
             steps {
                 withCredentials([
