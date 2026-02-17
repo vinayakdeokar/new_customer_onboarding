@@ -66,25 +66,60 @@ pipeline {
                 echo "SPN=${params.SPN_NAME}"
             }
         }
-
-        stage('Customer Check') {
+        stage('Customer Register / Check (SQL)') {
             steps {
-                sh '''
-                    set +x
-                    chmod +x scripts/check_customer_exists.sh
-                    scripts/check_customer_exists.sh \
-                        ${PRODUCT} \
-                        ${CUSTOMER_CODE}
-                '''
-                script {
-                    def status = readFile('customer_status.env')
-                    if (status.contains("CUSTOMER_EXISTS=true")) {
-                        currentBuild.result = 'SUCCESS'
-                        error("STOP_PIPELINE")
-                    }
+                withCredentials([
+                    string(credentialsId: 'SQL_SERVER_NAME', variable: 'DB_SERVER'),
+                    string(credentialsId: 'SQL_DB_NAME', variable: 'DB_NAME'),
+                    string(credentialsId: 'SQL_USERNAME', variable: 'DB_USER'),
+                    string(credentialsId: 'SQL_PASSWORD', variable: 'DB_PASS')
+                ]) {
+                    sh '''
+                    echo "Running SQL Stored Procedure..."
+        
+                    RESULT=$(/opt/mssql-tools/bin/sqlcmd \
+                        -S $DB_SERVER \
+                        -d $DB_NAME \
+                        -U $DB_USER \
+                        -P $DB_PASS \
+                        -h -1 -W \
+                        -Q "EXEC RegisterCustomer \
+                            @CustomerCode='${CUSTOMER_CODE}', \
+                            @Product='${PRODUCT}', \
+                            @Env='${ENV}';")
+        
+                    echo "SQL Result: $RESULT"
+        
+                    if [ "$RESULT" = "EXISTS" ]; then
+                        echo "Customer already exists. Stopping pipeline."
+                        exit 1
+                    fi
+        
+                    echo "Customer created successfully. Continuing..."
+                    '''
                 }
             }
         }
+
+
+        // stage('Customer Check') {
+        //     steps {
+        //         sh '''
+        //             set +x
+        //             chmod +x scripts/check_customer_exists.sh
+        //             scripts/check_customer_exists.sh \
+        //                 ${PRODUCT} \
+        //                 ${CUSTOMER_CODE}
+        //         '''
+        //         script {
+        //             def status = readFile('customer_status.env')
+        //             if (status.contains("CUSTOMER_EXISTS=true")) {
+        //                 currentBuild.result = 'SUCCESS'
+        //                 error("STOP_PIPELINE")
+        //             }
+        //         }
+        //     }
+        // }
 
         stage('Azure Login') {
             steps {
