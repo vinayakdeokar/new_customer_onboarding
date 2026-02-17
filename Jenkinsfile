@@ -252,6 +252,31 @@ pipeline {
             }
         }
 
+        stage('Post Validation Checks') {
+            steps {
+                withCredentials([
+                    string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
+                    string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_ADMIN_TOKEN'),
+                    string(credentialsId: 'AZURE_CLIENT_ID', variable: 'AZURE_CLIENT_ID'),
+                    string(credentialsId: 'AZURE_CLIENT_SECRET', variable: 'AZURE_CLIENT_SECRET'),
+                    string(credentialsId: 'AZURE_TENANT_ID', variable: 'AZURE_TENANT_ID'),
+                    usernamePassword(
+                        credentialsId: 'sql-cred',
+                        usernameVariable: 'DB_USER',
+                        passwordVariable: 'DB_PASS'
+                    )
+                ]) {
+                    sh '''
+                        set -e
+                        set +x
+                        chmod +x scripts/post_validation.sh
+                        ./scripts/post_validation.sh
+                    '''
+                }
+            }
+        }
+
+
 
         stage('Update Customer Metadata') {
             when {
