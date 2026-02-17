@@ -77,23 +77,21 @@ pipeline {
                 else
                     echo "🔧 Installing sqlcmd..."
         
-                    sudo apt-get update -y
-                    sudo apt-get install -y curl apt-transport-https gnupg
+                    apt-get update -y
+                    apt-get install -y curl apt-transport-https gnupg
         
-                    curl https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
-                    curl https://packages.microsoft.com/config/ubuntu/22.04/prod.list | \
-                        sudo tee /etc/apt/sources.list.d/mssql-release.list
+                    curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add -
+                    curl https://packages.microsoft.com/config/ubuntu/22.04/prod.list > /etc/apt/sources.list.d/mssql-release.list
         
-                    sudo apt-get update -y
-                    sudo ACCEPT_EULA=Y apt-get install -y msodbcsql17 mssql-tools unixodbc-dev
+                    apt-get update -y
+                    ACCEPT_EULA=Y apt-get install -y msodbcsql17 mssql-tools unixodbc-dev
         
-                    echo 'export PATH="$PATH:/opt/mssql-tools/bin"' >> ~/.bashrc
                     export PATH="$PATH:/opt/mssql-tools/bin"
         
                     echo "✅ sqlcmd installed successfully"
                 fi
         
-                sqlcmd -? || { echo "❌ sqlcmd installation failed"; exit 1; }
+                /opt/mssql-tools/bin/sqlcmd -? || { echo "❌ sqlcmd installation failed"; exit 1; }
                 '''
             }
         }
