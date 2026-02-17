@@ -96,44 +96,44 @@ pipeline {
         //     }
         // }
 
-        stage('Customer Register / Check (SQL)') {
-            steps {
-                withCredentials([
-                    string(credentialsId: 'SQL_SERVER_NAME', variable: 'DB_SERVER'),
-                    string(credentialsId: 'SQL_DB_NAME', variable: 'DB_NAME'),
-                    string(credentialsId: 'SQL_USERNAME', variable: 'DB_USER'),
-                    string(credentialsId: 'SQL_PASSWORD', variable: 'DB_PASS')
-                ]) {
-                    sh '''
-                    set -e
-                    set +x
+        // stage('Customer Register / Check (SQL)') {
+        //     steps {
+        //         withCredentials([
+        //             string(credentialsId: 'SQL_SERVER_NAME', variable: 'DB_SERVER'),
+        //             string(credentialsId: 'SQL_DB_NAME', variable: 'DB_NAME'),
+        //             string(credentialsId: 'SQL_USERNAME', variable: 'DB_USER'),
+        //             string(credentialsId: 'SQL_PASSWORD', variable: 'DB_PASS')
+        //         ]) {
+        //             sh '''
+        //             set -e
+        //             set +x
         
-                    echo "Running SQL Stored Procedure..."
+        //             echo "Running SQL Stored Procedure..."
         
-                    RESULT=$(/opt/mssql-tools18/bin/sqlcmd \
-                        -S $DB_SERVER \
-                        -d $DB_NAME \
-                        -U $DB_USER \
-                        -P $DB_PASS \
-                        -C \
-                        -h -1 -W \
-                        -Q "EXEC RegisterCustomer \
-                            @CustomerCode='${CUSTOMER_CODE}', \
-                            @Product='${PRODUCT}', \
-                            @Env='${ENV}';")
+        //             RESULT=$(/opt/mssql-tools18/bin/sqlcmd \
+        //                 -S $DB_SERVER \
+        //                 -d $DB_NAME \
+        //                 -U $DB_USER \
+        //                 -P $DB_PASS \
+        //                 -C \
+        //                 -h -1 -W \
+        //                 -Q "EXEC RegisterCustomer \
+        //                     @CustomerCode='${CUSTOMER_CODE}', \
+        //                     @Product='${PRODUCT}', \
+        //                     @Env='${ENV}';")
         
-                    echo "SQL Result: $RESULT"
+        //             echo "SQL Result: $RESULT"
         
-                    if echo "$RESULT" | grep -q "EXISTS"; then
-                        echo "Customer already exists. Stopping pipeline."
-                        exit 1
-                    fi
+        //             if echo "$RESULT" | grep -q "EXISTS"; then
+        //                 echo "Customer already exists. Stopping pipeline."
+        //                 exit 1
+        //             fi
         
-                    echo "Customer created successfully. Continuing..."
-                    '''
-                }
-            }
-        }
+        //             echo "Customer created successfully. Continuing..."
+        //             '''
+        //         }
+        //     }
+        // }
 
 
         // stage('Customer Check') {
@@ -172,178 +172,178 @@ pipeline {
             }
         }
 
-        // stage('Pre Databricks Identity Check') {
-        //     steps {
-        //         withCredentials([
-        //             string(credentialsId: 'DATABRICKS_CATALOG_NAME', variable: 'CATALOG_NAME')
-        //         ]) {
-        //             sh '''
-        //                 set +x
-        //                 chmod +x scripts/pre_databricks_identity_check.sh
-        //                 scripts/pre_databricks_identity_check.sh "${PRODUCT}" "${CUSTOMER_CODE}"
-        //             '''
-        //         }
-        //     }
-        // }
+        stage('Pre Databricks Identity Check') {
+            steps {
+                withCredentials([
+                    string(credentialsId: 'DATABRICKS_CATALOG_NAME', variable: 'CATALOG_NAME')
+                ]) {
+                    sh '''
+                        set +x
+                        chmod +x scripts/pre_databricks_identity_check.sh
+                        scripts/pre_databricks_identity_check.sh "${PRODUCT}" "${CUSTOMER_CODE}"
+                    '''
+                }
+            }
+        }
 
-        // stage('Databricks SPN Setup') {
-        //     steps {
-        //         withCredentials([
-        //             string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
-        //             string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_ADMIN_TOKEN')
-        //         ]) {
-        //             sh '''
-        //                 set +x
-        //                 chmod +x scripts/databricks_login_and_add_spn.sh
-        //                 scripts/databricks_login_and_add_spn.sh "${PRODUCT}" "${CUSTOMER_CODE}"
-        //             '''
-        //         }
-        //     }
-        // }
+        stage('Databricks SPN Setup') {
+            steps {
+                withCredentials([
+                    string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
+                    string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_ADMIN_TOKEN')
+                ]) {
+                    sh '''
+                        set +x
+                        chmod +x scripts/databricks_login_and_add_spn.sh
+                        scripts/databricks_login_and_add_spn.sh "${PRODUCT}" "${CUSTOMER_CODE}"
+                    '''
+                }
+            }
+        }
 
-        // stage('Databricks SPN OAuth Secret (Account Level)') {
-        //     steps {
-        //         withCredentials([
-        //             string(credentialsId: 'DATABRICKS_ACCOUNT_ID', variable: 'DATABRICKS_ACCOUNT_ID'),
-        //             string(credentialsId: 'AZURE_TENANT_ID', variable: 'AZURE_TENANT_ID')
-        //         ]) {
-        //             sh """
-        //                 set +x
-        //                 export TARGET_SPN_DISPLAY_NAME="${params.SPN_NAME}"
-        //                 echo "Using SPN: \$TARGET_SPN_DISPLAY_NAME"
-        //                 chmod +x scripts/dbx_spn_discover.sh
-        //                 chmod +x scripts/dbx_spn_generate_secret.sh
-        //                 scripts/dbx_spn_discover.sh
-        //                 scripts/dbx_spn_generate_secret.sh
-        //             """
-        //         }
-        //     }
-        // }
+        stage('Databricks SPN OAuth Secret (Account Level)') {
+            steps {
+                withCredentials([
+                    string(credentialsId: 'DATABRICKS_ACCOUNT_ID', variable: 'DATABRICKS_ACCOUNT_ID'),
+                    string(credentialsId: 'AZURE_TENANT_ID', variable: 'AZURE_TENANT_ID')
+                ]) {
+                    sh """
+                        set +x
+                        export TARGET_SPN_DISPLAY_NAME="${params.SPN_NAME}"
+                        echo "Using SPN: \$TARGET_SPN_DISPLAY_NAME"
+                        chmod +x scripts/dbx_spn_discover.sh
+                        chmod +x scripts/dbx_spn_generate_secret.sh
+                        scripts/dbx_spn_discover.sh
+                        scripts/dbx_spn_generate_secret.sh
+                    """
+                }
+            }
+        }
 
-        // stage('Databricks Account Group Sync') {
-        //     steps {
-        //         withCredentials([
-        //             string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
-        //             string(credentialsId: 'DATABRICKS_ACCOUNT_ID', variable: 'DATABRICKS_ACCOUNT_ID'),
-        //             string(credentialsId: 'DATABRICKS_WORKSPACE_ID', variable: 'DATABRICKS_WORKSPACE_ID'),
-        //             string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_ADMIN_TOKEN')
-        //         ]) {
-        //             sh '''
-        //                 set +x
-        //                 export GROUP_NAME="grp-${PRODUCT}-${CUSTOMER_CODE}-users"
-        //                 chmod +x scripts/account_group_sync.sh
-        //                 ./scripts/account_group_sync.sh
-        //             '''
-        //         }
-        //     }
-        // }
+        stage('Databricks Account Group Sync') {
+            steps {
+                withCredentials([
+                    string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
+                    string(credentialsId: 'DATABRICKS_ACCOUNT_ID', variable: 'DATABRICKS_ACCOUNT_ID'),
+                    string(credentialsId: 'DATABRICKS_WORKSPACE_ID', variable: 'DATABRICKS_WORKSPACE_ID'),
+                    string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_ADMIN_TOKEN')
+                ]) {
+                    sh '''
+                        set +x
+                        export GROUP_NAME="grp-${PRODUCT}-${CUSTOMER_CODE}-users"
+                        chmod +x scripts/account_group_sync.sh
+                        ./scripts/account_group_sync.sh
+                    '''
+                }
+            }
+        }
 
-        // stage('Create ADLS Bronze Folder') {
-        //     steps {
-        //         sh '''
-        //             set +x
-        //             chmod +x scripts/create_bronze_folder.sh
-        //             export STORAGE_ACCOUNT=stmedicareadvmcr
-        //             export CONTAINER_NAME=bronze
-        //             scripts/create_bronze_folder.sh
-        //         '''
-        //     }
-        // }
+        stage('Create ADLS Bronze Folder') {
+            steps {
+                sh '''
+                    set +x
+                    chmod +x scripts/create_bronze_folder.sh
+                    export STORAGE_ACCOUNT=stmedicareadvmcr
+                    export CONTAINER_NAME=bronze
+                    scripts/create_bronze_folder.sh
+                '''
+            }
+        }
 
-        // stage('Schemas & Grants') {
-        //     steps {
-        //         withCredentials([
-        //             string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
-        //             string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_ADMIN_TOKEN'),
-        //             string(credentialsId: 'DATABRICKS_SQL_WAREHOUSE_ID', variable: 'DATABRICKS_SQL_WAREHOUSE_ID'),
-        //             string(credentialsId: 'DATABRICKS_CATALOG_NAME', variable: 'CATALOG_NAME'),
-        //             string(credentialsId: 'STORAGE_BRONZE_ROOT', variable: 'STORAGE_BRONZE_ROOT')
-        //         ]) {
-        //             sh '''
-        //                 set +x
-        //                 chmod +x scripts/databricks_schema_and_grants.sh
-        //                 ./scripts/databricks_schema_and_grants.sh
-        //             '''
-        //         }
-        //     }
-        // }
-        // stage('Install Fabric CLI (Python venv)') {
-        //     steps {
-        //         sh '''
-        //         set -e
-        //         set +x
+        stage('Schemas & Grants') {
+            steps {
+                withCredentials([
+                    string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
+                    string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_ADMIN_TOKEN'),
+                    string(credentialsId: 'DATABRICKS_SQL_WAREHOUSE_ID', variable: 'DATABRICKS_SQL_WAREHOUSE_ID'),
+                    string(credentialsId: 'DATABRICKS_CATALOG_NAME', variable: 'CATALOG_NAME'),
+                    string(credentialsId: 'STORAGE_BRONZE_ROOT', variable: 'STORAGE_BRONZE_ROOT')
+                ]) {
+                    sh '''
+                        set +x
+                        chmod +x scripts/databricks_schema_and_grants.sh
+                        ./scripts/databricks_schema_and_grants.sh
+                    '''
+                }
+            }
+        }
+        stage('Install Fabric CLI (Python venv)') {
+            steps {
+                sh '''
+                set -e
+                set +x
         
-        //         python3 -m venv fabricenv >/dev/null 2>&1
-        //         . fabricenv/bin/activate >/dev/null 2>&1
-        //         pip install ms-fabric-cli==1.4.0 >/dev/null 2>&1
+                python3 -m venv fabricenv >/dev/null 2>&1
+                . fabricenv/bin/activate >/dev/null 2>&1
+                pip install ms-fabric-cli==1.4.0 >/dev/null 2>&1
         
-        //         echo "Fabric CLI Installed Successfully"
-        //         '''
-        //     }
-        // }
+                echo "Fabric CLI Installed Successfully"
+                '''
+            }
+        }
 
-        //         stage('Create Fabric Workspace') {
-        //             steps {
-        //                 withCredentials([
-        //                     string(credentialsId: 'FABRIC_CLIENT_ID', variable: 'FABRIC_CLIENT_ID'),
-        //                     string(credentialsId: 'FABRIC_CLIENT_SECRET', variable: 'FABRIC_CLIENT_SECRET'),
-        //                     string(credentialsId: 'FABRIC_TENANT_ID', variable: 'FABRIC_TENANT_ID')
-        //                 ]) {
-        //                     sh '''
-        //                         set +x
-        //                         chmod +x scripts/create_fabric_workspace.sh
-        //                         ./scripts/create_fabric_workspace.sh "${CUSTOMER_CODE}" "${PRODUCT}" "${ENV}"
-        //                     '''
-        //                 }
-        //             }
-        //         }
+                stage('Create Fabric Workspace') {
+                    steps {
+                        withCredentials([
+                            string(credentialsId: 'FABRIC_CLIENT_ID', variable: 'FABRIC_CLIENT_ID'),
+                            string(credentialsId: 'FABRIC_CLIENT_SECRET', variable: 'FABRIC_CLIENT_SECRET'),
+                            string(credentialsId: 'FABRIC_TENANT_ID', variable: 'FABRIC_TENANT_ID')
+                        ]) {
+                            sh '''
+                                set +x
+                                chmod +x scripts/create_fabric_workspace.sh
+                                ./scripts/create_fabric_workspace.sh "${CUSTOMER_CODE}" "${PRODUCT}" "${ENV}"
+                            '''
+                        }
+                    }
+                }
 
 
-        // stage('Fabric VNet Connection') {
-        //     steps {
-        //         withCredentials([
-        //             string(credentialsId: 'FABRIC_CLIENT_ID', variable: 'FABRIC_CLIENT_ID'),
-        //             string(credentialsId: 'FABRIC_CLIENT_SECRET', variable: 'FABRIC_CLIENT_SECRET'),
-        //             string(credentialsId: 'FABRIC_TENANT_ID', variable: 'FABRIC_TENANT_ID'),
+        stage('Fabric VNet Connection') {
+            steps {
+                withCredentials([
+                    string(credentialsId: 'FABRIC_CLIENT_ID', variable: 'FABRIC_CLIENT_ID'),
+                    string(credentialsId: 'FABRIC_CLIENT_SECRET', variable: 'FABRIC_CLIENT_SECRET'),
+                    string(credentialsId: 'FABRIC_TENANT_ID', variable: 'FABRIC_TENANT_ID'),
         
-        //             string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
-        //             string(credentialsId: 'DATABRICKS_SQL_WAREHOUSE_ID', variable: 'DATABRICKS_SQL_WAREHOUSE_ID'),
+                    string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
+                    string(credentialsId: 'DATABRICKS_SQL_WAREHOUSE_ID', variable: 'DATABRICKS_SQL_WAREHOUSE_ID'),
         
-        //             string(credentialsId: 'DATABRICKS_CLIENT_ID', variable: 'SPN_CLIENT_ID_KV'),
-        //             string(credentialsId: 'DATABRICKS_CLIENT_SECRET', variable: 'SPN_SECRET_KV')
-        //         ]) {
-        //             sh '''
-        //                 set +x
-        //                 chmod +x scripts/fabric_vnet_connection.sh
-        //                 ./scripts/fabric_vnet_connection.sh
-        //             '''
-        //         }
-        //     }
-        // }
+                    string(credentialsId: 'DATABRICKS_CLIENT_ID', variable: 'SPN_CLIENT_ID_KV'),
+                    string(credentialsId: 'DATABRICKS_CLIENT_SECRET', variable: 'SPN_SECRET_KV')
+                ]) {
+                    sh '''
+                        set +x
+                        chmod +x scripts/fabric_vnet_connection.sh
+                        ./scripts/fabric_vnet_connection.sh
+                    '''
+                }
+            }
+        }
 
-        // stage('Post Validation Checks') {
-        //     steps {
-        //         withCredentials([
-        //             string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
-        //             string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_ADMIN_TOKEN'),
-        //             string(credentialsId: 'AZURE_CLIENT_ID', variable: 'AZURE_CLIENT_ID'),
-        //             string(credentialsId: 'AZURE_CLIENT_SECRET', variable: 'AZURE_CLIENT_SECRET'),
-        //             string(credentialsId: 'AZURE_TENANT_ID', variable: 'AZURE_TENANT_ID'),
-        //             usernamePassword(
-        //                 credentialsId: 'sql-cred',
-        //                 usernameVariable: 'DB_USER',
-        //                 passwordVariable: 'DB_PASS'
-        //             )
-        //         ]) {
-        //             sh '''
-        //                 set -e
-        //                 set +x
-        //                 chmod +x scripts/post_validation.sh
-        //                 ./scripts/post_validation.sh
-        //             '''
-        //         }
-        //     }
-        // }
+        stage('Post Validation Checks') {
+            steps {
+                withCredentials([
+                    string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
+                    string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_ADMIN_TOKEN'),
+                    string(credentialsId: 'AZURE_CLIENT_ID', variable: 'AZURE_CLIENT_ID'),
+                    string(credentialsId: 'AZURE_CLIENT_SECRET', variable: 'AZURE_CLIENT_SECRET'),
+                    string(credentialsId: 'AZURE_TENANT_ID', variable: 'AZURE_TENANT_ID'),
+                    usernamePassword(
+                        credentialsId: 'sql-cred',
+                        usernameVariable: 'DB_USER',
+                        passwordVariable: 'DB_PASS'
+                    )
+                ]) {
+                    sh '''
+                        set -e
+                        set +x
+                        chmod +x scripts/post_validation.sh
+                        ./scripts/post_validation.sh
+                    '''
+                }
+            }
+        }
 
 
 
