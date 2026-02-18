@@ -67,64 +67,64 @@ pipeline {
             }
         }
         
-        stage('Stored Procedure sql') {
-            steps {
-                withCredentials([usernamePassword(
-                    credentialsId: 'sql-credentials',
-                    usernameVariable: 'SQL_USER',
-                    passwordVariable: 'SQL_PASS'
-                )]) {
+        // stage('Stored Procedure sql') {
+        //     steps {
+        //         withCredentials([usernamePassword(
+        //             credentialsId: 'sql-credentials',
+        //             usernameVariable: 'SQL_USER',
+        //             passwordVariable: 'SQL_PASS'
+        //         )]) {
         
-                    sh '''
-                        set -e
-                        set +x
+        //             sh '''
+        //                 set -e
+        //                 set +x
         
-                        echo "Executing Customer Onboarding Stored Procedure..."
+        //                 echo "Executing Customer Onboarding Stored Procedure..."
         
-                        /opt/mssql-tools18/bin/sqlcmd \
-                        -S tcp:mcr-srv-ga-001.database.windows.net,1433 \
-                        -d mcr-sqldb-qa-001 \
-                        -U "$SQL_USER" \
-                        -P "$SQL_PASS" \
-                        -C \
-                        -l 30 \
-                        -Q "
-                        SET NOCOUNT ON;
-                        EXEC dbo.sp_Customer_Onboarding
-                            @ProductName='${PRODUCT}',
-                            @CustomerName='${CUSTOMER_CODE}',
-                            @DbSchema='${CUSTOMER_CODE}_db',
-                            @DbBronzeSchema='${CUSTOMER_CODE}_bronze',
-                            @DbSilverSchema='${CUSTOMER_CODE}_silver',
-                            @DbGoldSchema='${CUSTOMER_CODE}_gold',
-                            @DbBronzeGenericSchema='bronze_generic',
-                            @DbSilverGenericSchema='silver_generic',
-                            @IsActive=1;
-                        "
+        //                 /opt/mssql-tools18/bin/sqlcmd \
+        //                 -S tcp:mcr-srv-ga-001.database.windows.net,1433 \
+        //                 -d mcr-sqldb-qa-001 \
+        //                 -U "$SQL_USER" \
+        //                 -P "$SQL_PASS" \
+        //                 -C \
+        //                 -l 30 \
+        //                 -Q "
+        //                 SET NOCOUNT ON;
+        //                 EXEC dbo.sp_Customer_Onboarding
+        //                     @ProductName='${PRODUCT}',
+        //                     @CustomerName='${CUSTOMER_CODE}',
+        //                     @DbSchema='${CUSTOMER_CODE}_db',
+        //                     @DbBronzeSchema='${CUSTOMER_CODE}_bronze',
+        //                     @DbSilverSchema='${CUSTOMER_CODE}_silver',
+        //                     @DbGoldSchema='${CUSTOMER_CODE}_gold',
+        //                     @DbBronzeGenericSchema='bronze_generic',
+        //                     @DbSilverGenericSchema='silver_generic',
+        //                     @IsActive=1;
+        //                 "
         
-                        echo "Stored Procedure executed successfully."
-                    '''
-                }
-            }
-        }
-        stage('Customer Check') {
-            steps {
-                sh '''
-                    set +x
-                    chmod +x scripts/check_customer_exists.sh
-                    scripts/check_customer_exists.sh \
-                        ${PRODUCT} \
-                        ${CUSTOMER_CODE}
-                '''
-                script {
-                    def status = readFile('customer_status.env')
-                    if (status.contains("CUSTOMER_EXISTS=true")) {
-                        currentBuild.result = 'SUCCESS'
-                        error("STOP_PIPELINE")
-                    }
-                }
-            }
-        }
+        //                 echo "Stored Procedure executed successfully."
+        //             '''
+        //         }
+        //     }
+        // }
+        // stage('Customer Check') {
+        //     steps {
+        //         sh '''
+        //             set +x
+        //             chmod +x scripts/check_customer_exists.sh
+        //             scripts/check_customer_exists.sh \
+        //                 ${PRODUCT} \
+        //                 ${CUSTOMER_CODE}
+        //         '''
+        //         script {
+        //             def status = readFile('customer_status.env')
+        //             if (status.contains("CUSTOMER_EXISTS=true")) {
+        //                 currentBuild.result = 'SUCCESS'
+        //                 error("STOP_PIPELINE")
+        //             }
+        //         }
+        //     }
+        // }
 
         stage('Azure Login') {
             steps {
