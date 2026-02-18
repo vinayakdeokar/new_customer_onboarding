@@ -1,4 +1,19 @@
+#!/bin/bash
+set -e
+
+CUSTOMER_CODE=$1
+PRODUCT=$2
+ENV=$3
+
+FAB="$(pwd)/fabricenv/bin/fab"
+
+if [ ! -f "$FAB" ]; then
+  echo "❌ Fabric CLI not found at $FAB"
+  exit 1
+fi
+
 WORKSPACE_NAME="ws-${CUSTOMER_CODE}-${PRODUCT}-${ENV}-001"
+
 
 echo "========================================="
 echo "🚀 Creating Fabric Workspace"
