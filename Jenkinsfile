@@ -66,36 +66,7 @@ pipeline {
                 echo "SPN=${params.SPN_NAME}"
             }
         }
-        // stage('Install SQLCMD (if not present)') {
-        //     steps {
-        //         sh '''
-        //         set -e
-        //         set +x
         
-        //         if command -v sqlcmd >/dev/null 2>&1; then
-        //             echo "✅ sqlcmd already installed"
-        //         else
-        //             echo "🔧 Installing sqlcmd..."
-        
-        //             apt-get update -y
-        //             apt-get install -y curl apt-transport-https gnupg
-        
-        //             curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add -
-        //             curl https://packages.microsoft.com/config/ubuntu/22.04/prod.list > /etc/apt/sources.list.d/mssql-release.list
-        
-        //             apt-get update -y
-        //             ACCEPT_EULA=Y apt-get install -y msodbcsql17 mssql-tools unixodbc-dev
-        
-        //             export PATH="$PATH:/opt/mssql-tools/bin"
-        
-        //             echo "✅ sqlcmd installed successfully"
-        //         fi
-        
-        //         /opt/mssql-tools/bin/sqlcmd -? || { echo "❌ sqlcmd installation failed"; exit 1; }
-        //         '''
-        //     }
-        // }
-
         // stage('Customer Register / Check (SQL)') {
         //     steps {
         //         withCredentials([
