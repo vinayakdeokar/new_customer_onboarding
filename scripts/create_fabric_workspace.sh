@@ -1,5 +1,9 @@
 #!/bin/bash
 set -e
+export HOME=$(pwd)
+export FABRIC_CONFIG_DIR="$HOME/.fabric"
+mkdir -p "$FABRIC_CONFIG_DIR"
+
 
 CUSTOMER_CODE=$1
 PRODUCT=$2
@@ -20,11 +24,21 @@ echo "🚀 Creating Fabric Workspace"
 echo "Workspace Name: $WORKSPACE_NAME"
 echo "========================================="
 
-# Login to Fabric
+$FAB auth logout >/dev/null 2>&1 || true
+
 $FAB auth login \
   -u "$FABRIC_CLIENT_ID" \
   -p "$FABRIC_CLIENT_SECRET" \
-  --tenant "$FABRIC_TENANT_ID" 
+  --tenant "$FABRIC_TENANT_ID"
+
+$FAB auth status
+
+
+# # Login to Fabric
+# $FAB auth login \
+#   -u "$FABRIC_CLIENT_ID" \
+#   -p "$FABRIC_CLIENT_SECRET" \
+#   --tenant "$FABRIC_TENANT_ID" 
 
 # Check if workspace exists
 EXISTING_ID=$($FAB api workspaces -A fabric | jq -r '
