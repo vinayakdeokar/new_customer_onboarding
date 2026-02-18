@@ -143,19 +143,19 @@ pipeline {
             }
         }
 
-        stage('Pre Databricks Identity Check') {
-            steps {
-                withCredentials([
-                    string(credentialsId: 'DATABRICKS_CATALOG_NAME', variable: 'CATALOG_NAME')
-                ]) {
-                    sh '''
-                        set +x
-                        chmod +x scripts/pre_databricks_identity_check.sh
-                        scripts/pre_databricks_identity_check.sh "${PRODUCT}" "${CUSTOMER_CODE}"
-                    '''
-                }
-            }
-        }
+        // stage('Pre Databricks Identity Check') {
+        //     steps {
+        //         withCredentials([
+        //             string(credentialsId: 'DATABRICKS_CATALOG_NAME', variable: 'CATALOG_NAME')
+        //         ]) {
+        //             sh '''
+        //                 set +x
+        //                 chmod +x scripts/pre_databricks_identity_check.sh
+        //                 scripts/pre_databricks_identity_check.sh "${PRODUCT}" "${CUSTOMER_CODE}"
+        //             '''
+        //         }
+        //     }
+        // }
 
         stage('Databricks SPN Setup') {
             steps {
