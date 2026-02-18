@@ -11,6 +11,8 @@ fi
 set -e
 
 FAB="$WORKSPACE/fabricenv/bin/fab"
+echo "Using SPN: $AUTOMATION_CLIENT_ID"
+
 
 
 TENANT_ID="$FABRIC_TENANT_ID"
