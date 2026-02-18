@@ -1,8 +1,12 @@
 #!/bin/bash
 set -e
+
 export HOME=$(pwd)
 export FABRIC_CONFIG_DIR="$HOME/.fabric"
+
 mkdir -p "$FABRIC_CONFIG_DIR"
+
+$FAB config set encryption_fallback_enabled true
 
 
 CUSTOMER_CODE=$1
