@@ -107,24 +107,24 @@ pipeline {
                 }
             }
         }
-        stage('Customer Check') {
-            steps {
-                sh '''
-                    set +x
-                    chmod +x scripts/check_customer_exists.sh
-                    scripts/check_customer_exists.sh \
-                        ${PRODUCT} \
-                        ${CUSTOMER_CODE}
-                '''
-                script {
-                    def status = readFile('customer_status.env')
-                    if (status.contains("CUSTOMER_EXISTS=true")) {
-                        currentBuild.result = 'SUCCESS'
-                        error("STOP_PIPELINE")
-                    }
-                }
-            }
-        }
+        // stage('Customer Check') {
+        //     steps {
+        //         sh '''
+        //             set +x
+        //             chmod +x scripts/check_customer_exists.sh
+        //             scripts/check_customer_exists.sh \
+        //                 ${PRODUCT} \
+        //                 ${CUSTOMER_CODE}
+        //         '''
+        //         script {
+        //             def status = readFile('customer_status.env')
+        //             if (status.contains("CUSTOMER_EXISTS=true")) {
+        //                 currentBuild.result = 'SUCCESS'
+        //                 error("STOP_PIPELINE")
+        //             }
+        //         }
+        //     }
+        // }
 
         stage('Azure Login') {
             steps {
