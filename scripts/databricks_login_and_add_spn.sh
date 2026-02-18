@@ -21,17 +21,17 @@ az account show > /dev/null
 # --------------------------------------------------
 # Step 2️⃣ Find Azure SPN
 # --------------------------------------------------
-# SPN_CLIENT_ID=$(az ad sp list \
-#   --display-name "$SPN_NAME" \
-#   --query "[0].appId" \
-#   -o tsv)
+SPN_CLIENT_ID=$(az ad sp list \
+  --display-name "$SPN_NAME" \
+  --query "[0].appId" \
+  -o tsv)
 
-# if [ -z "$SPN_CLIENT_ID" ]; then
-#   echo "❌ Azure SPN not found: $SPN_NAME"
-#   exit 1
-# fi
+if [ -z "$SPN_CLIENT_ID" ]; then
+  echo "❌ Azure SPN not found: $SPN_NAME"
+  exit 1
+fi
 
-#echo "✅ Azure SPN found"
+echo "✅ Azure SPN found"
 #echo "   ➜ Client ID: $SPN_CLIENT_ID"
 
 # --------------------------------------------------
