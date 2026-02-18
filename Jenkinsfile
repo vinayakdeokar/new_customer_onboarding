@@ -96,44 +96,44 @@ pipeline {
         //     }
         // }
 
-        stage('Customer Register / Check (SQL)') {
-            steps {
-                withCredentials([
-                    string(credentialsId: 'SQL_SERVER_NAME', variable: 'DB_SERVER'),
-                    string(credentialsId: 'SQL_DB_NAME', variable: 'DB_NAME'),
-                    string(credentialsId: 'SQL_USERNAME', variable: 'DB_USER'),
-                    string(credentialsId: 'SQL_PASSWORD', variable: 'DB_PASS')
-                ]) {
-                    sh '''
-                    set -e
-                    set +x
+        // stage('Customer Register / Check (SQL)') {
+        //     steps {
+        //         withCredentials([
+        //             string(credentialsId: 'SQL_SERVER_NAME', variable: 'DB_SERVER'),
+        //             string(credentialsId: 'SQL_DB_NAME', variable: 'DB_NAME'),
+        //             string(credentialsId: 'SQL_USERNAME', variable: 'DB_USER'),
+        //             string(credentialsId: 'SQL_PASSWORD', variable: 'DB_PASS')
+        //         ]) {
+        //             sh '''
+        //             set -e
+        //             set +x
         
-                    echo "Running SQL Stored Procedure..."
+        //             echo "Running SQL Stored Procedure..."
         
-                    RESULT=$(/opt/mssql-tools18/bin/sqlcmd \
-                        -S $DB_SERVER \
-                        -d $DB_NAME \
-                        -U $DB_USER \
-                        -P $DB_PASS \
-                        -C \
-                        -h -1 -W \
-                        -Q "EXEC RegisterCustomer \
-                            @CustomerCode='${CUSTOMER_CODE}', \
-                            @Product='${PRODUCT}', \
-                            @Env='${ENV}';")
+        //             RESULT=$(/opt/mssql-tools18/bin/sqlcmd \
+        //                 -S $DB_SERVER \
+        //                 -d $DB_NAME \
+        //                 -U $DB_USER \
+        //                 -P $DB_PASS \
+        //                 -C \
+        //                 -h -1 -W \
+        //                 -Q "EXEC RegisterCustomer \
+        //                     @CustomerCode='${CUSTOMER_CODE}', \
+        //                     @Product='${PRODUCT}', \
+        //                     @Env='${ENV}';")
         
-                    echo "SQL Result: $RESULT"
+        //             echo "SQL Result: $RESULT"
         
-                    if echo "$RESULT" | grep -q "EXISTS"; then
-                        echo "Customer already exists. Stopping pipeline."
-                        exit 1
-                    fi
+        //             if echo "$RESULT" | grep -q "EXISTS"; then
+        //                 echo "Customer already exists. Stopping pipeline."
+        //                 exit 1
+        //             fi
         
-                    echo "Customer created successfully. Continuing..."
-                    '''
-                }
-            }
-        }
+        //             echo "Customer created successfully. Continuing..."
+        //             '''
+        //         }
+        //     }
+        // }
 
 
         stage('Customer Check') {
