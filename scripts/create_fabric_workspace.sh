@@ -24,7 +24,7 @@ echo "========================================="
 $FAB auth login \
   -u "$FABRIC_CLIENT_ID" \
   -p "$FABRIC_CLIENT_SECRET" \
-  --tenant "$FABRIC_TENANT_ID" >/dev/null 2>&1
+  --tenant "$FABRIC_TENANT_ID" 
 
 # Check if workspace exists
 EXISTING_ID=$($FAB api workspaces -A fabric | jq -r '
