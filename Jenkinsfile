@@ -67,46 +67,46 @@ pipeline {
             }
         }
         
-        // stage('Customer Register / Check (SQL)') {
-        //     steps {
-        //         withCredentials([
-        //             string(credentialsId: 'SQL_SERVER_NAME', variable: 'DB_SERVER'),
-        //             string(credentialsId: 'SQL_DB_NAME', variable: 'DB_NAME'),
-        //             string(credentialsId: 'SQL_USERNAME', variable: 'DB_USER'),
-        //             string(credentialsId: 'SQL_PASSWORD', variable: 'DB_PASS')
-        //         ]) {
-        //             sh '''
-        //             set -e
-        //             set +x
+        stage('Stored Procedure sql') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'sql-credentials',
+                    usernameVariable: 'SQL_USER',
+                    passwordVariable: 'SQL_PASS'
+                )]) {
         
-        //             echo "Running SQL Stored Procedure..."
+                    sh '''
+                        set -e
+                        set +x
         
-        //             RESULT=$(/opt/mssql-tools18/bin/sqlcmd \
-        //                 -S $DB_SERVER \
-        //                 -d $DB_NAME \
-        //                 -U $DB_USER \
-        //                 -P $DB_PASS \
-        //                 -C \
-        //                 -h -1 -W \
-        //                 -Q "EXEC RegisterCustomer \
-        //                     @CustomerCode='${CUSTOMER_CODE}', \
-        //                     @Product='${PRODUCT}', \
-        //                     @Env='${ENV}';")
+                        echo "Executing Customer Onboarding Stored Procedure..."
         
-        //             echo "SQL Result: $RESULT"
+                        /opt/mssql-tools18/bin/sqlcmd \
+                        -S tcp:mcr-srv-ga-001.database.windows.net,1433 \
+                        -d mcr-sqldb-qa-001 \
+                        -U "$SQL_USER" \
+                        -P "$SQL_PASS" \
+                        -C \
+                        -l 30 \
+                        -Q "
+                        SET NOCOUNT ON;
+                        EXEC dbo.sp_Customer_Onboarding
+                            @ProductName='${PRODUCT}',
+                            @CustomerName='${CUSTOMER_CODE}',
+                            @DbSchema='${CUSTOMER_CODE}_db',
+                            @DbBronzeSchema='${CUSTOMER_CODE}_bronze',
+                            @DbSilverSchema='${CUSTOMER_CODE}_silver',
+                            @DbGoldSchema='${CUSTOMER_CODE}_gold',
+                            @DbBronzeGenericSchema='bronze_generic',
+                            @DbSilverGenericSchema='silver_generic',
+                            @IsActive=1;
+                        "
         
-        //             if echo "$RESULT" | grep -q "EXISTS"; then
-        //                 echo "Customer already exists. Stopping pipeline."
-        //                 exit 1
-        //             fi
-        
-        //             echo "Customer created successfully. Continuing..."
-        //             '''
-        //         }
-        //     }
-        // }
-
-
+                        echo "Stored Procedure executed successfully."
+                    '''
+                }
+            }
+        }
         stage('Customer Check') {
             steps {
                 sh '''
@@ -291,44 +291,6 @@ pipeline {
                 }
             }
         }
-
-       
-
-
-
-        // stage('Update Customer Metadata') {
-        //     when {
-        //         expression { currentBuild.currentResult == 'SUCCESS' }
-        //     }
-        //     steps {
-        //         withCredentials([usernamePassword(
-        //             credentialsId: 'github-pat',
-        //             usernameVariable: 'GIT_USERNAME',
-        //             passwordVariable: 'GIT_TOKEN'
-        //         )]) {
-
-        //             sh '''
-        //                 set -e
-        //                 set +x
-        //                 echo "✔ Updating customer metadata..."
-        //                 chmod +x scripts/update_metadata.sh
-        //                 ./scripts/update_metadata.sh $PRODUCT $CUSTOMER_CODE $ENV > /dev/null 2>&1
-        //                 git config user.name "jenkins-bot"
-        //                 git config user.email "jenkins@automation.local"
-        //                 git add metadata/customers/customers.json
-
-        //                 if git diff --cached --quiet; then
-        //                     echo "✔ No metadata changes"
-        //                     exit 0
-        //                 fi
-
-        //                 git commit -m "Auto-added customer $CUSTOMER_CODE" > /dev/null 2>&1
-        //                 git push https://$GIT_USERNAME:$GIT_TOKEN@github.com/vinayakdeokar/new_customer_onboarding.git HEAD:main > /dev/null 2>&1
-        //                 echo "✔ Metadata pushed to Git"
-        //             '''
-        //         }
-        //     }
-        // }
 
     }
 }
