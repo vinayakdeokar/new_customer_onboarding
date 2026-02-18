@@ -143,9 +143,6 @@ pipeline {
                 }
             }
         }
-
-        /
-
         stage('Databricks SPN Setup') {
             steps {
                 withCredentials([
