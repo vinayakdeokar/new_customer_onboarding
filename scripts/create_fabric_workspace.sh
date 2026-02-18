@@ -20,6 +20,10 @@ $FAB auth login \
   -p "$FABRIC_CLIENT_SECRET" \
   --tenant "$FABRIC_TENANT_ID" >/dev/null 2>&1
 
+echo "API RESPONSE:"
+echo "$RESPONSE"
+
+
 # Check if workspace exists
 EXISTING_ID=$($FAB api workspaces -A fabric | \
 jq -r --arg name "$WORKSPACE_NAME" '.text.value[]? | select(.displayName==$name) | .id')
