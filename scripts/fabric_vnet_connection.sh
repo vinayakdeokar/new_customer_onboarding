@@ -1,12 +1,5 @@
 #!/bin/bash
-set -ex
 
-FAB="$(pwd)/fabricenv/bin/fab"
-
-if [ ! -f "$FAB" ]; then
-  echo "❌ Fabric CLI not found at $FAB"
-  exit 1
-fi
 
 set -e
 
