@@ -66,7 +66,7 @@ pipeline {
                 echo "SPN=${params.SPN_NAME}"
             }
         }
-        
+
         // stage('Stored Procedure sql') {
         //     steps {
         //         withCredentials([usernamePassword(
@@ -74,13 +74,13 @@ pipeline {
         //             usernameVariable: 'SQL_USER',
         //             passwordVariable: 'SQL_PASS'
         //         )]) {
-        
+        //
         //             sh '''
         //                 set -e
         //                 set +x
-        
+        //
         //                 echo "Executing Customer Onboarding Stored Procedure..."
-        
+        //
         //                 /opt/mssql-tools18/bin/sqlcmd \
         //                 -S tcp:mcr-srv-ga-001.database.windows.net,1433 \
         //                 -d mcr-sqldb-qa-001 \
@@ -101,12 +101,13 @@ pipeline {
         //                     @DbSilverGenericSchema='silver_generic',
         //                     @IsActive=1;
         //                 "
-        
+        //
         //                 echo "Stored Procedure executed successfully."
         //             '''
         //         }
         //     }
         // }
+
         // stage('Customer Check') {
         //     steps {
         //         sh '''
@@ -226,37 +227,37 @@ pipeline {
                 }
             }
         }
+
         stage('Install Fabric CLI (Python venv)') {
             steps {
                 sh '''
-                set -e
-                set +x
-        
-                python3 -m venv fabricenv >/dev/null 2>&1
-                . fabricenv/bin/activate >/dev/null 2>&1
-                pip install ms-fabric-cli==1.4.0 >/dev/null 2>&1
-        
-                echo "Fabric CLI Installed Successfully"
+                    set -e
+                    set +x
+
+                    python3 -m venv fabricenv >/dev/null 2>&1
+                    . fabricenv/bin/activate >/dev/null 2>&1
+                    pip install ms-fabric-cli==1.4.0 >/dev/null 2>&1
+
+                    echo "Fabric CLI Installed Successfully"
                 '''
             }
         }
 
-                stage('Create Fabric Workspace') {
-                    steps {
-                        withCredentials([
-                            string(credentialsId: 'FABRIC_CLIENT_ID', variable: 'FABRIC_CLIENT_ID'),
-                            string(credentialsId: 'FABRIC_CLIENT_SECRET', variable: 'FABRIC_CLIENT_SECRET'),
-                            string(credentialsId: 'FABRIC_TENANT_ID', variable: 'FABRIC_TENANT_ID')
-                        ]) {
-                            sh '''
-                                set +x
-                                chmod +x scripts/create_fabric_workspace.sh
-                                ./scripts/create_fabric_workspace.sh "${CUSTOMER_CODE}" "${PRODUCT}" "${ENV}"
-                            '''
-                        }
-                    }
+        stage('Create Fabric Workspace') {
+            steps {
+                withCredentials([
+                    string(credentialsId: 'FABRIC_CLIENT_ID', variable: 'FABRIC_CLIENT_ID'),
+                    string(credentialsId: 'FABRIC_CLIENT_SECRET', variable: 'FABRIC_CLIENT_SECRET'),
+                    string(credentialsId: 'FABRIC_TENANT_ID', variable: 'FABRIC_TENANT_ID')
+                ]) {
+                    sh '''
+                        set +x
+                        chmod +x scripts/create_fabric_workspace.sh
+                        ./scripts/create_fabric_workspace.sh "${CUSTOMER_CODE}" "${PRODUCT}" "${ENV}"
+                    '''
                 }
-
+            }
+        }
 
         stage('Fabric VNet Connection') {
             steps {
@@ -264,10 +265,8 @@ pipeline {
                     string(credentialsId: 'FABRIC_CLIENT_ID', variable: 'FABRIC_CLIENT_ID'),
                     string(credentialsId: 'FABRIC_CLIENT_SECRET', variable: 'FABRIC_CLIENT_SECRET'),
                     string(credentialsId: 'FABRIC_TENANT_ID', variable: 'FABRIC_TENANT_ID'),
-        
                     string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
                     string(credentialsId: 'DATABRICKS_SQL_WAREHOUSE_ID', variable: 'DATABRICKS_SQL_WAREHOUSE_ID'),
-        
                     string(credentialsId: 'DATABRICKS_CLIENT_ID', variable: 'SPN_CLIENT_ID_KV'),
                     string(credentialsId: 'DATABRICKS_CLIENT_SECRET', variable: 'SPN_SECRET_KV')
                 ]) {
