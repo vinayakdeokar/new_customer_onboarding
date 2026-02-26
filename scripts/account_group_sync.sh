@@ -59,29 +59,46 @@ curl -s -X POST \
   }" >/dev/null || true
 
 echo "✅ Group materialized at Workspace level"
+echo "Fetching group ID from account..."
 
+GROUP_ID=$(databricks account groups list --output json | \
+jq -r ".[] | select(.display_name==\"$GROUP_NAME\") | .id")
 
-echo "✅ Successfully assigned and added to workspace list!"
-
-SYNC_RESP=$(curl -s -X POST "${DATABRICKS_HOST}/api/2.0/preview/scim/v2/Groups" \
-  -H "Authorization: Bearer ${DATABRICKS_ADMIN_TOKEN}" \
-  -H "Content-Type: application/json" \
-  -d "{
-    \"schemas\": [\"urn:ietf:params:scim:schemas:core:2.0:Group\"],
-    \"displayName\": \"${GROUP_NAME}\",
-    \"externalId\": \"${AZURE_OBJ_ID}\"
-  }")
-
-
-echo "🔎 Checking if group is now in Workspace list..."
-CHECK_WS=$(curl -s -X GET "${DATABRICKS_HOST}/api/2.0/preview/scim/v2/Groups?filter=displayName+eq+%22${GROUP_NAME}%22" \
-  -H "Authorization: Bearer ${DATABRICKS_ADMIN_TOKEN}")
-
-IS_ADDED=$(echo "$CHECK_WS" | jq -r '.Resources[0].id // empty')
-
-if [ -n "$IS_ADDED" ]; then
-    echo "🎉 SUCCESS: Group '${GROUP_NAME}' is now DIRECTLY ADDED to Workspace!"
-else
-    echo "❌ ERROR: Group still not appearing in Workspace list. Please check Workspace Admin Permissions."
-    exit 1
+if [ -z "$GROUP_ID" ]; then
+  echo "❌ Group not found at account level"
+  exit 1
 fi
+
+echo "Assigning group to workspace..."
+
+databricks account groups assign \
+  --group-id $GROUP_ID \
+  --workspace-id $WORKSPACE_ID
+
+echo "✅ Group successfully assigned to workspace!"
+
+
+# echo "✅ Successfully assigned and added to workspace list!"
+
+# SYNC_RESP=$(curl -s -X POST "${DATABRICKS_HOST}/api/2.0/preview/scim/v2/Groups" \
+#   -H "Authorization: Bearer ${DATABRICKS_ADMIN_TOKEN}" \
+#   -H "Content-Type: application/json" \
+#   -d "{
+#     \"schemas\": [\"urn:ietf:params:scim:schemas:core:2.0:Group\"],
+#     \"displayName\": \"${GROUP_NAME}\",
+#     \"externalId\": \"${AZURE_OBJ_ID}\"
+#   }")
+
+
+# echo "🔎 Checking if group is now in Workspace list..."
+# CHECK_WS=$(curl -s -X GET "${DATABRICKS_HOST}/api/2.0/preview/scim/v2/Groups?filter=displayName+eq+%22${GROUP_NAME}%22" \
+#   -H "Authorization: Bearer ${DATABRICKS_ADMIN_TOKEN}")
+
+# IS_ADDED=$(echo "$CHECK_WS" | jq -r '.Resources[0].id // empty')
+
+# if [ -n "$IS_ADDED" ]; then
+#     echo "🎉 SUCCESS: Group '${GROUP_NAME}' is now DIRECTLY ADDED to Workspace!"
+# else
+#     echo "❌ ERROR: Group still not appearing in Workspace list. Please check Workspace Admin Permissions."
+#     exit 1
+# fi
