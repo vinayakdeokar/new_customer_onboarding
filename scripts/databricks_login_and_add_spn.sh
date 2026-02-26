@@ -11,11 +11,6 @@ fi
 
 SPN_NAME="sp-${PRODUCT}-${CUSTOMER}"
 
-echo "Resolved Workspace URL:"
-echo $DATABRICKS_HOST
-
-WORKSPACE_ID=$(echo $DATABRICKS_HOST | grep -o 'adb-[0-9]*')
-echo "Workspace ID: $WORKSPACE_ID"
 
 echo " Target Azure SPN name: $SPN_NAME"
 
@@ -36,6 +31,9 @@ if [ -z "$SPN_CLIENT_ID" ]; then
   echo " Azure SPN not found: $SPN_NAME"
   exit 1
 fi
+
+echo "Logged in identity:"
+az account show --query user.name -o tsv
 
 echo " Azure SPN found"
 #echo "   ➜ Client ID: $SPN_CLIENT_ID"
