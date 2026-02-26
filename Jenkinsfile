@@ -9,7 +9,7 @@ pipeline {
 
         string(
             name: 'CUSTOMER_CODE',
-            defaultValue: 'vinayak-003',
+            defaultValue: 'vinayak-001',
             description: 'Customer code like vinayak-003'
         )
 
@@ -27,19 +27,19 @@ pipeline {
 
         string(
             name: 'WORKSPACE_ID',
-            defaultValue: '7405618110977329',
+            defaultValue: '7405615166056864',
             description: 'Databricks Workspace ID'
         )
 
         string(
             name: 'SPN_NAME',
-            defaultValue: 'sp-m360-vinayak-003',
+            defaultValue: 'sp-m360-vinayak-001',
             description: 'Azure Entra ID SPN name (e.g. sp-m360-vinayak-003)'
         )
 
         string(
             name: 'ACCESS_GROUP',
-            defaultValue: 'grp-m360-vinayak-003-users',
+            defaultValue: 'grp-m360-vinayak-001-users',
             description: 'Azure Entra ID group name (single)'
         )
     }
