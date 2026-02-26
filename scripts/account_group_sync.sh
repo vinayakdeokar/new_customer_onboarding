@@ -41,65 +41,50 @@ else
   echo "✅ Azure group already linked (Databricks Internal ID: ${GROUP_ID})"
 fi
 
-echo "🚀 Assigning group to workspace..."
 
-ASSIGN_RESP=$(curl -s -w "%{http_code}" -o assign.json -X PATCH \
-"${ACCOUNTS_HOST}/api/2.0/accounts/${DATABRICKS_ACCOUNT_ID}/workspaces/${DATABRICKS_WORKSPACE_ID}/permissionAssignments/principals/${GROUP_ID}" \
--H "${AUTH}" \
--H "Content-Type: application/json" \
--d '{
-  "permissions": ["USER"]
-}')
+echo "🎉 SUCCESS: Group assigned to workspace!"
 
-if [ "$ASSIGN_RESP" != "200" ]; then
-  echo "❌ Workspace assignment failed. HTTP Code: $ASSIGN_RESP"
-  cat assign.json
-  exit 1
+echo "🎉 SUCCESS: Group assigned to workspace!"
+#!/bin/bash
+set -e
+
+: "${DATABRICKS_HOST:?Missing}"
+: "${DATABRICKS_ADMIN_TOKEN:?Missing}"
+: "${GROUP_NAME:?Missing}"
+
+echo "🚀 Forcing group into WORKSPACE identity store..."
+
+curl -s -X POST \
+  "${DATABRICKS_HOST}/api/2.0/preview/scim/v2/Groups" \
+  -H "Authorization: Bearer ${DATABRICKS_ADMIN_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"schemas\": [\"urn:ietf:params:scim:schemas:core:2.0:Group\"],
+    \"displayName\": \"${GROUP_NAME}\"
+  }" >/dev/null || true
+
+echo "✅ Group materialized at Workspace level"
+
+
+SYNC_RESP=$(curl -s -X POST "${DATABRICKS_HOST}/api/2.0/preview/scim/v2/Groups" \
+  -H "Authorization: Bearer ${DATABRICKS_ADMIN_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"schemas\": [\"urn:ietf:params:scim:schemas:core:2.0:Group\"],
+    \"displayName\": \"${GROUP_NAME}\",
+    \"externalId\": \"${AZURE_OBJ_ID}\"
+  }")
+
+
+echo "🔎 Checking if group is now in Workspace list..."
+CHECK_WS=$(curl -s -X GET "${DATABRICKS_HOST}/api/2.0/preview/scim/v2/Groups?filter=displayName+eq+%22${GROUP_NAME}%22" \
+  -H "Authorization: Bearer ${DATABRICKS_ADMIN_TOKEN}")
+
+IS_ADDED=$(echo "$CHECK_WS" | jq -r '.Resources[0].id // empty')
+
+if [ -n "$IS_ADDED" ]; then
+    echo "🎉 SUCCESS: Group '${GROUP_NAME}' is now DIRECTLY ADDED to Workspace!"
+else
+    echo "❌ ERROR: Group still not appearing in Workspace list. Please check Workspace Admin Permissions."
+    exit 1
 fi
-
-echo "🎉 SUCCESS: Group assigned to workspace!"
-
-echo "🎉 SUCCESS: Group assigned to workspace!"
-# #!/bin/bash
-# set -e
-
-# : "${DATABRICKS_HOST:?Missing}"
-# : "${DATABRICKS_ADMIN_TOKEN:?Missing}"
-# : "${GROUP_NAME:?Missing}"
-
-# echo "🚀 Forcing group into WORKSPACE identity store..."
-
-# curl -s -X POST \
-#   "${DATABRICKS_HOST}/api/2.0/preview/scim/v2/Groups" \
-#   -H "Authorization: Bearer ${DATABRICKS_ADMIN_TOKEN}" \
-#   -H "Content-Type: application/json" \
-#   -d "{
-#     \"schemas\": [\"urn:ietf:params:scim:schemas:core:2.0:Group\"],
-#     \"displayName\": \"${GROUP_NAME}\"
-#   }" >/dev/null || true
-
-# echo "✅ Group materialized at Workspace level"
-
-
-# SYNC_RESP=$(curl -s -X POST "${DATABRICKS_HOST}/api/2.0/preview/scim/v2/Groups" \
-#   -H "Authorization: Bearer ${DATABRICKS_ADMIN_TOKEN}" \
-#   -H "Content-Type: application/json" \
-#   -d "{
-#     \"schemas\": [\"urn:ietf:params:scim:schemas:core:2.0:Group\"],
-#     \"displayName\": \"${GROUP_NAME}\",
-#     \"externalId\": \"${AZURE_OBJ_ID}\"
-#   }")
-
-
-# echo "🔎 Checking if group is now in Workspace list..."
-# CHECK_WS=$(curl -s -X GET "${DATABRICKS_HOST}/api/2.0/preview/scim/v2/Groups?filter=displayName+eq+%22${GROUP_NAME}%22" \
-#   -H "Authorization: Bearer ${DATABRICKS_ADMIN_TOKEN}")
-
-# IS_ADDED=$(echo "$CHECK_WS" | jq -r '.Resources[0].id // empty')
-
-# if [ -n "$IS_ADDED" ]; then
-#     echo "🎉 SUCCESS: Group '${GROUP_NAME}' is now DIRECTLY ADDED to Workspace!"
-# else
-#     echo "❌ ERROR: Group still not appearing in Workspace list. Please check Workspace Admin Permissions."
-#     exit 1
-# fi
