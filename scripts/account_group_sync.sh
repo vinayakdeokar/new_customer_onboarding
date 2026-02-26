@@ -64,6 +64,8 @@ curl -s -X POST \
   }" >/dev/null || true
 
 echo "✅ Group materialized at Workspace level"
+curl -X GET ${DATABRICKS_HOST}/api/2.0/preview/scim/v2/Groups \
+-H "Authorization: Bearer ${DATABRICKS_ADMIN_TOKEN}"
 
 
 SYNC_RESP=$(curl -s -X POST "${DATABRICKS_HOST}/api/2.0/preview/scim/v2/Groups" \
