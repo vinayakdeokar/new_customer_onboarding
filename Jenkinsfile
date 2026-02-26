@@ -108,24 +108,7 @@ pipeline {
         //     }
         // }
 
-        // stage('Customer Check') {
-        //     steps {
-        //         sh '''
-        //             set +x
-        //             chmod +x scripts/check_customer_exists.sh
-        //             scripts/check_customer_exists.sh \
-        //                 ${PRODUCT} \
-        //                 ${CUSTOMER_CODE}
-        //         '''
-        //         script {
-        //             def status = readFile('customer_status.env')
-        //             if (status.contains("CUSTOMER_EXISTS=true")) {
-        //                 currentBuild.result = 'SUCCESS'
-        //                 error("STOP_PIPELINE")
-        //             }
-        //         }
-        //     }
-        // }
+
 
         stage('Azure Login') {
             steps {
@@ -143,11 +126,30 @@ pipeline {
                 }
             }
         }
+        stage('Customer Pre-Check') {
+            steps {
+                withCredentials([
+                    string(credentialsId: 'AZURE_CLIENT_ID', variable: 'AZURE_CLIENT_ID'),
+                    string(credentialsId: 'AZURE_CLIENT_SECRET', variable: 'AZURE_CLIENT_SECRET'),
+                    string(credentialsId: 'AZURE_TENANT_ID', variable: 'AZURE_TENANT_ID'),
+                    string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
+                    string(credentialsId: 'DATABRICKS_SQL_WAREHOUSE_ID', variable: 'DATABRICKS_SQL_WAREHOUSE_ID'),
+                    string(credentialsId: 'DATABRICKS_CATALOG_NAME', variable: 'CATALOG_NAME')
+                ]) {
+                    sh '''
+                        chmod +x scripts/check_customer_exists.sh
+                        ./scripts/check_customer_exists.sh "${PRODUCT}" "${CUSTOMER_CODE}"
+                    '''
+                }
+            }
+        }
         stage('Databricks SPN Setup') {
             steps {
                 withCredentials([
                     string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
-                    string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_ADMIN_TOKEN')
+                    string(credentialsId: 'AZURE_CLIENT_ID', variable: 'AZURE_CLIENT_ID'),
+                    string(credentialsId: 'AZURE_CLIENT_SECRET', variable: 'AZURE_CLIENT_SECRET'),
+                    string(credentialsId: 'AZURE_TENANT_ID', variable: 'AZURE_TENANT_ID')
                 ]) {
                     sh '''
                         set +x
@@ -157,6 +159,23 @@ pipeline {
                 }
             }
         }
+        
+
+        
+        // stage('Databricks SPN Setup') {
+        //     steps {
+        //         withCredentials([
+        //             string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
+        //             string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_ADMIN_TOKEN')
+        //         ]) {
+        //             sh '''
+        //                 set +x
+        //                 chmod +x scripts/databricks_login_and_add_spn.sh
+        //                 scripts/databricks_login_and_add_spn.sh "${PRODUCT}" "${CUSTOMER_CODE}"
+        //             '''
+        //         }
+        //     }
+        // }
 
         stage('Databricks SPN OAuth Secret (Account Level)') {
             steps {
