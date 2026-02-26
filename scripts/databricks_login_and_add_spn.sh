@@ -32,8 +32,7 @@ if [ -z "$SPN_CLIENT_ID" ]; then
   exit 1
 fi
 
-echo "After login identity:"
-az account show --query user.name -o tsv
+
 
 echo " Azure SPN found"
 #echo "   ➜ Client ID: $SPN_CLIENT_ID"
