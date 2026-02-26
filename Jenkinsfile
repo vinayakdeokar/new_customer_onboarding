@@ -45,7 +45,7 @@ pipeline {
     }
 
     environment {
-        KV_NAME = 'kv-databricks-fab'
+        KV_NAME = 'kv-databricks-fabb'
     }
 
     stages {
