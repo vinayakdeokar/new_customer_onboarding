@@ -10,6 +10,9 @@ if [ -z "$PRODUCT" ] || [ -z "$CUSTOMER" ]; then
 fi
 
 SPN_NAME="sp-${PRODUCT}-${CUSTOMER}"
+echo "AZURE TENANT: $AZURE_TENANT_ID"
+echo "DATABRICKS HOST: $DATABRICKS_HOST"
+az account show --query "{subscriptionId:id, tenantId:tenantId}" -o table
 
 echo " Target Azure SPN name: $SPN_NAME"
 
