@@ -43,20 +43,21 @@ fi
 
 echo "🚀 Assigning group to workspace..."
 
-ASSIGN_RESP=$(curl -s -w "%{http_code}" -o assign.json -X POST \
-"${ACCOUNTS_HOST}/api/2.0/accounts/${DATABRICKS_ACCOUNT_ID}/workspaces/${DATABRICKS_WORKSPACE_ID}/permissionassignments" \
+ASSIGN_RESP=$(curl -s -w "%{http_code}" -o assign.json -X PATCH \
+"${ACCOUNTS_HOST}/api/2.0/accounts/${DATABRICKS_ACCOUNT_ID}/workspaces/${DATABRICKS_WORKSPACE_ID}/permissionAssignments/principals/${GROUP_ID}" \
 -H "${AUTH}" \
 -H "Content-Type: application/json" \
--d "{
-  \"principal_id\": \"${GROUP_ID}\",
-  \"permissions\": [\"USER\"]
-}")
+-d '{
+  "permissions": ["USER"]
+}')
 
 if [ "$ASSIGN_RESP" != "200" ]; then
   echo "❌ Workspace assignment failed. HTTP Code: $ASSIGN_RESP"
   cat assign.json
   exit 1
 fi
+
+echo "🎉 SUCCESS: Group assigned to workspace!"
 
 echo "🎉 SUCCESS: Group assigned to workspace!"
 # #!/bin/bash
