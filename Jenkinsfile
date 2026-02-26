@@ -126,23 +126,23 @@ pipeline {
                 }
             }
         }
-        stage('Customer Pre-Check') {
-            steps {
-                withCredentials([
-                    string(credentialsId: 'AZURE_CLIENT_ID', variable: 'AZURE_CLIENT_ID'),
-                    string(credentialsId: 'AZURE_CLIENT_SECRET', variable: 'AZURE_CLIENT_SECRET'),
-                    string(credentialsId: 'AZURE_TENANT_ID', variable: 'AZURE_TENANT_ID'),
-                    string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
-                    string(credentialsId: 'DATABRICKS_SQL_WAREHOUSE_ID', variable: 'DATABRICKS_SQL_WAREHOUSE_ID'),
-                    string(credentialsId: 'DATABRICKS_CATALOG_NAME', variable: 'CATALOG_NAME')
-                ]) {
-                    sh '''
-                        chmod +x scripts/check_customer_exists.sh
-                        ./scripts/check_customer_exists.sh "${PRODUCT}" "${CUSTOMER_CODE}"
-                    '''
-                }
-            }
-        }
+        // stage('Customer Pre-Check') {
+        //     steps {
+        //         withCredentials([
+        //             string(credentialsId: 'AZURE_CLIENT_ID', variable: 'AZURE_CLIENT_ID'),
+        //             string(credentialsId: 'AZURE_CLIENT_SECRET', variable: 'AZURE_CLIENT_SECRET'),
+        //             string(credentialsId: 'AZURE_TENANT_ID', variable: 'AZURE_TENANT_ID'),
+        //             string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
+        //             string(credentialsId: 'DATABRICKS_SQL_WAREHOUSE_ID', variable: 'DATABRICKS_SQL_WAREHOUSE_ID'),
+        //             string(credentialsId: 'DATABRICKS_CATALOG_NAME', variable: 'CATALOG_NAME')
+        //         ]) {
+        //             sh '''
+        //                 chmod +x scripts/check_customer_exists.sh
+        //                 ./scripts/check_customer_exists.sh "${PRODUCT}" "${CUSTOMER_CODE}"
+        //             '''
+        //         }
+        //     }
+        // }
         stage('Databricks SPN Setup') {
             steps {
                 withCredentials([
