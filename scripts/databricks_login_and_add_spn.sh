@@ -10,9 +10,12 @@ if [ -z "$PRODUCT" ] || [ -z "$CUSTOMER" ]; then
 fi
 
 SPN_NAME="sp-${PRODUCT}-${CUSTOMER}"
-echo "AZURE TENANT: $AZURE_TENANT_ID"
-echo "DATABRICKS HOST: $DATABRICKS_HOST"
-az account show --query "{subscriptionId:id, tenantId:tenantId}" -o table
+
+echo "Resolved Workspace URL:"
+echo $DATABRICKS_HOST
+
+WORKSPACE_ID=$(echo $DATABRICKS_HOST | grep -o 'adb-[0-9]*')
+echo "Workspace ID: $WORKSPACE_ID"
 
 echo " Target Azure SPN name: $SPN_NAME"
 
