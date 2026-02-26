@@ -60,6 +60,14 @@ curl -s -X POST \
 
 echo "✅ Group materialized at Workspace level"
 
+echo "Assigning group to workspace from ACCOUNT level..."
+
+databricks account groups assign \
+  --group-id 155340710301636 \
+  --workspace-id 7405615166058644
+
+echo "✅ Group assigned to workspace."
+
 
 # SYNC_RESP=$(curl -s -X POST "${DATABRICKS_HOST}/api/2.0/preview/scim/v2/Groups" \
 #   -H "Authorization: Bearer ${DATABRICKS_ADMIN_TOKEN}" \
