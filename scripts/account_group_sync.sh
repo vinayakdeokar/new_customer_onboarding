@@ -61,7 +61,7 @@ curl -s -X POST \
 echo "✅ Group materialized at Workspace level"
 
 
- "✅ Successfully assigned and added to workspace list!"
+echo "✅ Successfully assigned and added to workspace list!"
 
 SYNC_RESP=$(curl -s -X POST "${DATABRICKS_HOST}/api/2.0/preview/scim/v2/Groups" \
   -H "Authorization: Bearer ${DATABRICKS_ADMIN_TOKEN}" \
