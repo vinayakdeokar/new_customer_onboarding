@@ -73,6 +73,15 @@ RESPONSE=$(curl -s \
         \"warehouse_id\": \"${DATABRICKS_SQL_WAREHOUSE_ID}\"
       }")
 
+echo "Raw response:"
+echo "$RESPONSE"
+
+# Validate JSON before jq
+if ! echo "$RESPONSE" | jq empty 2>/dev/null; then
+  echo "Databricks did not return valid JSON."
+  exit 1
+fi
+
 SCHEMA_EXISTS=$(echo "$RESPONSE" | jq -r '.result.data_array | length')
 
 echo "Looking for schema: $SCHEMA_NAME"
