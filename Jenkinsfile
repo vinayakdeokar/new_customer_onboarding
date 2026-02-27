@@ -231,17 +231,42 @@ pipeline {
         //     }
         // }
 
-        stage('Create ADLS Bronze Folder') {
+        stage('Set Storage Based On ENV') {
+            steps {
+                script {
+                    if (params.ENV == 'qa') {
+                        env.STORAGE_ACCOUNT = 'stmedicareadvmcrr'
+                    } else if (params.ENV == 'dev') {
+                        env.STORAGE_ACCOUNT = 'stmedicareadvmcrdev'
+                    } else {
+                        env.STORAGE_ACCOUNT = 'stmedicareadvmcrprod'
+                    }
+        
+                    env.CONTAINER_NAME = 'bronze'
+                }
+            }
+        }
+        stage('Create ADLS Bronze Folder') {   
             steps {
                 sh '''
                     set +x
                     chmod +x scripts/create_bronze_folder.sh
-                    export STORAGE_ACCOUNT=stmedicareadvmcrr
-                    export CONTAINER_NAME=bronze
                     scripts/create_bronze_folder.sh
                 '''
             }
         }
+
+        // stage('Create ADLS Bronze Folder') {
+        //     steps {
+        //         sh '''
+        //             set +x
+        //             chmod +x scripts/create_bronze_folder.sh
+        //             export STORAGE_ACCOUNT=stmedicareadvmcrr
+        //             export CONTAINER_NAME=bronze
+        //             scripts/create_bronze_folder.sh
+        //         '''
+        //     }
+        // }
 
         stage('Schemas & Grants') {
             steps {
