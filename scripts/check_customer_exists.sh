@@ -1,16 +1,13 @@
-#!/bin/bash
-set -euo pipefail
-
 CUSTOMER=$1
 PRODUCT=$2
 ENV=$3
 
-if [ -z "$CUSTOMER" ] || [ -z "$PRODUCT" ] || [ -z "$ENV" ]; then
-  echo "Missing arguments"
+if [ $# -ne 3 ]; then
+  echo "Usage: script.sh <customer> <product> <env>"
   exit 1
 fi
 
-SCHEMA_NAME="sch-${PRODUCT}-${CUSTOMER_CODE}-bronze-001
+SCHEMA_NAME="sch-${PRODUCT}-${CUSTOMER}-bronze-001"
 WORKSPACE_NAME="${CUSTOMER}-${PRODUCT}-${ENV}"
 CONNECTION_NAME="db-vnet-${ENV}-${CUSTOMER}"
 CATALOG_NAME="cat-mcr-${ENV}-001"
@@ -66,18 +63,20 @@ echo "Token generated successfully"
 
 echo "Checking Databricks schema..."
 
-RESPONCE=$(curl -s \
+RESPONSE=$(curl -s \
   -X POST \
-  "$DATABRICKS_HOST/api/2.0/sql/statements/" \
+  "$DATABRICKS_HOST/api/2.0/sql/statements?wait_timeout=30s" \
   -H "Authorization: Bearer $DB_TOKEN" \
   -H "Content-Type: application/json" \
   -d "{
         \"statement\": \"SHOW SCHEMAS IN ${CATALOG_NAME} LIKE '${SCHEMA_NAME}'\",
         \"warehouse_id\": \"${DATABRICKS_SQL_WAREHOUSE_ID}\"
-      }" \
-  SCHEMA_EXISTS=$(echo "$RESPONCE" | jq -r '.result.data_array | length')
-  echo "looking for schema: $SCHEMA_NAME"
-  echo "Match count: $SCHEMA_EXISTS"
+      }")
+
+SCHEMA_EXISTS=$(echo "$RESPONSE" | jq -r '.result.data_array | length')
+
+echo "Looking for schema: $SCHEMA_NAME"
+echo "Match count: $SCHEMA_EXISTS"
 
 if [ "$SCHEMA_EXISTS" -gt 0 ]; then
   echo "Databricks schema already exists"
