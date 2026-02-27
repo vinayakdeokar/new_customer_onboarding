@@ -213,53 +213,53 @@ pipeline {
         //     }
         // }
 
-        stage('Databricks Account Group Sync') {
-            steps {
-                withCredentials([
-                    string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
-                    string(credentialsId: 'DATABRICKS_ACCOUNT_ID', variable: 'DATABRICKS_ACCOUNT_ID'),
-                    string(credentialsId: 'DATABRICKS_WORKSPACE_ID', variable: 'DATABRICKS_WORKSPACE_ID'),
-                    string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_ADMIN_TOKEN')
-                ]) {
-                    sh '''
-                        set +x
-                        export GROUP_NAME="grp-${PRODUCT}-${CUSTOMER_CODE}-users"
-                        chmod +x scripts/account_group_sync.sh
-                        ./scripts/account_group_sync.sh
-                    '''
-                }
-            }
-        }
-
-        // stage('Create ADLS Bronze Folder') {
-        //     steps {
-        //         sh '''
-        //             set +x
-        //             chmod +x scripts/create_bronze_folder.sh
-        //             export STORAGE_ACCOUNT=stmedicareadvmcr
-        //             export CONTAINER_NAME=bronze
-        //             scripts/create_bronze_folder.sh
-        //         '''
-        //     }
-        // }
-
-        // stage('Schemas & Grants') {
+        // stage('Databricks Account Group Sync') {
         //     steps {
         //         withCredentials([
         //             string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
-        //             string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_ADMIN_TOKEN'),
-        //             string(credentialsId: 'DATABRICKS_SQL_WAREHOUSE_ID', variable: 'DATABRICKS_SQL_WAREHOUSE_ID'),
-        //             string(credentialsId: 'DATABRICKS_CATALOG_NAME', variable: 'CATALOG_NAME'),
-        //             string(credentialsId: 'STORAGE_BRONZE_ROOT', variable: 'STORAGE_BRONZE_ROOT')
+        //             string(credentialsId: 'DATABRICKS_ACCOUNT_ID', variable: 'DATABRICKS_ACCOUNT_ID'),
+        //             string(credentialsId: 'DATABRICKS_WORKSPACE_ID', variable: 'DATABRICKS_WORKSPACE_ID'),
+        //             string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_ADMIN_TOKEN')
         //         ]) {
         //             sh '''
         //                 set +x
-        //                 chmod +x scripts/databricks_schema_and_grants.sh
-        //                 ./scripts/databricks_schema_and_grants.sh
+        //                 export GROUP_NAME="grp-${PRODUCT}-${CUSTOMER_CODE}-users"
+        //                 chmod +x scripts/account_group_sync.sh
+        //                 ./scripts/account_group_sync.sh
         //             '''
         //         }
         //     }
         // }
+
+        stage('Create ADLS Bronze Folder') {
+            steps {
+                sh '''
+                    set +x
+                    chmod +x scripts/create_bronze_folder.sh
+                    export STORAGE_ACCOUNT=stmedicareadvmcr
+                    export CONTAINER_NAME=bronze
+                    scripts/create_bronze_folder.sh
+                '''
+            }
+        }
+
+        stage('Schemas & Grants') {
+            steps {
+                withCredentials([
+                    string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
+                    string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_ADMIN_TOKEN'),
+                    string(credentialsId: 'DATABRICKS_SQL_WAREHOUSE_ID', variable: 'DATABRICKS_SQL_WAREHOUSE_ID'),
+                    string(credentialsId: 'DATABRICKS_CATALOG_NAME', variable: 'CATALOG_NAME'),
+                    string(credentialsId: 'STORAGE_BRONZE_ROOT', variable: 'STORAGE_BRONZE_ROOT')
+                ]) {
+                    sh '''
+                        set +x
+                        chmod +x scripts/databricks_schema_and_grants.sh
+                        ./scripts/databricks_schema_and_grants.sh
+                    '''
+                }
+            }
+        }
 
         // stage('Install Fabric CLI (Python venv)') {
         //     steps {
