@@ -135,6 +135,9 @@ pipeline {
                     string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
                     string(credentialsId: 'DATABRICKS_SQL_WAREHOUSE_ID', variable: 'DATABRICKS_SQL_WAREHOUSE_ID'),
                     string(credentialsId: 'DATABRICKS_CATALOG_NAME', variable: 'CATALOG_NAME')
+                    string(credentialsId: 'FABRIC_CLIENT_ID', variable: 'FABRIC_CLIENT_ID'),
+                    string(credentialsId: 'FABRIC_CLIENT_SECRET', variable: 'FABRIC_CLIENT_SECRET'),
+                    string(credentialsId: 'FABRIC_TENANT_ID', variable: 'FABRIC_TENANT_ID')
                 ]) {
                     sh '''
                         chmod +x scripts/check_customer_exists.sh
