@@ -1,68 +1,131 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
-PRODUCT="$1"
-CUSTOMER="$2"
+CUSTOMER=$1
+PRODUCT=$2
+ENV=$3
 
-# Always resolve repo root correctly (Jenkins + local safe)
-BASE_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-
-JSON_FILE="$BASE_DIR/metadata/customers/customers.json"
-STATUS_FILE="$BASE_DIR/customer_status.env"
-
-# echo "Checking customer in JSON"
-# echo "Product  : $PRODUCT"
-# echo "Customer : $CUSTOMER"
-# echo "JSON     : $JSON_FILE"
-
-# Validate JSON file
-if [ ! -f "$JSON_FILE" ]; then
-  echo "ERROR: customer.json not found at $JSON_FILE"
+if [ -z "$CUSTOMER" ] || [ -z "$PRODUCT" ] || [ -z "$ENV" ]; then
+  echo "Missing arguments"
   exit 1
 fi
 
-# Find customer
-RESULT=$(jq -r --arg p "$PRODUCT" --arg c "$CUSTOMER" '
-  .customers[]
-  | select(.product == $p and .customer_code == $c)
-' "$JSON_FILE")
+SCHEMA_NAME="sch-${PRODUCT}-${CUSTOMER_CODE}-bronze-001
+WORKSPACE_NAME="${CUSTOMER}-${PRODUCT}-${ENV}"
+CONNECTION_NAME="db-vnet-${ENV}-${CUSTOMER}"
+CATALOG_NAME="cat-mcr-${ENV}-001"
 
-# Customer NOT found
-if [ -z "$RESULT" ]; then
-  echo "Customer NOT found in metadata JSON"
-  echo "CUSTOMER_EXISTS=false" > "$STATUS_FILE"
-  exit 0
+echo "--------------------------------------------------"
+echo "Customer Pre-Check Started"
+echo "Customer   : $CUSTOMER"
+echo "Product    : $PRODUCT"
+echo "Env        : $ENV"
+echo "Schema     : $SCHEMA_NAME"
+echo "Workspace  : $WORKSPACE_NAME"
+echo "Connection : $CONNECTION_NAME"
+echo "--------------------------------------------------"
+
+# # --------------------------------------------------
+# # Generate Azure AD Token (NO PAT)
+# # --------------------------------------------------
+
+# : "${AZURE_CLIENT_ID:?missing}"
+# : "${AZURE_CLIENT_SECRET:?missing}"
+# : "${AZURE_TENANT_ID:?missing}"
+# : "${DATABRICKS_HOST:?missing}"
+# : "${DATABRICKS_SQL_WAREHOUSE_ID:?missing}"
+# : "${CATALOG_NAME:?missing}"
+# : "${FABRIC_CLIENT_ID:?missing}"
+# : "${FABRIC_CLIENT_SECRET:?missing}"
+# : "${FABRIC_TENANT_ID:?missing}"
+# : "${WORKSPACE:?missing}"
+
+echo "Logging into Azure using SPN..."
+
+az login --service-principal \
+  -u "$AZURE_CLIENT_ID" \
+  -p "$AZURE_CLIENT_SECRET" \
+  --tenant "$AZURE_TENANT_ID" > /dev/null
+
+echo "Generating Databricks AAD token..."
+
+DB_TOKEN=$(az account get-access-token \
+  --resource 2ff814a6-3304-4ab8-85cb-cd0e6f879c1d \
+  --query accessToken -o tsv)
+
+if [ -z "$DB_TOKEN" ]; then
+  echo "Failed to generate Databricks token"
+  exit 1
 fi
 
-# Extract details
-CUSTOMER_CODE=$(echo "$RESULT" | jq -r '.customer_code')
-PRODUCT_NAME=$(echo "$RESULT" | jq -r '.product')
-ENVIRONMENT=$(echo "$RESULT" | jq -r '.environment')
-GROUP_NAME=$(echo "$RESULT" | jq -r '.group')
-SPN_NAME=$(echo "$RESULT" | jq -r '.spn')
-GROUP_PERMISSIONS=$(echo "$RESULT" | jq -r '.group_permissions | join(",")')
-SPN_PERMISSIONS=$(echo "$RESULT" | jq -r '.spn_permissions | join(",")')
+echo "Token generated successfully"
 
-# Print details (visible in Jenkins logs)
-echo "CUSTOMER_EXISTS=true"
-echo "CUSTOMER_CODE=$CUSTOMER_CODE"
-echo "PRODUCT=$PRODUCT_NAME"
-echo "ENVIRONMENT=$ENVIRONMENT"
-echo "GROUP_NAME=$GROUP_NAME"
-echo "GROUP_PERMISSIONS=$GROUP_PERMISSIONS"
-echo "SPN_NAME=$SPN_NAME"
-echo "SPN_PERMISSIONS=$SPN_PERMISSIONS"
+# --------------------------------------------------
+# Check Databricks Schema
+# --------------------------------------------------
 
-# Write env file for Jenkins
-cat <<EOF > "$STATUS_FILE"
-CUSTOMER_EXISTS=true
-CUSTOMER_CODE=$CUSTOMER_CODE
-PRODUCT=$PRODUCT_NAME
-ENVIRONMENT=$ENVIRONMENT
-GROUP_NAME=$GROUP_NAME
-GROUP_PERMISSIONS=$GROUP_PERMISSIONS
-SPN_NAME=$SPN_NAME
-SPN_PERMISSIONS=$SPN_PERMISSIONS
-EOF
+echo "Checking Databricks schema..."
 
-echo "Customer details written to $STATUS_FILE"
+RESPONCE=$(curl -s \
+  -X POST \
+  "$DATABRICKS_HOST/api/2.0/sql/statements/" \
+  -H "Authorization: Bearer $DB_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d "{
+        \"statement\": \"SHOW SCHEMAS IN ${CATALOG_NAME} LIKE '${SCHEMA_NAME}'\",
+        \"warehouse_id\": \"${DATABRICKS_SQL_WAREHOUSE_ID}\"
+      }" \
+  SCHEMA_EXISTS=$(echo "$RESPONCE" | jq -r '.result.data_array | length')
+  echo "looking for schema: $SCHEMA_NAME"
+  echo "Match count: $SCHEMA_EXISTS"
+
+if [ "$SCHEMA_EXISTS" -gt 0 ]; then
+  echo "Databricks schema already exists"
+  exit 99
+fi
+
+echo "Schema not found"
+
+# --------------------------------------------------
+# Check Fabric Workspace
+# --------------------------------------------------
+
+echo "Checking Fabric workspace..."
+
+FAB="$WORKSPACE/fabricenv/bin/fab"
+
+# $FAB auth login \
+#   -u "$FABRIC_CLIENT_ID" \
+#   -p "$FABRIC_CLIENT_SECRET" \
+#   --tenant "$FABRIC_TENANT_ID" >/dev/null
+
+# if $FAB workspace list | grep -w "$WORKSPACE_NAME" > /dev/null 2>&1; then
+#   echo "Fabric workspace already exists"
+#   exit 99
+# fi
+
+# echo "Workspace not found"
+
+# # --------------------------------------------------
+# #  Check Fabric VNet Connection
+# # --------------------------------------------------
+
+# echo "Checking Fabric VNet connection..."
+
+# EXISTING_CONNECTION=$($FAB api connections -A fabric | \
+# jq -r '.text.value[]? | select(.displayName=="'"${CONNECTION_NAME}"'") | .id')
+
+# if [ -n "$EXISTING_CONNECTION" ]; then
+#   echo "Fabric VNet connection already exists"
+#   exit 99
+# fi
+
+# echo "Connection not found"
+
+# # --------------------------------------------------
+# # Safe to Continue
+# # --------------------------------------------------
+
+# echo "--------------------------------------------------"
+# echo "Customer does NOT exist – safe to onboard"
+# echo "--------------------------------------------------"
