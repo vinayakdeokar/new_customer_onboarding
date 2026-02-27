@@ -69,7 +69,7 @@ RESPONSE=$(curl -s \
   -H "Authorization: Bearer $DB_TOKEN" \
   -H "Content-Type: application/json" \
   -d "{
-        \"statement\": \"SHOW SCHEMAS IN ${CATALOG_NAME} LIKE '${SCHEMA_NAME}'\",
+        \"statement\": \"SHOW SCHEMAS IN \`${CATALOG_NAME}\` LIKE '${SCHEMA_NAME}'\",
         \"warehouse_id\": \"${DATABRICKS_SQL_WAREHOUSE_ID}\"
       }")
 
