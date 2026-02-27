@@ -93,6 +93,8 @@ if [ "$SCHEMA_EXISTS" -gt 0 ]; then
 fi
 
 echo "Schema not found"
+echo "Fabric Tenant: $FABRIC_TENANT_ID"
+echo "Fabric Client: $FABRIC_CLIENT_ID"
 
 # --------------------------------------------------
 # Check Fabric Workspace
