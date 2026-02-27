@@ -236,7 +236,7 @@ pipeline {
                 sh '''
                     set +x
                     chmod +x scripts/create_bronze_folder.sh
-                    export STORAGE_ACCOUNT=stmedicareadvmcr
+                    export STORAGE_ACCOUNT=stmedicareadvmcrr
                     export CONTAINER_NAME=bronze
                     scripts/create_bronze_folder.sh
                 '''
