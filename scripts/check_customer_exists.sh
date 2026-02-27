@@ -130,7 +130,7 @@ echo "Fabric login successful"
 
 echo "Checking if workspace exists..."
 
-if $FAB workspace list | grep -w "$WORKSPACE_NAME" >/dev/null 2>&1; then
+if $FAB workspaces list | grep -w "$WORKSPACE_NAME" >/dev/null 2>&1; then
   echo "⚠ Fabric workspace already exists: $WORKSPACE_NAME"
   exit 99
 fi
