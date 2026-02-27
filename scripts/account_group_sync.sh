@@ -61,24 +61,24 @@ curl -s -X POST \
 echo "✅ Group materialized at Workspace level"
 
 
-# # ४. ग्रुपला Workspace मध्ये असाइन करणे (लिंक करणे)
-# echo "🔗 Assigning group '${GROUP_NAME}' to Workspace..."
+# ४. ग्रुपला Workspace मध्ये असाइन करणे (लिंक करणे)
+echo "🔗 Assigning group '${GROUP_NAME}' to Workspace..."
 
-# # Account-level Groups API वापरून वर्कस्पेसला ग्रुप असाइन करणे
-# # टीप: आपण 'PUT' वापरत आहोत जेणेकरून तो ग्रुप वर्कस्पेसच्या लिस्टमध्ये 'Directly Assigned' दिसेल.
-# ASSIGN_RESP=$(curl -s -X PUT "${ACCOUNTS_HOST}/api/2.0/accounts/${DATABRICKS_ACCOUNT_ID}/workspaces/${DATABRICKS_WORKSPACE_ID}/permissions/groups/${GROUP_ID}" \
-#   -H "${AUTH}" \
-#   -H "Content-Type: application/json" \
-#   -d "{
-#     \"permissions\": [\"MEMBER\"]
-#   }")
+# Account-level Groups API वापरून वर्कस्पेसला ग्रुप असाइन करणे
+# टीप: आपण 'PUT' वापरत आहोत जेणेकरून तो ग्रुप वर्कस्पेसच्या लिस्टमध्ये 'Directly Assigned' दिसेल.
+ASSIGN_RESP=$(curl -s -X PUT "${ACCOUNTS_HOST}/api/2.0/accounts/${DATABRICKS_ACCOUNT_ID}/workspaces/${DATABRICKS_WORKSPACE_ID}/permissions/groups/${GROUP_ID}" \
+  -H "${AUTH}" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"permissions\": [\"MEMBER\"]
+  }")
 
-# if echo "$ASSIGN_RESP" | grep -q "error"; then
-#     echo "❌ Assignment Failed: $ASSIGN_RESP"
-#     exit 1
-# else
-#     echo "✅ Successfully assigned and added to workspace list!"
-# fi
+if echo "$ASSIGN_RESP" | grep -q "error"; then
+    echo "❌ Assignment Failed: $ASSIGN_RESP"
+    exit 1
+else
+    echo "✅ Successfully assigned and added to workspace list!"
+fi
 
 # echo "⏳ Waiting 30 seconds for UI refresh..."
 # sleep 30
