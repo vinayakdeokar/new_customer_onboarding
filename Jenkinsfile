@@ -126,6 +126,23 @@ pipeline {
                 }
             }
         }
+        stage('Customer Pre-Check') {
+            steps {
+                withCredentials([
+                    string(credentialsId: 'AZURE_CLIENT_ID', variable: 'AZURE_CLIENT_ID'),
+                    string(credentialsId: 'AZURE_CLIENT_SECRET', variable: 'AZURE_CLIENT_SECRET'),
+                    string(credentialsId: 'AZURE_TENANT_ID', variable: 'AZURE_TENANT_ID'),
+                    string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
+                    string(credentialsId: 'DATABRICKS_SQL_WAREHOUSE_ID', variable: 'DATABRICKS_SQL_WAREHOUSE_ID'),
+                    string(credentialsId: 'DATABRICKS_CATALOG_NAME', variable: 'CATALOG_NAME')
+                ]) {
+                    sh '''
+                        chmod +x scripts/check_customer_exists.sh
+                        ./scripts/check_customer_exists.sh "${PRODUCT}" "${CUSTOMER_CODE}"
+                    '''
+                }
+            }
+        }
         // stage('Customer Pre-Check') {
         //     steps {
         //         withCredentials([
@@ -214,86 +231,86 @@ pipeline {
             }
         }
 
-        stage('Create ADLS Bronze Folder') {
-            steps {
-                sh '''
-                    set +x
-                    chmod +x scripts/create_bronze_folder.sh
-                    export STORAGE_ACCOUNT=stmedicareadvmcr
-                    export CONTAINER_NAME=bronze
-                    scripts/create_bronze_folder.sh
-                '''
-            }
-        }
+        // stage('Create ADLS Bronze Folder') {
+        //     steps {
+        //         sh '''
+        //             set +x
+        //             chmod +x scripts/create_bronze_folder.sh
+        //             export STORAGE_ACCOUNT=stmedicareadvmcr
+        //             export CONTAINER_NAME=bronze
+        //             scripts/create_bronze_folder.sh
+        //         '''
+        //     }
+        // }
 
-        stage('Schemas & Grants') {
-            steps {
-                withCredentials([
-                    string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
-                    string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_ADMIN_TOKEN'),
-                    string(credentialsId: 'DATABRICKS_SQL_WAREHOUSE_ID', variable: 'DATABRICKS_SQL_WAREHOUSE_ID'),
-                    string(credentialsId: 'DATABRICKS_CATALOG_NAME', variable: 'CATALOG_NAME'),
-                    string(credentialsId: 'STORAGE_BRONZE_ROOT', variable: 'STORAGE_BRONZE_ROOT')
-                ]) {
-                    sh '''
-                        set +x
-                        chmod +x scripts/databricks_schema_and_grants.sh
-                        ./scripts/databricks_schema_and_grants.sh
-                    '''
-                }
-            }
-        }
+        // stage('Schemas & Grants') {
+        //     steps {
+        //         withCredentials([
+        //             string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
+        //             string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_ADMIN_TOKEN'),
+        //             string(credentialsId: 'DATABRICKS_SQL_WAREHOUSE_ID', variable: 'DATABRICKS_SQL_WAREHOUSE_ID'),
+        //             string(credentialsId: 'DATABRICKS_CATALOG_NAME', variable: 'CATALOG_NAME'),
+        //             string(credentialsId: 'STORAGE_BRONZE_ROOT', variable: 'STORAGE_BRONZE_ROOT')
+        //         ]) {
+        //             sh '''
+        //                 set +x
+        //                 chmod +x scripts/databricks_schema_and_grants.sh
+        //                 ./scripts/databricks_schema_and_grants.sh
+        //             '''
+        //         }
+        //     }
+        // }
 
-        stage('Install Fabric CLI (Python venv)') {
-            steps {
-                sh '''
-                    set -e
-                    set +x
+        // stage('Install Fabric CLI (Python venv)') {
+        //     steps {
+        //         sh '''
+        //             set -e
+        //             set +x
 
-                    python3 -m venv fabricenv >/dev/null 2>&1
-                    . fabricenv/bin/activate >/dev/null 2>&1
-                    pip install ms-fabric-cli==1.4.0 >/dev/null 2>&1
+        //             python3 -m venv fabricenv >/dev/null 2>&1
+        //             . fabricenv/bin/activate >/dev/null 2>&1
+        //             pip install ms-fabric-cli==1.4.0 >/dev/null 2>&1
 
-                    echo "Fabric CLI Installed Successfully"
-                '''
-            }
-        }
+        //             echo "Fabric CLI Installed Successfully"
+        //         '''
+        //     }
+        // }
 
-        stage('Create Fabric Workspace') {
-            steps {
-                withCredentials([
-                    string(credentialsId: 'FABRIC_CLIENT_ID', variable: 'FABRIC_CLIENT_ID'),
-                    string(credentialsId: 'FABRIC_CLIENT_SECRET', variable: 'FABRIC_CLIENT_SECRET'),
-                    string(credentialsId: 'FABRIC_TENANT_ID', variable: 'FABRIC_TENANT_ID')
-                ]) {
-                    sh '''
-                        set +x
-                        chmod +x scripts/create_fabric_workspace.sh
-                        ./scripts/create_fabric_workspace.sh "${CUSTOMER_CODE}" "${PRODUCT}" "${ENV}"
-                    '''
-                }
-            }
-        }
+        // stage('Create Fabric Workspace') {
+        //     steps {
+        //         withCredentials([
+        //             string(credentialsId: 'FABRIC_CLIENT_ID', variable: 'FABRIC_CLIENT_ID'),
+        //             string(credentialsId: 'FABRIC_CLIENT_SECRET', variable: 'FABRIC_CLIENT_SECRET'),
+        //             string(credentialsId: 'FABRIC_TENANT_ID', variable: 'FABRIC_TENANT_ID')
+        //         ]) {
+        //             sh '''
+        //                 set +x
+        //                 chmod +x scripts/create_fabric_workspace.sh
+        //                 ./scripts/create_fabric_workspace.sh "${CUSTOMER_CODE}" "${PRODUCT}" "${ENV}"
+        //             '''
+        //         }
+        //     }
+        // }
 
-        stage('Fabric VNet Connection') {
-            steps {
-                withCredentials([
-                    string(credentialsId: 'FABRIC_CLIENT_ID', variable: 'FABRIC_CLIENT_ID'),
-                    string(credentialsId: 'FABRIC_CLIENT_SECRET', variable: 'FABRIC_CLIENT_SECRET'),
-                    string(credentialsId: 'FABRIC_TENANT_ID', variable: 'FABRIC_TENANT_ID'),
-                    string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
-                    string(credentialsId: 'DATABRICKS_SQL_WAREHOUSE_ID', variable: 'DATABRICKS_SQL_WAREHOUSE_ID'),
-                    string(credentialsId: 'DATABRICKS_CLIENT_ID', variable: 'SPN_CLIENT_ID_KV'),
-                    string(credentialsId: 'DATABRICKS_CLIENT_SECRET', variable: 'SPN_SECRET_KV')
-                ]) {
-                    sh '''
-                        set +x
-                        chmod +x scripts/fabric_vnet_connection.sh
-                        ./scripts/fabric_vnet_connection.sh
-                    '''
-                }
-            }
-        }
+        // stage('Fabric VNet Connection') {
+        //     steps {
+        //         withCredentials([
+        //             string(credentialsId: 'FABRIC_CLIENT_ID', variable: 'FABRIC_CLIENT_ID'),
+        //             string(credentialsId: 'FABRIC_CLIENT_SECRET', variable: 'FABRIC_CLIENT_SECRET'),
+        //             string(credentialsId: 'FABRIC_TENANT_ID', variable: 'FABRIC_TENANT_ID'),
+        //             string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
+        //             string(credentialsId: 'DATABRICKS_SQL_WAREHOUSE_ID', variable: 'DATABRICKS_SQL_WAREHOUSE_ID'),
+        //             string(credentialsId: 'DATABRICKS_CLIENT_ID', variable: 'SPN_CLIENT_ID_KV'),
+        //             string(credentialsId: 'DATABRICKS_CLIENT_SECRET', variable: 'SPN_SECRET_KV')
+        //         ]) {
+        //             sh '''
+        //                 set +x
+        //                 chmod +x scripts/fabric_vnet_connection.sh
+        //                 ./scripts/fabric_vnet_connection.sh
+        //             '''
+        //         }
+        //     }
+        // }
 
     }
 }
