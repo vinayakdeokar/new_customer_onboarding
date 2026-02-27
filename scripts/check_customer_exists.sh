@@ -100,7 +100,65 @@ echo "Schema not found"
 
 echo "Checking Fabric workspace..."
 
+echo "Checking Fabric workspace..."
+
 FAB="$WORKSPACE/fabricenv/bin/fab"
+
+# --------------------------------------------------
+# Login to Fabric
+# --------------------------------------------------
+
+echo "Logging into Fabric..."
+
+$FAB auth login \
+  -u "$FABRIC_CLIENT_ID" \
+  -p "$FABRIC_CLIENT_SECRET" \
+  --tenant "$FABRIC_TENANT_ID" >/dev/null 2>&1
+
+if [ $? -ne 0 ]; then
+  echo "❌ Fabric login failed"
+  exit 1
+fi
+
+echo "Fabric login successful"
+
+# --------------------------------------------------
+# Check Workspace
+# --------------------------------------------------
+
+echo "Checking if workspace exists..."
+
+if $FAB workspace list | grep -w "$WORKSPACE_NAME" >/dev/null 2>&1; then
+  echo "⚠ Fabric workspace already exists: $WORKSPACE_NAME"
+  exit 99
+fi
+
+echo "Workspace not found – safe to create"
+
+# --------------------------------------------------
+# Check Fabric VNet Connection
+# --------------------------------------------------
+
+echo "Checking Fabric VNet connection..."
+
+EXISTING_CONNECTION=$($FAB api connections -A fabric | \
+jq -r '.text.value[]? | select(.displayName=="'"${CONNECTION_NAME}"'") | .id')
+
+if [ -n "$EXISTING_CONNECTION" ]; then
+  echo "⚠ Fabric VNet connection already exists: $CONNECTION_NAME"
+  exit 99
+fi
+
+echo "Connection not found – safe to create"
+
+# --------------------------------------------------
+# Safe to Continue
+# --------------------------------------------------
+
+echo "--------------------------------------------------"
+echo "✅ Customer does NOT exist – safe to onboard"
+
+#FAB="$WORKSPACE/fabricenv/bin/fab"
 
 # $FAB auth login \
 #   -u "$FABRIC_CLIENT_ID" \
