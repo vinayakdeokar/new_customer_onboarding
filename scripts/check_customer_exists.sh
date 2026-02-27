@@ -93,8 +93,7 @@ if [ "$SCHEMA_EXISTS" -gt 0 ]; then
 fi
 
 echo "Schema not found"
-echo "Fabric Tenant: $FABRIC_TENANT_ID"
-echo "Fabric Client: $FABRIC_CLIENT_ID"
+
 
 # --------------------------------------------------
 # Check Fabric Workspace
@@ -116,6 +115,9 @@ $FAB auth login \
   -u "$FABRIC_CLIENT_ID" \
   -p "$FABRIC_CLIENT_SECRET" \
   --tenant "$FABRIC_TENANT_ID" >/dev/null 2>&1
+
+echo "FAB path: $FAB"
+$FAB --version
 
 if [ $? -ne 0 ]; then
   echo "❌ Fabric login failed"
