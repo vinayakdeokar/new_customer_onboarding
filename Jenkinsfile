@@ -237,7 +237,7 @@ pipeline {
                     if (params.ENV == 'qa') {
                         env.STORAGE_ACCOUNT = 'stmedicareadvmcrr'
                     } else if (params.ENV == 'dev') {
-                        env.STORAGE_ACCOUNT = 'stmedicareadvmcrr'
+                        env.STORAGE_ACCOUNT = 'stmedicareadvmcrrr'
                     } else {
                         env.STORAGE_ACCOUNT = 'stmedicareadvmcrprod'
                     }
