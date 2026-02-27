@@ -138,7 +138,7 @@ pipeline {
                 ]) {
                     sh '''
                         chmod +x scripts/check_customer_exists.sh
-                        ./scripts/check_customer_exists.sh "${PRODUCT}" "${CUSTOMER_CODE}"
+                        ./scripts/check_customer_exists.sh "${CUSTOMER_CODE}" "${PRODUCT}" "${ENV}"
                     '''
                 }
             }
