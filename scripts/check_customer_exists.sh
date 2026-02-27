@@ -116,8 +116,6 @@ $FAB auth login \
   -p "$FABRIC_CLIENT_SECRET" \
   --tenant "$FABRIC_TENANT_ID" >/dev/null 2>&1
 
-echo "FAB path: $FAB"
-$FAB --version
 
 if [ $? -ne 0 ]; then
   echo "❌ Fabric login failed"
@@ -138,7 +136,7 @@ echo "Checking if workspace exists..."
 
 echo "Checking if workspace exists..."
 
-EXISTING_ID=$($FAB api workspaces -A fabric -o json | jq -r '
+EXISTING_ID=$($FAB api workspaces -A fabric | jq -r '
   if .value then
     .value[]? | select(.displayName=="'"$WORKSPACE_NAME"'") | .id
   else
@@ -154,18 +152,6 @@ fi
 
 echo "✅ Workspace not found – safe to create"
 
-# if $FAB workspace list | grep -w "$WORKSPACE_NAME" >/dev/null 2>&1; then
-#   echo "⚠ Fabric workspace already exists: $WORKSPACE_NAME"
-#   exit 99
-# fi
-
-# echo "Workspace not found – safe to create"
-
-# --------------------------------------------------
-# Check Fabric VNet Connection
-# --------------------------------------------------
-
-echo "Checking Fabric VNet connection..."
 
 EXISTING_CONNECTION=$($FAB api connections -A fabric | \
 jq -r '.text.value[]? | select(.displayName=="'"${CONNECTION_NAME}"'") | .id')
