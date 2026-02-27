@@ -170,40 +170,62 @@ echo "Connection not found – safe to create"
 echo "--------------------------------------------------"
 echo "✅ Customer does NOT exist – safe to onboard"
 
-#FAB="$WORKSPACE/fabricenv/bin/fab"
+#########################################
+# LOGIN TO FABRIC
+#########################################
 
-# $FAB auth login \
-#   -u "$FABRIC_CLIENT_ID" \
-#   -p "$FABRIC_CLIENT_SECRET" \
-#   --tenant "$FABRIC_TENANT_ID" >/dev/null
+echo "Logging into Fabric..."
 
-# if $FAB workspace list | grep -w "$WORKSPACE_NAME" > /dev/null 2>&1; then
-#   echo "Fabric workspace already exists"
-#   exit 99
-# fi
+$FAB auth login \
+  -u "$FABRIC_CLIENT_ID" \
+  -p "$FABRIC_CLIENT_SECRET" \
+  --tenant "$FABRIC_TENANT_ID" >/dev/null
 
-# echo "Workspace not found"
+echo "Fabric login successful"
 
-# # --------------------------------------------------
-# #  Check Fabric VNet Connection
-# # --------------------------------------------------
+#########################################
+# CHECK WORKSPACE EXISTS
+#########################################
 
-# echo "Checking Fabric VNet connection..."
+echo "Checking if workspace exists..."
 
-# EXISTING_CONNECTION=$($FAB api connections -A fabric | \
-# jq -r '.text.value[]? | select(.displayName=="'"${CONNECTION_NAME}"'") | .id')
+WORKSPACE_ID_FOUND=$($FAB api workspaces -A fabric | jq -r '
+  if .value then
+    .value[]? | select(.displayName=="'"$WORKSPACE_NAME"'") | .id
+  else
+    .text.value[]? | select(.displayName=="'"$WORKSPACE_NAME"'") | .id
+  end
+')
 
-# if [ -n "$EXISTING_CONNECTION" ]; then
-#   echo "Fabric VNet connection already exists"
-#   exit 99
-# fi
+if [ -n "$WORKSPACE_ID_FOUND" ]; then
+  echo "⚠ Fabric workspace already exists"
+  echo "Workspace ID: $WORKSPACE_ID_FOUND"
+  exit 99
+fi
 
-# echo "Connection not found"
+echo "✅ Workspace not found – safe to create"
 
-# # --------------------------------------------------
-# # Safe to Continue
-# # --------------------------------------------------
+#########################################
+# CHECK VNET CONNECTION EXISTS
+#########################################
 
+echo "Checking Fabric VNet connection..."
+
+CONNECTION_ID_FOUND=$($FAB api connections -A fabric | jq -r '
+  if .value then
+    .value[]? | select(.displayName=="'"$CONNECTION_NAME"'") | .id
+  else
+    .text.value[]? | select(.displayName=="'"$CONNECTION_NAME"'") | .id
+  end
+')
+
+if [ -n "$CONNECTION_ID_FOUND" ]; then
+  echo "⚠ Fabric VNet connection already exists"
+  echo "Connection ID: $CONNECTION_ID_FOUND"
+  exit 99
+fi
+
+echo "✅ Connection not found – safe to create"
 # echo "--------------------------------------------------"
 # echo "Customer does NOT exist – safe to onboard"
 # echo "--------------------------------------------------"
