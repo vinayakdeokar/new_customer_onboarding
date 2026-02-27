@@ -132,12 +132,34 @@ echo "Fabric login successful"
 
 echo "Checking if workspace exists..."
 
-if $FAB workspace list | grep -w "$WORKSPACE_NAME" >/dev/null 2>&1; then
-  echo "⚠ Fabric workspace already exists: $WORKSPACE_NAME"
+#########################################
+# CHECK IF WORKSPACE EXISTS
+#########################################
+
+echo "Checking if workspace exists..."
+
+EXISTING_ID=$($FAB api workspaces -A fabric -o json | jq -r '
+  if .value then
+    .value[]? | select(.displayName=="'"$WORKSPACE_NAME"'") | .id
+  else
+    .text.value[]? | select(.displayName=="'"$WORKSPACE_NAME"'") | .id
+  end
+')
+
+if [ -n "$EXISTING_ID" ]; then
+  echo "⚠ Workspace already exists"
+  echo "Workspace ID: $EXISTING_ID"
   exit 99
 fi
 
-echo "Workspace not found – safe to create"
+echo "✅ Workspace not found – safe to create"
+
+# if $FAB workspace list | grep -w "$WORKSPACE_NAME" >/dev/null 2>&1; then
+#   echo "⚠ Fabric workspace already exists: $WORKSPACE_NAME"
+#   exit 99
+# fi
+
+# echo "Workspace not found – safe to create"
 
 # --------------------------------------------------
 # Check Fabric VNet Connection
