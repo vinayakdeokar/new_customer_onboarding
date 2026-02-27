@@ -143,22 +143,22 @@ pipeline {
         //         }
         //     }
         // }
-        stage('Databricks SPN Setup') {
-            steps {
-                withCredentials([
-                    string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
-                    string(credentialsId: 'AZURE_CLIENT_ID', variable: 'AZURE_CLIENT_ID'),
-                    string(credentialsId: 'AZURE_CLIENT_SECRET', variable: 'AZURE_CLIENT_SECRET'),
-                    string(credentialsId: 'AZURE_TENANT_ID', variable: 'AZURE_TENANT_ID')
-                ]) {
-                    sh '''
-                        set +x
-                        chmod +x scripts/databricks_login_and_add_spn.sh
-                        scripts/databricks_login_and_add_spn.sh "${PRODUCT}" "${CUSTOMER_CODE}"
-                    '''
-                }
-            }
-        }
+        // stage('Databricks SPN Setup') {
+        //     steps {
+        //         withCredentials([
+        //             string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
+        //             string(credentialsId: 'AZURE_CLIENT_ID', variable: 'AZURE_CLIENT_ID'),
+        //             string(credentialsId: 'AZURE_CLIENT_SECRET', variable: 'AZURE_CLIENT_SECRET'),
+        //             string(credentialsId: 'AZURE_TENANT_ID', variable: 'AZURE_TENANT_ID')
+        //         ]) {
+        //             sh '''
+        //                 set +x
+        //                 chmod +x scripts/databricks_login_and_add_spn.sh
+        //                 scripts/databricks_login_and_add_spn.sh "${PRODUCT}" "${CUSTOMER_CODE}"
+        //             '''
+        //         }
+        //     }
+        // }
         
 
         
@@ -177,24 +177,24 @@ pipeline {
         //     }
         // }
 
-        stage('Databricks SPN OAuth Secret (Account Level)') {
-            steps {
-                withCredentials([
-                    string(credentialsId: 'DATABRICKS_ACCOUNT_ID', variable: 'DATABRICKS_ACCOUNT_ID'),
-                    string(credentialsId: 'AZURE_TENANT_ID', variable: 'AZURE_TENANT_ID')
-                ]) {
-                    sh """
-                        set +x
-                        export TARGET_SPN_DISPLAY_NAME="${params.SPN_NAME}"
-                        echo "Using SPN: \$TARGET_SPN_DISPLAY_NAME"
-                        chmod +x scripts/dbx_spn_discover.sh
-                        chmod +x scripts/dbx_spn_generate_secret.sh
-                        scripts/dbx_spn_discover.sh
-                        scripts/dbx_spn_generate_secret.sh
-                    """
-                }
-            }
-        }
+        // stage('Databricks SPN OAuth Secret (Account Level)') {
+        //     steps {
+        //         withCredentials([
+        //             string(credentialsId: 'DATABRICKS_ACCOUNT_ID', variable: 'DATABRICKS_ACCOUNT_ID'),
+        //             string(credentialsId: 'AZURE_TENANT_ID', variable: 'AZURE_TENANT_ID')
+        //         ]) {
+        //             sh """
+        //                 set +x
+        //                 export TARGET_SPN_DISPLAY_NAME="${params.SPN_NAME}"
+        //                 echo "Using SPN: \$TARGET_SPN_DISPLAY_NAME"
+        //                 chmod +x scripts/dbx_spn_discover.sh
+        //                 chmod +x scripts/dbx_spn_generate_secret.sh
+        //                 scripts/dbx_spn_discover.sh
+        //                 scripts/dbx_spn_generate_secret.sh
+        //             """
+        //         }
+        //     }
+        // }
 
         stage('Databricks Account Group Sync') {
             steps {
