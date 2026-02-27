@@ -267,11 +267,21 @@ pipeline {
                     string(credentialsId: 'DATABRICKS_CATALOG_NAME', variable: 'CATALOG_NAME'),
                     string(credentialsId: 'STORAGE_BRONZE_ROOT', variable: 'STORAGE_BRONZE_ROOT')
                 ]) {
-                    sh '''
+                    sh """
+                        set -e
                         set +x
+                    
+                        export PRODUCT="${params.PRODUCT}"
+                        export CUSTOMER_CODE="${params.CUSTOMER_CODE}"
+                    
+                        echo "Running for PRODUCT=\$PRODUCT"
+                        echo "Running for CUSTOMER_CODE=\$CUSTOMER_CODE"
+                    
                         chmod +x scripts/databricks_schema_and_grants.sh
                         ./scripts/databricks_schema_and_grants.sh
-                    '''
+                    """
+                    
+                    
                 }
             }
         }
