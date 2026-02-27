@@ -83,19 +83,36 @@ fi
 # echo "⏳ Waiting 30 seconds for UI refresh..."
 # sleep 30
 
-# ४. ग्रुपला वर्कस्पेसच्या 'Directly Assigned' लिस्टमध्ये ॲड करणे
-echo "🚀 Formally adding Group '${GROUP_NAME}' to Workspace list..."
+echo "🔗 Assigning group '${GROUP_NAME}' to Workspace (Federated way)..."
 
-# वर्कस्पेस लेव्हलवर ग्रुप 'Create' करण्याचा प्रयत्न करणे. 
-# जरी तो अकाउंट लेव्हलवर असला, तरी हा SCIM कॉल त्याला वर्कस्पेसच्या मुख्य यादीत खेचून आणतो.
-SYNC_RESP=$(curl -s -X POST "${DATABRICKS_HOST}/api/2.0/preview/scim/v2/Groups" \
-  -H "Authorization: Bearer ${DATABRICKS_ADMIN_TOKEN}" \
+ASSIGN_RESP=$(curl -s -X PUT \
+"${ACCOUNTS_HOST}/api/2.0/accounts/${DATABRICKS_ACCOUNT_ID}/workspaces/${DATABRICKS_WORKSPACE_ID}/permissionassignments/principals/${GROUP_ID}" \
+  -H "${AUTH}" \
   -H "Content-Type: application/json" \
-  -d "{
-    \"schemas\": [\"urn:ietf:params:scim:schemas:core:2.0:Group\"],
-    \"displayName\": \"${GROUP_NAME}\",
-    \"externalId\": \"${AZURE_OBJ_ID}\"
-  }")
+  -d '{
+        "permissions": ["USER"]
+      }')
+
+if echo "$ASSIGN_RESP" | grep -q "error"; then
+    echo "❌ Assignment Failed: $ASSIGN_RESP"
+    exit 1
+else
+    echo "✅ Successfully assigned to workspace!"
+fi
+
+# # ४. ग्रुपला वर्कस्पेसच्या 'Directly Assigned' लिस्टमध्ये ॲड करणे
+# echo "🚀 Formally adding Group '${GROUP_NAME}' to Workspace list..."
+
+# # वर्कस्पेस लेव्हलवर ग्रुप 'Create' करण्याचा प्रयत्न करणे. 
+# # जरी तो अकाउंट लेव्हलवर असला, तरी हा SCIM कॉल त्याला वर्कस्पेसच्या मुख्य यादीत खेचून आणतो.
+# SYNC_RESP=$(curl -s -X POST "${DATABRICKS_HOST}/api/2.0/preview/scim/v2/Groups" \
+#   -H "Authorization: Bearer ${DATABRICKS_ADMIN_TOKEN}" \
+#   -H "Content-Type: application/json" \
+#   -d "{
+#     \"schemas\": [\"urn:ietf:params:scim:schemas:core:2.0:Group\"],
+#     \"displayName\": \"${GROUP_NAME}\",
+#     \"externalId\": \"${AZURE_OBJ_ID}\"
+#   }")
 
 # ५. व्हेरिफिकेशन: ग्रुप आता लिस्टमध्ये आला आहे का हे चेक करणे
 echo "🔎 Checking if group is now in Workspace list..."
