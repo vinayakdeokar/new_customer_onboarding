@@ -261,33 +261,33 @@ pipeline {
 
         
 
-        stage('Schemas & Grants') {
-            steps {
-                withCredentials([
-                    string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
-                    string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_ADMIN_TOKEN'),
-                    string(credentialsId: 'DATABRICKS_SQL_WAREHOUSE_ID', variable: 'DATABRICKS_SQL_WAREHOUSE_ID'),
-                    string(credentialsId: 'DATABRICKS_CATALOG_NAME', variable: 'CATALOG_NAME'),
-                    string(credentialsId: 'STORAGE_BRONZE_ROOT', variable: 'STORAGE_BRONZE_ROOT')
-                ]) {
-                    sh """
-                        set -e
-                        set +x
+        // stage('Schemas & Grants') {
+        //     steps {
+        //         withCredentials([
+        //             string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
+        //             string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_ADMIN_TOKEN'),
+        //             string(credentialsId: 'DATABRICKS_SQL_WAREHOUSE_ID', variable: 'DATABRICKS_SQL_WAREHOUSE_ID'),
+        //             string(credentialsId: 'DATABRICKS_CATALOG_NAME', variable: 'CATALOG_NAME'),
+        //             string(credentialsId: 'STORAGE_BRONZE_ROOT', variable: 'STORAGE_BRONZE_ROOT')
+        //         ]) {
+        //             sh """
+        //                 set -e
+        //                 set +x
                     
-                        export PRODUCT="${params.PRODUCT}"
-                        export CUSTOMER_CODE="${params.CUSTOMER_CODE}"
+        //                 export PRODUCT="${params.PRODUCT}"
+        //                 export CUSTOMER_CODE="${params.CUSTOMER_CODE}"
                     
-                        echo "Running for PRODUCT=\$PRODUCT"
-                        echo "Running for CUSTOMER_CODE=\$CUSTOMER_CODE"
+        //                 echo "Running for PRODUCT=\$PRODUCT"
+        //                 echo "Running for CUSTOMER_CODE=\$CUSTOMER_CODE"
                     
-                        chmod +x scripts/databricks_schema_and_grants.sh
-                        ./scripts/databricks_schema_and_grants.sh
-                    """
+        //                 chmod +x scripts/databricks_schema_and_grants.sh
+        //                 ./scripts/databricks_schema_and_grants.sh
+        //             """
                     
                     
-                }
-            }
-        }
+        //         }
+        //     }
+        // }
 
         // stage('Install Fabric CLI (Python venv)') {
         //     steps {
@@ -304,21 +304,21 @@ pipeline {
         //     }
         // }
 
-        // stage('Create Fabric Workspace') {
-        //     steps {
-        //         withCredentials([
-        //             string(credentialsId: 'FABRIC_CLIENT_ID', variable: 'FABRIC_CLIENT_ID'),
-        //             string(credentialsId: 'FABRIC_CLIENT_SECRET', variable: 'FABRIC_CLIENT_SECRET'),
-        //             string(credentialsId: 'FABRIC_TENANT_ID', variable: 'FABRIC_TENANT_ID')
-        //         ]) {
-        //             sh '''
-        //                 set +x
-        //                 chmod +x scripts/create_fabric_workspace.sh
-        //                 ./scripts/create_fabric_workspace.sh "${CUSTOMER_CODE}" "${PRODUCT}" "${ENV}"
-        //             '''
-        //         }
-        //     }
-        // }
+        stage('Create Fabric Workspace') {
+            steps {
+                withCredentials([
+                    string(credentialsId: 'FABRIC_CLIENT_ID', variable: 'FABRIC_CLIENT_ID'),
+                    string(credentialsId: 'FABRIC_CLIENT_SECRET', variable: 'FABRIC_CLIENT_SECRET'),
+                    string(credentialsId: 'FABRIC_TENANT_ID', variable: 'FABRIC_TENANT_ID')
+                ]) {
+                    sh '''
+                        set +x
+                        chmod +x scripts/create_fabric_workspace.sh
+                        ./scripts/create_fabric_workspace.sh "${CUSTOMER_CODE}" "${PRODUCT}" "${ENV}"
+                    '''
+                }
+            }
+        }
 
         // stage('Fabric VNet Connection') {
         //     steps {
