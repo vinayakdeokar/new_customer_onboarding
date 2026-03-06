@@ -19,7 +19,7 @@ if [ ! -f "$FAB" ]; then
   echo "❌ Fabric CLI not found at $FAB"
   exit 1
 fi
-fab auth status
+$FAB auth status
 #########################################
 # FIX FOR JENKINS (Token Storage)
 #########################################
