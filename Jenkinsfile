@@ -317,10 +317,9 @@ pipeline {
                 sh '''
                     set -e
         
-                    /usr/bin/python3 -m venv fabricenv
+                    python3 -m venv fabricenv
                     . fabricenv/bin/activate
         
-                    python -m pip install --upgrade pip
                     python -m pip install ms-fabric-cli==1.4.0
         
                     echo "Fabric CLI Installed Successfully"
@@ -328,13 +327,7 @@ pipeline {
             }
         }
         
-        stage('Debug Fabric CLI') {
-            steps {
-                sh '''
-                ls -l fabricenv/bin/
-                '''
-            }
-        }
+    
 
         stage('Create Fabric Workspace') {
             steps {
