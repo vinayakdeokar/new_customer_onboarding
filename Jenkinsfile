@@ -307,11 +307,12 @@ pipeline {
             steps {
                 sh '''
                     set -e
-                    set +x
         
-                    python3 -m venv fabricenv
-                    . fabricenv/bin/activate 
-                    pip install ms-fabric-cli==1.4.0
+                    /usr/bin/python3 -m venv fabricenv
+                    . fabricenv/bin/activate
+        
+                    python -m pip install --upgrade pip
+                    python -m pip install ms-fabric-cli==1.4.0
         
                     echo "Fabric CLI Installed Successfully"
                 '''
