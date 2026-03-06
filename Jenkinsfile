@@ -309,9 +309,9 @@ pipeline {
                     set -e
                     set +x
         
-                    python3 -m venv fabricenv >/dev/null 2>&1
-                    . fabricenv/bin/activate >/dev/null 2>&1
-                    pip install ms-fabric-cli==1.4.0 >/dev/null 2>&1
+                    python3 -m venv fabricenv
+                    . fabricenv/bin/activate 
+                    pip install ms-fabric-cli==1.4.0
         
                     echo "Fabric CLI Installed Successfully"
                 '''
