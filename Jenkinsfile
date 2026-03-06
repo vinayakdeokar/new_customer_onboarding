@@ -47,20 +47,6 @@ pipeline {
     environment {
         KV_NAME = 'kv-databricks-fabb'
     }
-    stage('Where am I running') {
-        steps {
-            sh '''
-            echo "Container hostname:"
-            hostname
-    
-            echo "User:"
-            whoami
-    
-            echo "Python path:"
-            which python3 || true
-            '''
-        }
-    }
 
     stages {
 
@@ -78,6 +64,21 @@ pipeline {
                 checkout scm
                 echo "Customer=${params.CUSTOMER_CODE}, Product=${params.PRODUCT}, Env=${params.ENV}"
                 echo "SPN=${params.SPN_NAME}"
+            }
+        }
+
+        stage('Where am I running') {
+            steps {
+                sh '''
+                echo "Container hostname:"
+                hostname
+        
+                echo "User:"
+                whoami
+        
+                echo "Python path:"
+                which python3 || true
+                '''
             }
         }
 
