@@ -11,8 +11,11 @@ fi
 
 SPN_NAME="sp-${PRODUCT}-${CUSTOMER}"
 
-echo $AZURE_CLIENT_ID
-echo $DATABRICKS_HOST
+echo "CLIENT_ID length:"
+echo ${#AZURE_CLIENT_ID}
+
+echo "HOST:"
+echo $DATABRICKS_HOST | cut -c1-30
 
 
 echo " Target Azure SPN name: $SPN_NAME"
