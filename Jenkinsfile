@@ -303,6 +303,15 @@ pipeline {
         //         '''
         //     }
         // }
+
+        stage('Check Python') {
+            steps {
+                sh '''
+                which python3 || true
+                python3 --version || true
+                '''
+            }
+        }
         stage('Install Fabric CLI (Python venv)') {
             steps {
                 sh '''
