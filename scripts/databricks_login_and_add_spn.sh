@@ -70,6 +70,8 @@ if [ -z "$DATABRICKS_ADMIN_TOKEN" ]; then
   exit 1
 fi
 
+echo $DATABRICKS_HOST
+
 # --------------------------------------------------
 # Step 4️ Check if SPN already exists in Databricks
 # --------------------------------------------------
