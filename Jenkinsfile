@@ -47,6 +47,20 @@ pipeline {
     environment {
         KV_NAME = 'kv-databricks-fabb'
     }
+    stage('Where am I running') {
+        steps {
+            sh '''
+            echo "Container hostname:"
+            hostname
+    
+            echo "User:"
+            whoami
+    
+            echo "Python path:"
+            which python3 || true
+            '''
+        }
+    }
 
     stages {
 
