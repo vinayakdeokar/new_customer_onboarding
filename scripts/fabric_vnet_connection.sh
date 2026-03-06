@@ -61,7 +61,7 @@ echo "✅ Azure Login Successful"
 echo "🔎 Fetching Gateway ID dynamically..."
 
 GATEWAY_ID=$($FAB api gateways -A fabric | \
-jq -r '.text.value[]? | select(.displayName=="vnwt-db-fab-fabric-sub") | .id')
+jq -r '.text.value[]? | select(.displayName=="vnet-subnet") | .id')
 
 
 if [ -z "$GATEWAY_ID" ]; then
