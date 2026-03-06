@@ -84,7 +84,7 @@ CUSTOMER_SP_CLIENT_ID=$(az keyvault secret show \
   --query value -o tsv)
 
 CUSTOMER_SP_SECRET=$(az keyvault secret show \
-  --vault-name kv-databricks-fab \
+  --vault-name kv-databricks-fabbb \
   --name $SECRET_SECRET_NAME \
   --query value -o tsv)
 
