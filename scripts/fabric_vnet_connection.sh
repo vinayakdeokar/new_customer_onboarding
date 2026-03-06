@@ -22,8 +22,8 @@ fi
 DISPLAY_NAME="db-vnet-${ENV}-${CUSTOMER_CODE}"
 GATEWAY_ID="34377033-6f6f-433a-9a66-3095e996f65c"
 
-DATABRICKS_HOST="adb-7405618110977329.9.azuredatabricks.net"
-HTTP_PATH="/sql/1.0/warehouses/334a2ae248719051"
+DATABRICKS_HOST="adb-7405608942247571.11.azuredatabricks.net"
+HTTP_PATH="/sql/1.0/warehouses/4257581f21c7beda"
 
  SECRET_CLIENT_ID_NAME="sp-${PRODUCT}-${CUSTOMER_CODE}-oauth-client-id"
  SECRET_SECRET_NAME="sp-${PRODUCT}-${CUSTOMER_CODE}-oauth-secret"
