@@ -320,25 +320,25 @@ pipeline {
             }
         }
 
-        // stage('Fabric VNet Connection') {
-        //     steps {
-        //         withCredentials([
-        //             string(credentialsId: 'FABRIC_CLIENT_ID', variable: 'FABRIC_CLIENT_ID'),
-        //             string(credentialsId: 'FABRIC_CLIENT_SECRET', variable: 'FABRIC_CLIENT_SECRET'),
-        //             string(credentialsId: 'FABRIC_TENANT_ID', variable: 'FABRIC_TENANT_ID'),
-        //             string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
-        //             string(credentialsId: 'DATABRICKS_SQL_WAREHOUSE_ID', variable: 'DATABRICKS_SQL_WAREHOUSE_ID'),
-        //             string(credentialsId: 'DATABRICKS_CLIENT_ID', variable: 'SPN_CLIENT_ID_KV'),
-        //             string(credentialsId: 'DATABRICKS_CLIENT_SECRET', variable: 'SPN_SECRET_KV')
-        //         ]) {
-        //             sh '''
-        //                 set +x
-        //                 chmod +x scripts/fabric_vnet_connection.sh
-        //                 ./scripts/fabric_vnet_connection.sh
-        //             '''
-        //         }
-        //     }
-        // }
+        stage('Fabric VNet Connection') {
+            steps {
+                withCredentials([
+                    string(credentialsId: 'FABRIC_CLIENT_ID', variable: 'FABRIC_CLIENT_ID'),
+                    string(credentialsId: 'FABRIC_CLIENT_SECRET', variable: 'FABRIC_CLIENT_SECRET'),
+                    string(credentialsId: 'FABRIC_TENANT_ID', variable: 'FABRIC_TENANT_ID'),
+                    string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
+                    string(credentialsId: 'DATABRICKS_SQL_WAREHOUSE_ID', variable: 'DATABRICKS_SQL_WAREHOUSE_ID'),
+                    string(credentialsId: 'DATABRICKS_CLIENT_ID', variable: 'SPN_CLIENT_ID_KV'),
+                    string(credentialsId: 'DATABRICKS_CLIENT_SECRET', variable: 'SPN_SECRET_KV')
+                ]) {
+                    sh '''
+                        set +x
+                        chmod +x scripts/fabric_vnet_connection.sh
+                        ./scripts/fabric_vnet_connection.sh
+                    '''
+                }
+            }
+        }
 
     }
 }
