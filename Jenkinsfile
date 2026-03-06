@@ -110,22 +110,22 @@ pipeline {
 
 
 
-        // stage('Azure Login') {
-        //     steps {
-        //         withCredentials([
-        //             string(credentialsId: 'AZURE_CLIENT_ID', variable: 'AZURE_CLIENT_ID'),
-        //             string(credentialsId: 'AZURE_CLIENT_SECRET', variable: 'AZURE_CLIENT_SECRET'),
-        //             string(credentialsId: 'AZURE_TENANT_ID', variable: 'AZURE_TENANT_ID'),
-        //             string(credentialsId: 'AZURE_SUBSCRIPTION_ID', variable: 'AZURE_SUBSCRIPTION_ID')
-        //         ]) {
-        //             sh '''
-        //                 set +x
-        //                 chmod +x scripts/azure_login.sh
-        //                 scripts/azure_login.sh
-        //             '''
-        //         }
-        //     }
-        // }
+        stage('Azure Login') {
+            steps {
+                withCredentials([
+                    string(credentialsId: 'AZURE_CLIENT_ID', variable: 'AZURE_CLIENT_ID'),
+                    string(credentialsId: 'AZURE_CLIENT_SECRET', variable: 'AZURE_CLIENT_SECRET'),
+                    string(credentialsId: 'AZURE_TENANT_ID', variable: 'AZURE_TENANT_ID'),
+                    string(credentialsId: 'AZURE_SUBSCRIPTION_ID', variable: 'AZURE_SUBSCRIPTION_ID')
+                ]) {
+                    sh '''
+                        set +x
+                        chmod +x scripts/azure_login.sh
+                        scripts/azure_login.sh
+                    '''
+                }
+            }
+        }
         // stage('Customer Pre-Check') {
         //     steps {
         //         withCredentials([
@@ -163,76 +163,76 @@ pipeline {
         //         }
         //     }
         // }
-        // stage('Databricks SPN Setup') {
-        //     steps {
-        //         withCredentials([
-        //             string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
-        //             string(credentialsId: 'AZURE_CLIENT_ID', variable: 'AZURE_CLIENT_ID'),
-        //             string(credentialsId: 'AZURE_CLIENT_SECRET', variable: 'AZURE_CLIENT_SECRET'),
-        //             string(credentialsId: 'AZURE_TENANT_ID', variable: 'AZURE_TENANT_ID')
-        //         ]) {
-        //             sh '''
-        //                 set +x
-        //                 chmod +x scripts/databricks_login_and_add_spn.sh
-        //                 scripts/databricks_login_and_add_spn.sh "${PRODUCT}" "${CUSTOMER_CODE}"
-        //             '''
-        //         }
-        //     }
-        // }
+        stage('Databricks SPN Setup') {
+            steps {
+                withCredentials([
+                    string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
+                    string(credentialsId: 'AZURE_CLIENT_ID', variable: 'AZURE_CLIENT_ID'),
+                    string(credentialsId: 'AZURE_CLIENT_SECRET', variable: 'AZURE_CLIENT_SECRET'),
+                    string(credentialsId: 'AZURE_TENANT_ID', variable: 'AZURE_TENANT_ID')
+                ]) {
+                    sh '''
+                        set +x
+                        chmod +x scripts/databricks_login_and_add_spn.sh
+                        scripts/databricks_login_and_add_spn.sh "${PRODUCT}" "${CUSTOMER_CODE}"
+                    '''
+                }
+            }
+        }
         
 
         
-        // stage('Databricks SPN Setup') {
-        //     steps {
-        //         withCredentials([
-        //             string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
-        //             string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_ADMIN_TOKEN')
-        //         ]) {
-        //             sh '''
-        //                 set +x
-        //                 chmod +x scripts/databricks_login_and_add_spn.sh
-        //                 scripts/databricks_login_and_add_spn.sh "${PRODUCT}" "${CUSTOMER_CODE}"
-        //             '''
-        //         }
-        //     }
-        // }
+        stage('Databricks SPN Setup') {
+            steps {
+                withCredentials([
+                    string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
+                    string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_ADMIN_TOKEN')
+                ]) {
+                    sh '''
+                        set +x
+                        chmod +x scripts/databricks_login_and_add_spn.sh
+                        scripts/databricks_login_and_add_spn.sh "${PRODUCT}" "${CUSTOMER_CODE}"
+                    '''
+                }
+            }
+        }
 
-        // stage('Databricks SPN OAuth Secret (Account Level)') {
-        //     steps {
-        //         withCredentials([
-        //             string(credentialsId: 'DATABRICKS_ACCOUNT_ID', variable: 'DATABRICKS_ACCOUNT_ID'),
-        //             string(credentialsId: 'AZURE_TENANT_ID', variable: 'AZURE_TENANT_ID')
-        //         ]) {
-        //             sh """
-        //                 set +x
-        //                 export TARGET_SPN_DISPLAY_NAME="${params.SPN_NAME}"
-        //                 echo "Using SPN: \$TARGET_SPN_DISPLAY_NAME"
-        //                 chmod +x scripts/dbx_spn_discover.sh
-        //                 chmod +x scripts/dbx_spn_generate_secret.sh
-        //                 scripts/dbx_spn_discover.sh
-        //                 scripts/dbx_spn_generate_secret.sh
-        //             """
-        //         }
-        //     }
-        // }
+        stage('Databricks SPN OAuth Secret (Account Level)') {
+            steps {
+                withCredentials([
+                    string(credentialsId: 'DATABRICKS_ACCOUNT_ID', variable: 'DATABRICKS_ACCOUNT_ID'),
+                    string(credentialsId: 'AZURE_TENANT_ID', variable: 'AZURE_TENANT_ID')
+                ]) {
+                    sh """
+                        set +x
+                        export TARGET_SPN_DISPLAY_NAME="${params.SPN_NAME}"
+                        echo "Using SPN: \$TARGET_SPN_DISPLAY_NAME"
+                        chmod +x scripts/dbx_spn_discover.sh
+                        chmod +x scripts/dbx_spn_generate_secret.sh
+                        scripts/dbx_spn_discover.sh
+                        scripts/dbx_spn_generate_secret.sh
+                    """
+                }
+            }
+        }
 
-        // stage('Databricks Account Group Sync') {
-        //     steps {
-        //         withCredentials([
-        //             string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
-        //             string(credentialsId: 'DATABRICKS_ACCOUNT_ID', variable: 'DATABRICKS_ACCOUNT_ID'),
-        //             string(credentialsId: 'DATABRICKS_WORKSPACE_ID', variable: 'DATABRICKS_WORKSPACE_ID'),
-        //             string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_ADMIN_TOKEN')
-        //         ]) {
-        //             sh '''
-        //                 set +x
-        //                 export GROUP_NAME="grp-${PRODUCT}-${CUSTOMER_CODE}-users"
-        //                 chmod +x scripts/account_group_sync.sh
-        //                 ./scripts/account_group_sync.sh
-        //             '''
-        //         }
-        //     }
-        // }
+        stage('Databricks Account Group Sync') {
+            steps {
+                withCredentials([
+                    string(credentialsId: 'DATABRICKS_HOST', variable: 'DATABRICKS_HOST'),
+                    string(credentialsId: 'DATABRICKS_ACCOUNT_ID', variable: 'DATABRICKS_ACCOUNT_ID'),
+                    string(credentialsId: 'DATABRICKS_WORKSPACE_ID', variable: 'DATABRICKS_WORKSPACE_ID'),
+                    string(credentialsId: 'DATABRICKS_ADMIN_TOKEN', variable: 'DATABRICKS_ADMIN_TOKEN')
+                ]) {
+                    sh '''
+                        set +x
+                        export GROUP_NAME="grp-${PRODUCT}-${CUSTOMER_CODE}-users"
+                        chmod +x scripts/account_group_sync.sh
+                        ./scripts/account_group_sync.sh
+                    '''
+                }
+            }
+        }
 
         // stage('Set Storage Based On ENV') {
         //     steps {
@@ -249,15 +249,15 @@ pipeline {
         //         }
         //     }
         // }
-        // stage('Create ADLS Bronze Folder') {   
-        //     steps {
-        //         sh '''
-        //             set +x
-        //             chmod +x scripts/create_bronze_folder.sh
-        //             scripts/create_bronze_folder.sh
-        //         '''
-        //     }
-        // }
+        stage('Create ADLS Bronze Folder') {   
+            steps {
+                sh '''
+                    set +x
+                    chmod +x scripts/create_bronze_folder.sh
+                    scripts/create_bronze_folder.sh
+                '''
+            }
+        }
 
         
 
