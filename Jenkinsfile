@@ -289,20 +289,20 @@ pipeline {
         // //     }
         // // }
 
-        // // stage('Install Fabric CLI (Python venv)') {
-        // //     steps {
-        // //         sh '''
-        // //             set -e
-        // //             set +x
+        stage('Install Fabric CLI (Python venv)') {
+            steps {
+                sh '''
+                    set -e
+                    set +x
 
-        // //             python3 -m venv fabricenv >/dev/null 2>&1
-        // //             . fabricenv/bin/activate >/dev/null 2>&1
-        // //             pip install ms-fabric-cli==1.4.0 >/dev/null 2>&1
+                    python3 -m venv fabricenv >/dev/null 2>&1
+                    . fabricenv/bin/activate >/dev/null 2>&1
+                    pip install ms-fabric-cli==1.4.0 >/dev/null 2>&1
 
-        // //             echo "Fabric CLI Installed Successfully"
-        // //         '''
-        // //     }
-        // // }
+                    echo "Fabric CLI Installed Successfully"
+                '''
+            }
+        }
 
         stage('Create Fabric Workspace') {
             steps {
