@@ -67,20 +67,7 @@ pipeline {
             }
         }
 
-        stage('Where am I running') {
-            steps {
-                sh '''
-                echo "Container hostname:"
-                hostname
         
-                echo "User:"
-                whoami
-        
-                echo "Python path:"
-                which python3 || true
-                '''
-            }
-        }
 
         // stage('Stored Procedure sql') {
         //     steps {
@@ -330,14 +317,14 @@ pipeline {
         stage('Install Fabric CLI (Python venv)') {
             steps {
                 sh '''
-                    set -e
+                set -e
         
-                    python3 -m venv fabricenv
-                    . fabricenv/bin/activate
+                /var/jenkins_home/.pyenv/shims/python3 -m venv fabricenv
+                . fabricenv/bin/activate
         
-                    python -m pip install ms-fabric-cli==1.4.0
+                python -m pip install ms-fabric-cli==1.4.0
         
-                    echo "Fabric CLI Installed Successfully"
+                echo "Fabric CLI Installed Successfully"
                 '''
             }
         }
